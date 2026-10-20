@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/openpicket/openpicket/agent/config"
 	"github.com/openpicket/openpicket/agent/dataplane"
+	"github.com/openpicket/openpicket/agent/enforcer"
 	"github.com/openpicket/openpicket/agent/localnets"
 	"github.com/openpicket/openpicket/agent/nflog"
 	"github.com/openpicket/openpicket/agent/nft"
@@ -60,6 +62,8 @@ type Agent struct {
 	host    *nft.Host
 	nflog   *nflog.Source
 	miss    *nft.DNATMiss
+	allow   *allowlist
+	enf     *enforcer.Enforcer
 
 	nets      atomic.Pointer[direction.Nets]
 	localNets atomic.Pointer[dataplanev1.LocalNets]
@@ -132,12 +136,23 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 			a.miss = &nft.DNATMiss{Host: a.host, Mode: mode, WAN: cfg.OpenPicket.WANInterfaces, Rate: n.Rate, Burst: n.Burst, Group: nflog.GroupDNATMiss}
 		}
 	}
+	a.allow = newAllowlist(cfg.OpenPicket.Allowlist, []string{cfg.Suri.Controller.URL, cfg.OpenPicket.URL}, log)
+	a.allow.refresh(ctx)
+	if e := cfg.OpenPicket.Enforcer; e.Enabled {
+		a.enf = enforcer.New(enforcer.Config{
+			Host: a.host, Table: nft.BanConfig{WAN: cfg.OpenPicket.WANInterfaces, Egress: e.EgressBlock},
+			Allow: a.allow.Prefixes, Nets: func() *direction.Nets { return a.nets.Load() },
+			MaxElements: e.MaxElements, StateFile: filepath.Join(cfg.Suri.StateDir, "openpicket", "decisions.json"), Logger: log,
+		})
+	}
+	handlers := dataplane.Handlers{Hello: a.hello, Status: a.status, LogPolicy: a.shipper.SetPolicy, Shipper: a.shipper}
+	if a.enf != nil {
+		handlers.Decisions = a.enf
+	}
 	a.client = dataplane.NewClient(dataplane.DialConfig{
 		URL: cfg.OpenPicket.URL, Headers: headers, HTTPClient: client, Key: key, ServerKey: hostKey,
 		NodeID: cfg.Suri.NodeID, Version: version.Version,
-	}, dataplane.Handlers{
-		Hello: a.hello, Status: a.status, LogPolicy: a.shipper.SetPolicy, Shipper: a.shipper,
-	}, log)
+	}, handlers, log)
 	a.refreshNets()
 	return a, nil
 }
@@ -188,6 +203,12 @@ func (a *Agent) refreshNets() bool {
 // Run runs both channels until ctx is cancelled.
 func (a *Agent) Run(ctx context.Context) error {
 	a.log.Info("openpicket-agent starting", "version", version.Version, "node", a.cfg.Suri.NodeID, "boot_id", a.bootID)
+	if a.enf != nil {
+		// Blocks are back in place before any connection (§1.1 principle 5).
+		if err := a.enf.Restore(ctx); err != nil {
+			a.log.Error("restore ban table", "err", err)
+		}
+	}
 	var wg sync.WaitGroup
 	workers := []func(context.Context){
 		func(ctx context.Context) { _ = a.suri.Run(ctx) },
@@ -199,6 +220,9 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 	if a.miss != nil {
 		workers = append(workers, a.keepDNATMiss)
+	}
+	if a.enf != nil {
+		workers = append(workers, a.enf.Run, a.allow.run)
 	}
 	for _, fn := range workers {
 		wg.Add(1)
@@ -264,6 +288,9 @@ func (a *Agent) capabilities() []string {
 	if a.nflog != nil {
 		caps = append(caps, "nflog")
 	}
+	if a.enf != nil {
+		caps = append(caps, "enforcer")
+	}
 	return caps
 }
 
@@ -276,6 +303,9 @@ func (a *Agent) status(ctx context.Context) *dataplanev1.Status {
 	}
 	if a.nflog != nil {
 		st.Nflog = a.nflog.Status()
+	}
+	if a.enf != nil {
+		st.Enforcer = a.enf.Status()
 	}
 	return st
 }

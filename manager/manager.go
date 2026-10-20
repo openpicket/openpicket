@@ -28,8 +28,10 @@ import (
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/manager/db"
 	"github.com/openpicket/openpicket/manager/gateway"
+	"github.com/openpicket/openpicket/manager/lapi"
 	"github.com/openpicket/openpicket/manager/pipeline"
 	"github.com/openpicket/openpicket/manager/registry"
+	"github.com/openpicket/openpicket/manager/relay"
 	"github.com/openpicket/openpicket/manager/settings"
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
 	"github.com/openpicket/openpicket/manager/sinks/loki"
@@ -49,6 +51,14 @@ type Options struct {
 	ReplicaID string
 	Loki      loki.Config
 	CrowdSec  crowdsec.Config
+	// LAPI is the primary CrowdSec Local API (decision relay). An empty URL
+	// disables decision distribution.
+	LAPI lapi.Config
+	// EdgeRules select and orient the decisions sent to nodes; zero value
+	// uses relay.DefaultRules.
+	EdgeRules *relay.Rules
+	// RelayPullInterval overrides the relay pull interval (tests).
+	RelayPullInterval time.Duration
 	// StatusInterval requested from agents (default 30s).
 	StatusInterval time.Duration
 	// TrustProxyHeaders uses CF-Connecting-IP / X-Forwarded-For as the
@@ -74,6 +84,8 @@ type Manager struct {
 	settings   *settings.Store
 	presence   *presence
 	cs         *crowdsec.Sink
+	relay      *relay.Relay
+	dist       *relay.Distributor
 
 	runOnce sync.Once
 }
@@ -134,6 +146,24 @@ func New(opts Options) (*Manager, error) {
 	m.listener.Handle(db.ChannelNodes, func(id string) { m.nodes.Changed(context.Background(), id) })
 	m.listener.Handle(db.ChannelSessions, m.presence.notified)
 	m.listener.Handle(db.ChannelSettings, m.settings.Notified)
+	m.dist = relay.NewDistributor(opts.DB, opts.Logger)
+	m.listener.Handle(db.ChannelDecisions, m.dist.Notified)
+	// After a reconnect notifications may have been missed: wake the
+	// decision streams so they compare versions.
+	m.listener.OnResync(func() { m.dist.Notified("") })
+	if opts.LAPI.URL != "" {
+		lc, err := lapi.New(opts.LAPI)
+		if err != nil {
+			return nil, err
+		}
+		rules := relay.DefaultRules()
+		if opts.EdgeRules != nil {
+			rules = *opts.EdgeRules
+		}
+		m.relay = relay.New(relay.Config{LAPI: lc, Rules: rules, Logger: opts.Logger, Registerer: m.reg, PullInterval: opts.RelayPullInterval})
+	} else {
+		m.log.Warn("no LAPI configured: decisions are not distributed to nodes")
+	}
 	m.listener.OnResync(func() { m.nodes.Resync(context.Background()) })
 	m.settings.OnChange = func(key string) {
 		if key == settings.KeyLogPolicy {
@@ -168,6 +198,11 @@ func (m *Manager) Run(ctx context.Context) error {
 		m.pipe.Run,
 		m.watermarks.Run,
 		m.cs.Run,
+		func(ctx context.Context) {
+			if m.relay != nil {
+				db.RunLeader(ctx, m.opts.DB, "relay", m.opts.ReplicaID, m.log, func(ctx context.Context, l *db.Leadership) { m.relay.Run(ctx, l) })
+			}
+		},
 		func(ctx context.Context) { m.presence.run(ctx, 30*time.Second) },
 	} {
 		wg.Add(1)
@@ -252,6 +287,8 @@ func (h *handler) ServeStream(s *gateway.Session, t dataplanev1.StreamType, ms *
 	switch t {
 	case dataplanev1.StreamType_STREAM_TYPE_LOGS:
 		err = m.pipe.Serve(s.Context(), s.Node, ms)
+	case dataplanev1.StreamType_STREAM_TYPE_DECISIONS:
+		err = m.dist.Serve(s.Context(), s.NodeID, ms)
 	default:
 		// Decisions and policies are served once their distributors exist;
 		// until then the stream stays open and idle.

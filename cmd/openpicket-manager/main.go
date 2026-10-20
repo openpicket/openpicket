@@ -22,6 +22,8 @@ import (
 	"github.com/openpicket/openpicket/internal/envconf"
 	"github.com/openpicket/openpicket/internal/schema"
 	"github.com/openpicket/openpicket/manager"
+	"github.com/openpicket/openpicket/manager/lapi"
+	"github.com/openpicket/openpicket/manager/relay"
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
 	"github.com/openpicket/openpicket/manager/sinks/loki"
 	"github.com/openpicket/openpicket/pkg/version"
@@ -37,10 +39,12 @@ type config struct {
 	LogLevel          string
 	Loki              loki.Config
 	CrowdSec          crowdsec.Config
+	LAPI              lapi.Config
+	Rules             relay.Rules
 }
 
 func loadConfig() (*config, error) {
-	c := &config{Listen: ":8080", MetricsListen: ":9090", LogLevel: "info"}
+	c := &config{Listen: ":8080", MetricsListen: ":9090", LogLevel: "info", Rules: relay.DefaultRules()}
 	e := envconf.New("OPENPICKET_")
 	e.String("LISTEN", &c.Listen)
 	e.String("METRICS_LISTEN", &c.MetricsListen)
@@ -61,6 +65,16 @@ func loadConfig() (*config, error) {
 	e.Secret("CROWDSEC_AUTH_VALUE", &c.CrowdSec.AuthValue)
 	e.List("CROWDSEC_EVE_TYPES", &c.CrowdSec.EveTypes)
 	e.List("CROWDSEC_NFLOG_PREFIXES", &c.CrowdSec.NflogPrefixes)
+	e.String("LAPI_URL", &c.LAPI.URL)
+	e.Secret("LAPI_BOUNCER_KEY", &c.LAPI.BouncerKey)
+	e.String("LAPI_LOGIN", &c.LAPI.Login)
+	e.Secret("LAPI_PASSWORD", &c.LAPI.Password)
+	e.String("LAPI_CA_FILE", &c.LAPI.CAFile)
+	e.List("EDGE_TYPES", &c.Rules.Types)
+	e.List("EDGE_SCOPES", &c.Rules.Scopes)
+	e.List("EDGE_EXCLUDE_ORIGINS", &c.Rules.ExcludeOrigins)
+	e.List("EDGE_EXCLUDE_SCENARIOS", &c.Rules.ExcludeScenarios)
+	e.List("EDGE_BOTH_SCENARIOS", &c.Rules.BothScenarios)
 	if err := e.Err(); err != nil {
 		return nil, err
 	}
@@ -177,7 +191,7 @@ func serve() error {
 		return err
 	}
 	m, err := manager.New(manager.Options{
-		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec,
+		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
 		TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
 	})
 	if err != nil {
