@@ -20,12 +20,16 @@ import (
 	"time"
 
 	suriagent "github.com/jc-lab/suricontroller/agent"
+	suricfg "github.com/jc-lab/suricontroller/agent/config"
+	"github.com/jc-lab/suricontroller/agent/platform"
 	agentv1 "github.com/jc-lab/suricontroller/gen/suricontroller/agent/v1"
 	"github.com/jc-lab/suricontroller/pkg/sshkey"
 
 	"github.com/openpicket/openpicket/agent/config"
 	"github.com/openpicket/openpicket/agent/dataplane"
 	"github.com/openpicket/openpicket/agent/localnets"
+	"github.com/openpicket/openpicket/agent/nflog"
+	"github.com/openpicket/openpicket/agent/nft"
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/pkg/direction"
 	"github.com/openpicket/openpicket/pkg/version"
@@ -39,6 +43,10 @@ type Options struct {
 	// SuriOptions are passed to the suricontroller agent (tests replace
 	// the engine and firewall there). LogOutput and Logger are set here.
 	SuriOptions suriagent.Options
+	// Host overrides how nft and host files are reached (tests).
+	Host *nft.Host
+	// Fw4 overrides the fw4 detection (tests).
+	Fw4 *bool
 }
 
 // Agent is a running openpicket-agent.
@@ -49,6 +57,9 @@ type Agent struct {
 	shipper *dataplane.Shipper
 	client  *dataplane.Client
 	bootID  string
+	host    *nft.Host
+	nflog   *nflog.Source
+	miss    *nft.DNATMiss
 
 	nets      atomic.Pointer[direction.Nets]
 	localNets atomic.Pointer[dataplanev1.LocalNets]
@@ -91,6 +102,36 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 	for k, v := range cfg.OpenPicket.Headers {
 		headers.Set(k, v)
 	}
+	a.host = opts.Host
+	fw4 := false
+	if a.host == nil {
+		a.host = hostAccess(cfg.Suri)
+		fw4 = platform.Probe(ctx, a.host.FS, a.host.Exec).Fw4
+	}
+	if opts.Fw4 != nil {
+		fw4 = *opts.Fw4
+	}
+	if n := cfg.OpenPicket.Nflog; n.Enabled {
+		groups := []uint16{nflog.GroupDNATMiss}
+		if cfg.OpenPicket.Policy.Enabled {
+			groups = append(groups, nflog.GroupPolicyDrop)
+		}
+		if cfg.OpenPicket.Enforcer.Enabled && cfg.OpenPicket.Enforcer.EgressBlock {
+			groups = append(groups, nflog.GroupBanEgress)
+		}
+		a.nflog = nflog.New(nflog.Config{Groups: groups, AggregateWindow: n.AggregateWindow, Output: a.shipper,
+			Nets: func() *direction.Nets { return a.nets.Load() }, Logger: log})
+		mode := n.InstallRule
+		if mode == "auto" {
+			mode = "nftables"
+			if fw4 {
+				mode = "fw4"
+			}
+		}
+		if mode != "none" {
+			a.miss = &nft.DNATMiss{Host: a.host, Mode: mode, WAN: cfg.OpenPicket.WANInterfaces, Rate: n.Rate, Burst: n.Burst, Group: nflog.GroupDNATMiss}
+		}
+	}
 	a.client = dataplane.NewClient(dataplane.DialConfig{
 		URL: cfg.OpenPicket.URL, Headers: headers, HTTPClient: client, Key: key, ServerKey: hostKey,
 		NodeID: cfg.Suri.NodeID, Version: version.Version,
@@ -99,6 +140,15 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 	}, log)
 	a.refreshNets()
 	return a, nil
+}
+
+// hostAccess reaches the host like the suricontroller agent does: through
+// chroot and the /host mount in the docker profile.
+func hostAccess(c *suricfg.Config) *nft.Host {
+	if c.Platform.Profile == suricfg.ProfileDocker {
+		return &nft.Host{Exec: platform.ChrootExec{Root: c.Platform.HostRoot, Fallback: platform.LocalExec{}}, FS: platform.HostFS{Root: c.Platform.HostRoot}}
+	}
+	return &nft.Host{Exec: platform.LocalExec{}, FS: platform.HostFS{Root: "/"}}
 }
 
 func httpClient(o config.OpenPicket) (*http.Client, error) {
@@ -139,11 +189,18 @@ func (a *Agent) refreshNets() bool {
 func (a *Agent) Run(ctx context.Context) error {
 	a.log.Info("openpicket-agent starting", "version", version.Version, "node", a.cfg.Suri.NodeID, "boot_id", a.bootID)
 	var wg sync.WaitGroup
-	for _, fn := range []func(context.Context){
+	workers := []func(context.Context){
 		func(ctx context.Context) { _ = a.suri.Run(ctx) },
 		a.client.Run,
 		a.watchNets,
-	} {
+	}
+	if a.nflog != nil {
+		workers = append(workers, a.nflog.Run)
+	}
+	if a.miss != nil {
+		workers = append(workers, a.keepDNATMiss)
+	}
+	for _, fn := range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -152,6 +209,23 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 	wg.Wait()
 	return nil
+}
+
+// keepDNATMiss installs the DNAT-miss log rule and puts it back when it
+// disappears (fw4 reload, manual flush).
+func (a *Agent) keepDNATMiss(ctx context.Context) {
+	t := time.NewTicker(time.Minute)
+	defer t.Stop()
+	for {
+		if err := a.miss.Ensure(ctx); err != nil && ctx.Err() == nil {
+			a.log.Warn("install DNAT-miss log rule", "mode", a.miss.Mode, "err", err)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+	}
 }
 
 // watchNets follows HOME_NET and address changes (DHCP, PPPoE).
@@ -177,7 +251,7 @@ func (a *Agent) hello() *dataplanev1.Hello {
 		NodeId: a.cfg.Suri.NodeID, AgentVersion: version.Version, BootId: a.bootID,
 		LocalNets: a.localNets.Load(), Platform: sh.GetPlatform(), Engine: sh.GetEngine(),
 		WanInterfaces: a.cfg.OpenPicket.WANInterfaces, LogSources: a.suri.LogSources(), Warnings: sh.GetWarnings(),
-		Capabilities: []string{"logs"},
+		Capabilities: a.capabilities(),
 	}
 	for _, p := range localnets.UncoveredIPv6(a.nets.Load(), a.cfg.OpenPicket.WANInterfaces) {
 		h.Warnings = append(h.Warnings, warning("ipv6_not_local", "IPv6 prefix "+p+" is not in HOME_NET or openpicket.local_nets: its hosts look external"))
@@ -185,13 +259,25 @@ func (a *Agent) hello() *dataplanev1.Hello {
 	return h
 }
 
+func (a *Agent) capabilities() []string {
+	caps := []string{"logs"}
+	if a.nflog != nil {
+		caps = append(caps, "nflog")
+	}
+	return caps
+}
+
 func (a *Agent) status(ctx context.Context) *dataplanev1.Status {
-	return &dataplanev1.Status{
+	st := &dataplanev1.Status{
 		TimeUnixMs: time.Now().UnixMilli(),
 		Suricata:   a.suri.Status(ctx),
 		LocalNets:  a.localNets.Load(),
 		Logs:       a.shipper.Stats(),
 	}
+	if a.nflog != nil {
+		st.Nflog = a.nflog.Status()
+	}
+	return st
 }
 
 func warning(code, msg string) *agentv1.Warning { return &agentv1.Warning{Code: code, Message: msg} }

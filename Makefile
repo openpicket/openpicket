@@ -2,7 +2,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X github.com/openpicket/openpicket/pkg/version.Version=$(VERSION)
 GO      ?= go
 
-.PHONY: all build manager agent suricontroller proto test test-pg lint web suricata-web clean
+.PHONY: all build manager agent suricontroller proto test test-pg test-netns test-crowdsec image-crowdsec lint web suricata-web clean
 
 all: build
 
@@ -27,6 +27,17 @@ test:
 # Runs the Postgres-backed tests against a throwaway container.
 test-pg:
 	./scripts/test-pg.sh
+
+# Kernel-level tests (NFLOG, nftables) in a container with CAP_NET_ADMIN.
+test-netns:
+	./scripts/netns-test.sh
+
+image-crowdsec:
+	docker build -f deploy/images/crowdsec/Dockerfile -t openpicket-crowdsec:dev .
+
+# The CrowdSec image detects and decides offline (docker --network none).
+test-crowdsec: image-crowdsec
+	./scripts/crowdsec-image-test.sh openpicket-crowdsec:dev
 
 lint:
 	golangci-lint run ./...

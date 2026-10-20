@@ -40,7 +40,8 @@ type Config struct {
 	DiscoveryHost   string
 	DiscoveryPort   int
 	DiscoveryScheme string
-	// EvePath and NflogPath are the datasource paths (default /eve, /nflog).
+	// EvePath and NflogPath are the datasource paths (default /openpicket
+	// for both; the parsers tell records apart by event_type).
 	EvePath   string
 	NflogPath string
 	// AuthHeader/AuthValue authenticate to the datasource (auth_type: headers).
@@ -77,10 +78,13 @@ func New(cfg Config) (*Sink, error) {
 		return nil, errors.New("crowdsec: endpoints or discovery host required")
 	}
 	if cfg.EvePath == "" {
-		cfg.EvePath = "/eve"
+		cfg.EvePath = "/openpicket"
 	}
 	if cfg.NflogPath == "" {
-		cfg.NflogPath = "/nflog"
+		cfg.NflogPath = "/openpicket"
+	}
+	if cfg.AuthHeader == "" {
+		cfg.AuthHeader = "X-OpenPicket-Token"
 	}
 	if len(cfg.EveTypes) == 0 {
 		cfg.EveTypes = []string{"alert", "anomaly"}
@@ -227,19 +231,34 @@ func shardKey(r *pipeline.Record) string {
 
 // meta is appended to each record as "openpicket_meta".
 type meta struct {
+	// TS is the event time in RFC 3339 (eve's "+0900" offsets are not
+	// parsed by CrowdSec's dateparse-enrich).
+	TS       string            `json:"ts"`
 	NodeID   string            `json:"node_id"`
 	Site     string            `json:"site,omitempty"`
 	Labels   map[string]string `json:"labels,omitempty"`
 	IngestTS string            `json:"ingest_ts"`
 	SrcGeo   *pipeline.Geo     `json:"src_geo,omitempty"`
 	DestGeo  *pipeline.Geo     `json:"dest_geo,omitempty"`
+	// RemoteGeo is the geo of openpicket.remote_ip (the address scenarios
+	// act on); the parsers copy it into the alert source.
+	RemoteGeo *pipeline.Geo `json:"remote_geo,omitempty"`
 }
 
 // Line returns the NDJSON line sent for a record.
 func Line(b *pipeline.Batch, r *pipeline.Record) []byte {
-	m := meta{NodeID: b.NodeID, IngestTS: b.Received.UTC().Format(time.RFC3339Nano), SrcGeo: r.SrcGeo, DestGeo: r.DestGeo}
+	m := meta{TS: r.Time.UTC().Format(time.RFC3339Nano), NodeID: b.NodeID, IngestTS: b.Received.UTC().Format(time.RFC3339Nano), SrcGeo: r.SrcGeo, DestGeo: r.DestGeo}
 	if b.Node != nil {
 		m.Site, m.Labels = b.Node.Site(), b.Node.Labels
+	}
+	if r.Eve != nil && r.Eve.OpenPicket != nil {
+		switch r.Eve.OpenPicket.RemoteIP {
+		case "":
+		case r.Eve.SrcIP:
+			m.RemoteGeo = r.SrcGeo
+		case r.Eve.DestIP:
+			m.RemoteGeo = r.DestGeo
+		}
 	}
 	return record.AppendField(r.Line, "openpicket_meta", m)
 }

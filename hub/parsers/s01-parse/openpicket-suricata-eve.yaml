@@ -1,0 +1,63 @@
+# Suricata eve alert/anomaly records from openpicket-manager (docs/ARCHITECTURE.md §4.7).
+#
+# Same fields as crowdsecurity/suricata-evelogs, except that
+# evt.Meta.source_ip is the REMOTE party judged by the agent
+# (openpicket.remote_ip), not eve's src_ip: an outbound C2 alert then blames
+# the C2 server instead of the internal host. Internal traffic has no remote
+# and gets no source_ip, so no scenario can ban it.
+onsuccess: next_stage
+filter: |
+  evt.Parsed.program == "openpicket" && JsonExtract(evt.Parsed.message, "event_type") in ["alert", "anomaly"]
+name: openpicket/suricata-eve
+description: "Parse Suricata eve alert/anomaly records shipped by OpenPicket"
+statics:
+  - meta: service
+    value: suricata
+  - meta: log_type
+    expression: 'JsonExtract(evt.Parsed.message, "event_type") == "alert" ? "suricata_alert" : "suricata_anomaly"'
+  - meta: sub_log_type
+    value: openpicket_eve
+  # RFC 3339 time added by the manager (eve's "+0900" offset form is not
+  # understood by dateparse-enrich).
+  - target: evt.StrTime
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.ts")'
+  - meta: source_ip
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket.remote_ip")'
+  - meta: openpicket_direction
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket.direction")'
+  - meta: openpicket_local_ip
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket.local_ip")'
+  - meta: node_id
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.node_id")'
+  - meta: node_site
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.site")'
+  # Geo of the remote party, from the MaxMind databases uploaded to
+  # OpenPicket (the manager resolves it; CrowdSec has no mmdb of its own).
+  - target: evt.Enriched.IsoCode
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.remote_geo.cc")'
+  - target: evt.Enriched.ASNumber
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.remote_geo.asn")'
+  - target: evt.Enriched.ASNOrg
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.remote_geo.as_org")'
+  - target: evt.Meta.suricata_flow_id
+    expression: 'JsonExtract(evt.Parsed.message, "flow_id")'
+  - target: evt.Parsed.src_ip
+    expression: 'JsonExtract(evt.Parsed.message, "src_ip")'
+  - target: evt.Parsed.dest_ip
+    expression: 'JsonExtract(evt.Parsed.message, "dest_ip")'
+  - target: evt.Parsed.dest_port
+    expression: 'JsonExtract(evt.Parsed.message, "dest_port")'
+  - target: evt.Parsed.proto
+    expression: 'JsonExtract(evt.Parsed.message, "proto")'
+  - target: evt.Parsed.ja4
+    expression: 'JsonExtract(evt.Parsed.message, "tls.ja4")'
+  - target: evt.Meta.suricata_alert_signature_id
+    expression: 'JsonExtract(evt.Parsed.message, "alert.signature_id")'
+  - target: evt.Parsed.suricata_alert_signature_rev
+    expression: 'JsonExtract(evt.Parsed.message, "alert.rev")'
+  - target: evt.Parsed.suricata_alert_signature
+    expression: 'JsonExtract(evt.Parsed.message, "alert.signature")'
+  - target: evt.Parsed.suricata_alert_category
+    expression: 'JsonExtract(evt.Parsed.message, "alert.category")'
+  - target: evt.Meta.suricata_rule_severity
+    expression: 'JsonExtract(evt.Parsed.message, "alert.severity")'

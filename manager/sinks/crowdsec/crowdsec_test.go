@@ -33,7 +33,7 @@ func newLP(t *testing.T) *lp {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
-		if r.Header.Get("X-Token") != "secret" {
+		if r.Header.Get("X-OpenPicket-Token") != "secret" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -69,7 +69,7 @@ func rec(t *testing.T, line string) *pipeline.Record {
 func TestFilterShardAndRetry(t *testing.T) {
 	a, b := newLP(t), newLP(t)
 	now := time.Unix(1000, 0)
-	s, err := New(Config{Endpoints: []string{a.srv.URL, b.srv.URL}, AuthHeader: "X-Token", AuthValue: "secret", Now: func() time.Time { return now }})
+	s, err := New(Config{Endpoints: []string{a.srv.URL, b.srv.URL}, AuthValue: "secret", Now: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,17 +88,17 @@ func TestFilterShardAndRetry(t *testing.T) {
 	if err := s.Deliver(context.Background(), batch); err == nil {
 		t.Fatal("expected an error while one endpoint is down")
 	}
-	first := a.count("/eve")
+	first := a.count("/openpicket")
 	if first == 0 || first == 40 {
 		t.Fatalf("expected a partial delivery, got %d", first)
 	}
 	if err := s.Deliver(context.Background(), batch); err != nil {
 		t.Fatal(err)
 	}
-	if a.count("/eve") != 40 || b.count("/eve") != 0 {
-		t.Fatalf("a=%d b=%d", a.count("/eve"), b.count("/eve"))
+	if a.count("/openpicket") != 40 || b.count("/openpicket") != 0 {
+		t.Fatalf("a=%d b=%d", a.count("/openpicket"), b.count("/openpicket"))
 	}
-	m := a.got["/eve"][0]["openpicket_meta"].(map[string]any)
+	m := a.got["/openpicket"][0]["openpicket_meta"].(map[string]any)
 	if m["node_id"] != "r1" || m["site"] != "seoul" {
 		t.Fatalf("meta = %v", m)
 	}
@@ -128,7 +128,7 @@ func TestPickIsStableAndMovesOnlyTheLostShare(t *testing.T) {
 
 func TestNflogPrefixFilter(t *testing.T) {
 	a := newLP(t)
-	s, _ := New(Config{Endpoints: []string{a.srv.URL}, AuthHeader: "X-Token", AuthValue: "secret"})
+	s, _ := New(Config{Endpoints: []string{a.srv.URL}, AuthValue: "secret"})
 	batch := &pipeline.Batch{NodeID: "r1", Type: "nflog", Node: &registry.Node{ID: "r1"}, Records: []*pipeline.Record{
 		rec(t, `{"event_type":"nflog","prefix":"DNAT-MISS","src_ip":"198.51.100.4"}`),
 		rec(t, `{"event_type":"nflog","prefix":"BAN-EGRESS","src_ip":"192.168.1.5"}`),
@@ -136,7 +136,7 @@ func TestNflogPrefixFilter(t *testing.T) {
 	if err := s.Deliver(context.Background(), batch); err != nil {
 		t.Fatal(err)
 	}
-	if a.count("/nflog") != 1 {
-		t.Fatalf("nflog = %d", a.count("/nflog"))
+	if a.count("/openpicket") != 1 {
+		t.Fatalf("nflog = %d", a.count("/openpicket"))
 	}
 }

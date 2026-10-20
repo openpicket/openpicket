@@ -1,0 +1,13 @@
+# Records from openpicket-manager (eve alert/anomaly and nflog), NDJSON
+# over HTTP. Only the manager may write here: anyone who can could make the
+# LAPI ban arbitrary addresses (docs/ARCHITECTURE.md §12).
+source: http
+listen_addr: 0.0.0.0:8081
+path: /openpicket
+auth_type: headers
+headers:
+  X-OpenPicket-Token: ${OPENPICKET_ACQUIS_TOKEN}
+max_body_size: 10485760
+timeout: 30s
+labels:
+  type: openpicket

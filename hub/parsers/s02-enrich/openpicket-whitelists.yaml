@@ -1,0 +1,16 @@
+# Complements crowdsecurity/whitelists (RFC1918, loopback; kept installed):
+# never act on non-routable addresses or on traffic between inside hosts.
+# The agent's own local network check and the enforcer are the other two
+# layers (docs/ARCHITECTURE.md §4.7).
+name: openpicket/whitelists
+description: "OpenPicket: ignore internal traffic and non-routable sources"
+whitelist:
+  reason: "OpenPicket: internal or non-routable"
+  cidr:
+    - "100.64.0.0/10"
+    - "169.254.0.0/16"
+    - "fc00::/7"
+    - "fe80::/10"
+  expression:
+    - evt.Meta.openpicket_direction == "internal"
+    - evt.Meta.service in ["suricata", "openpicket"] && evt.Meta.source_ip == ""

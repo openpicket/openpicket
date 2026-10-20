@@ -13,5 +13,6 @@ for _ in $(seq 1 120); do
   sleep 0.5
 done
 port="$(docker port "$name" 5432/tcp | head -1 | sed 's/.*://')"
+export OPENPICKET_TEST_NFT=1
 export OPENPICKET_TEST_PG="postgres://postgres:test@127.0.0.1:${port}/postgres?sslmode=disable"
 go test -race -count="${COUNT:-1}" "${@:-./...}"
