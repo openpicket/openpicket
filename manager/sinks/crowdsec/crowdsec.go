@@ -165,7 +165,20 @@ func (s *Sink) refresh(ctx context.Context) {
 	s.mu.Unlock()
 }
 
-// Endpoints returns the current endpoints and which are healthy.
+// Health returns the number of endpoints and of those not marked down.
+func (s *Sink) Health() (total, up int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := s.cfg.Now()
+	for _, e := range s.endpoints {
+		if now.After(s.downUntil[e]) {
+			up++
+		}
+	}
+	return len(s.endpoints), up
+}
+
+// healthy returns the endpoints not marked down (all when every one is).
 func (s *Sink) healthy() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()

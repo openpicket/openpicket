@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package openpicket.api.v1;
+
+import "google/protobuf/timestamp.proto";
+import "openpicket/dataplane/v1/dataplane.proto";
+
+option go_package = "github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1";
+
+// Nodes: the shared registry (also used by openpicket-suricontroller).
+service NodeService {
+  rpc ListNodes(ListNodesRequest) returns (ListNodesResponse);
+  rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
+  rpc RegisterNode(RegisterNodeRequest) returns (RegisterNodeResponse);
+  rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse);
+  rpc DeleteNode(DeleteNodeRequest) returns (DeleteNodeResponse);
+  // Manager host key and endpoint for agent.yaml.
+  rpc GetConnectionInfo(GetConnectionInfoRequest) returns (GetConnectionInfoResponse);
+}
+
+message DataPlaneState {
+  bool connected = 1;
+  string replica = 2;
+  string remote_addr = 3;
+  google.protobuf.Timestamp connected_at = 4;
+  google.protobuf.Timestamp last_seen_at = 5;
+  string boot_id = 6;
+  string agent_version = 7;
+  repeated string capabilities = 8;
+  repeated string wan_interfaces = 9;
+  // Latest status report.
+  openpicket.dataplane.v1.Status status = 10;
+  repeated SimpleWarning warnings = 11;
+}
+
+message SimpleWarning {
+  string code = 1;
+  string message = 2;
+}
+
+message SyncState {
+  uint64 version = 1;
+  // Version the cluster is at (lag = current - version).
+  uint64 current = 2;
+  string error = 3;
+  google.protobuf.Timestamp acked_at = 4;
+  uint32 set_size = 5;
+  // Policies left out of the node's bundle (missing GeoIP data).
+  repeated string skipped = 6;
+}
+
+message Node {
+  string id = 1;
+  string description = 2;
+  bool enabled = 3;
+  map<string, string> labels = 4;
+  string public_key = 5;
+  string fingerprint = 6;
+  google.protobuf.Timestamp created_at = 7;
+  DataPlaneState data_plane = 8;
+  // Channel A (openpicket-suricontroller) last contact.
+  google.protobuf.Timestamp suricata_last_seen_at = 9;
+  SyncState decisions = 10;
+  SyncState policy = 11;
+}
+
+message ListNodesRequest {}
+message ListNodesResponse {
+  repeated Node nodes = 1;
+}
+
+message GetNodeRequest {
+  string id = 1;
+}
+message GetNodeResponse {
+  Node node = 1;
+}
+
+message RegisterNodeRequest {
+  // "ssh-ed25519 AAAA... <node-id>" (from openpicket-agent keygen)
+  string public_key = 1;
+  string description = 2;
+  map<string, string> labels = 3;
+}
+message RegisterNodeResponse {
+  Node node = 1;
+}
+
+message UpdateNodeRequest {
+  string id = 1;
+  optional bool enabled = 2;
+  optional string description = 3;
+  // Replaces all labels when set_labels is true.
+  bool set_labels = 4;
+  map<string, string> labels = 5;
+}
+message UpdateNodeResponse {
+  Node node = 1;
+}
+
+message DeleteNodeRequest {
+  string id = 1;
+}
+message DeleteNodeResponse {}
+
+message GetConnectionInfoRequest {}
+message GetConnectionInfoResponse {
+  // agent.yaml openpicket.host_key
+  string manager_host_key = 1;
+  // Path of the data plane endpoint (/agent/data/v1/connect).
+  string data_plane_path = 2;
+}

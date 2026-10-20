@@ -98,6 +98,12 @@ func (s *Store) Put(ctx context.Context, key string, v any) error {
 	return err
 }
 
+// Delete removes a setting (back to its default).
+func (s *Store) Delete(ctx context.Context, key string) error {
+	_, err := s.db.Exec(ctx, `DELETE FROM openpicket.settings WHERE key = $1`, key)
+	return err
+}
+
 // LogPolicy returns the collection policy pushed to agents.
 func (s *Store) LogPolicy(ctx context.Context) *agentv1.LogCollectionPolicy {
 	p := &agentv1.LogCollectionPolicy{}

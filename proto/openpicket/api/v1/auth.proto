@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package openpicket.api.v1;
+
+option go_package = "github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1";
+
+// Authentication is delegated to a proxy or IdP (header, jwt, forward
+// providers); the static provider offers one fixed login.
+service AuthService {
+  // Public.
+  rpc GetAuthInfo(GetAuthInfoRequest) returns (GetAuthInfoResponse);
+  // Public.
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+}
+
+message Principal {
+  // "provider:subject"
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  // viewer | operator | admin
+  string role = 4;
+  repeated string groups = 5;
+  string provider = 6;
+}
+
+message GetAuthInfoRequest {}
+
+message GetAuthInfoResponse {
+  // Unset when not authenticated.
+  Principal principal = 1;
+  bool password_login = 2;
+  // External login page (proxy/IdP), if any.
+  string login_url = 3;
+  string logout_url = 4;
+  bool read_only = 5;
+  string version = 6;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  Principal principal = 1;
+}
+
+message LogoutRequest {}
+
+message LogoutResponse {
+  // Where to go after logging out (external providers).
+  string redirect_url = 1;
+}

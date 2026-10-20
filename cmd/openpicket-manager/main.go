@@ -1,5 +1,6 @@
 // Command openpicket-manager runs one manager replica: the agent data plane
-// endpoint, the log pipeline and (later) the UI and API. Configuration comes
+// endpoint, the log pipeline, decision and policy distribution, and the UI
+// and API. Configuration comes
 // from OPENPICKET_* environment variables; secrets accept *_FILE.
 package main
 
@@ -8,20 +9,26 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/jc-lab/suricontroller/pkg/sshkey"
 
 	"github.com/openpicket/openpicket/internal/envconf"
 	"github.com/openpicket/openpicket/internal/schema"
 	"github.com/openpicket/openpicket/manager"
+	"github.com/openpicket/openpicket/manager/api"
+	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/lapi"
 	"github.com/openpicket/openpicket/manager/relay"
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
@@ -41,6 +48,16 @@ type config struct {
 	CrowdSec          crowdsec.Config
 	LAPI              lapi.Config
 	Rules             relay.Rules
+
+	// UI and API
+	AuthConfig        string
+	AdminUsername     string
+	AdminPassword     string
+	AdminPasswordHash string
+	InsecureCookies   bool
+	ReadOnly          bool
+	AllowedOrigins    []string
+	SuricontrollerURL string
 }
 
 func loadConfig() (*config, error) {
@@ -75,6 +92,14 @@ func loadConfig() (*config, error) {
 	e.List("EDGE_EXCLUDE_ORIGINS", &c.Rules.ExcludeOrigins)
 	e.List("EDGE_EXCLUDE_SCENARIOS", &c.Rules.ExcludeScenarios)
 	e.List("EDGE_BOTH_SCENARIOS", &c.Rules.BothScenarios)
+	e.Secret("AUTH_CONFIG", &c.AuthConfig)
+	e.String("ADMIN_USERNAME", &c.AdminUsername)
+	e.Secret("ADMIN_PASSWORD", &c.AdminPassword)
+	e.Secret("ADMIN_PASSWORD_HASH", &c.AdminPasswordHash)
+	e.Bool("INSECURE_COOKIES", &c.InsecureCookies)
+	e.Bool("READ_ONLY", &c.ReadOnly)
+	e.List("ALLOWED_ORIGINS", &c.AllowedOrigins)
+	e.String("SURICONTROLLER_URL", &c.SuricontrollerURL)
 	if err := e.Err(); err != nil {
 		return nil, err
 	}
@@ -87,6 +112,9 @@ func loadConfig() (*config, error) {
 	}
 	if c.Loki.URL == "" {
 		errs = append(errs, errors.New("OPENPICKET_LOKI_URL is required"))
+	}
+	if c.AuthConfig == "" && c.AdminUsername == "" {
+		errs = append(errs, errors.New("OPENPICKET_AUTH_CONFIG(_FILE) or OPENPICKET_ADMIN_USERNAME is required"))
 	}
 	if len(c.CrowdSec.Endpoints) == 0 && c.CrowdSec.DiscoveryHost == "" {
 		errs = append(errs, errors.New("OPENPICKET_CROWDSEC_ENDPOINTS or OPENPICKET_CROWDSEC_DISCOVERY_HOST is required"))
@@ -101,6 +129,11 @@ Commands:
   serve    run the manager (default)
   keygen   print a new channel B host key (OpenSSH PEM) to store as a Secret
   pubkey   print the host public key (agent.yaml openpicket.host_key)
+  principal-pubkey
+           print the principal public key
+           (openpicket-suricontroller OPENPICKET_SURI_PRINCIPAL_PUBLIC_KEY)
+  hash-password
+           read a password from stdin and print its bcrypt hash
   version  print the version
 `)
 }
@@ -119,7 +152,11 @@ func main() {
 	case "keygen":
 		err = keygen()
 	case "pubkey":
-		err = pubkey()
+		err = pubkey(false)
+	case "principal-pubkey":
+		err = pubkey(true)
+	case "hash-password":
+		err = hashPassword()
 	case "version":
 		fmt.Println(version.Version)
 	default:
@@ -146,7 +183,20 @@ func keygen() error {
 	return nil
 }
 
-func pubkey() error {
+func hashPassword() error {
+	pw, err := io.ReadAll(io.LimitReader(os.Stdin, 1024))
+	if err != nil {
+		return err
+	}
+	h, err := bcrypt.GenerateFromPassword([]byte(strings.TrimRight(string(pw), "\r\n")), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(h))
+	return nil
+}
+
+func pubkey(principal bool) error {
 	var raw string
 	e := envconf.New("OPENPICKET_")
 	e.Secret("HOST_KEY", &raw)
@@ -157,8 +207,32 @@ func pubkey() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(k.Public(manager.HostKeyComment).String())
+	if !principal {
+		fmt.Println(k.Public(manager.HostKeyComment).String())
+		return nil
+	}
+	keys, err := manager.DeriveKeys(k)
+	if err != nil {
+		return err
+	}
+	fmt.Println(keys.Principal.Public(manager.PrincipalKeyComment).String())
 	return nil
+}
+
+// buildAuth creates the provider chain from OPENPICKET_AUTH_CONFIG and the
+// OPENPICKET_ADMIN_* shortcut for the static login.
+func buildAuth(cfg *config, sessionKey []byte) (*auth.Chain, error) {
+	ac, err := auth.ParseConfig([]byte(cfg.AuthConfig))
+	if err != nil {
+		return nil, err
+	}
+	if cfg.AdminUsername != "" {
+		ac.Static = &auth.StaticConfig{Username: cfg.AdminUsername, PasswordHash: cfg.AdminPasswordHash, Password: cfg.AdminPassword, Role: auth.RoleAdmin}
+	}
+	if cfg.InsecureCookies {
+		ac.InsecureCookies = true
+	}
+	return ac.Build(sessionKey)
 }
 
 func newLogger(level string) *slog.Logger {
@@ -197,7 +271,29 @@ func serve() error {
 	if err != nil {
 		return err
 	}
-	srv := &http.Server{Addr: cfg.Listen, Handler: m.Handler(), ReadHeaderTimeout: 15 * time.Second, IdleTimeout: 2 * time.Minute, MaxHeaderBytes: 64 << 10}
+	keys, err := manager.DeriveKeys(hostKey)
+	if err != nil {
+		return err
+	}
+	chain, err := buildAuth(cfg, keys.Session)
+	if err != nil {
+		return err
+	}
+	apiCfg := api.Config{Auth: chain, ReadOnly: cfg.ReadOnly, AllowedOrigins: cfg.AllowedOrigins, TrustProxyHeaders: cfg.TrustProxyHeaders,
+		PrincipalKey: keys.Principal.Key}
+	if cfg.SuricontrollerURL != "" {
+		if apiCfg.Suricontroller, err = url.Parse(cfg.SuricontrollerURL); err != nil {
+			return fmt.Errorf("OPENPICKET_SURICONTROLLER_URL: %w", err)
+		}
+	}
+	apiSrv, err := m.API(apiCfg)
+	if err != nil {
+		return err
+	}
+	mux := http.NewServeMux()
+	m.Mount(mux)
+	apiSrv.Mount(mux)
+	srv := &http.Server{Addr: cfg.Listen, Handler: mux, ReadHeaderTimeout: 15 * time.Second, IdleTimeout: 2 * time.Minute, MaxHeaderBytes: 64 << 10}
 	metrics := &http.Server{Addr: cfg.MetricsListen, Handler: m.MetricsHandler(), ReadHeaderTimeout: 15 * time.Second}
 	runDone := make(chan struct{})
 	go func() {

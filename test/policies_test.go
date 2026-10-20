@@ -10,15 +10,21 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
+
 	"github.com/jc-lab/suricontroller/pkg/sshkey"
 
 	"github.com/openpicket/openpicket/agent/dataplane"
 	"github.com/openpicket/openpicket/agent/nft"
 	"github.com/openpicket/openpicket/agent/policy"
+	apiv1 "github.com/openpicket/openpicket/gen/openpicket/api/v1"
+	"github.com/openpicket/openpicket/gen/openpicket/api/v1/apiv1connect"
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/internal/pgtest"
 	"github.com/openpicket/openpicket/internal/schema"
 	"github.com/openpicket/openpicket/manager"
+	"github.com/openpicket/openpicket/manager/api"
+	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
 	"github.com/openpicket/openpicket/manager/sinks/loki"
 	"github.com/openpicket/openpicket/pkg/geoip/geoiptest"
@@ -156,5 +162,32 @@ func TestPortPoliciesReachTheEdge(t *testing.T) {
 	var ackErr string
 	if err := pool.QueryRow(ctx, `SELECT version, error FROM openpicket.node_policy_state WHERE node_id = 'edge-01'`).Scan(&acked, &ackErr); err != nil || ackErr != "" {
 		t.Fatalf("ack: %d %q %v", acked, ackErr, err)
+	}
+
+	// The management API shows the node online with its sync state.
+	apiSrv, err := m.API(api.Config{Auth: &auth.Chain{Providers: []auth.Provider{&auth.Header{UserHeader: "Remote-User", SecretHeader: "X-S", Secret: "s"}},
+		Roles: auth.Roles{Unmatched: auth.RoleViewer}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	apiSrv.Mount(mux)
+	asrv := httptest.NewServer(mux)
+	defer asrv.Close()
+	nodes := apiv1connect.NewNodeServiceClient(asrv.Client(), asrv.URL+"/api", connect.WithInterceptors(connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, r connect.AnyRequest) (connect.AnyResponse, error) {
+			r.Header().Set("Remote-User", "u")
+			r.Header().Set("X-S", "s")
+			return next(ctx, r)
+		}
+	})))
+	res, err := nodes.GetNode(ctx, connect.NewRequest(&apiv1.GetNodeRequest{Id: "edge-01"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := res.Msg.Node
+	if !n.DataPlane.Connected || n.DataPlane.Replica != "r1" || n.DataPlane.BootId != "b1" || n.Labels["site"] != "seoul" ||
+		n.Policy.Version != uint64(acked) || n.Policy.Current != uint64(acked) {
+		t.Fatalf("node: %v", n)
 	}
 }

@@ -253,6 +253,12 @@ func (m *Manager) Run(ctx context.Context) error {
 // Handler serves the agent endpoint and the health checks.
 func (m *Manager) Handler() http.Handler {
 	mux := http.NewServeMux()
+	m.Mount(mux)
+	return mux
+}
+
+// Mount adds the agent endpoint and the health checks to mux.
+func (m *Manager) Mount(mux *http.ServeMux) {
 	mux.Handle(dpwire.Path, m.gw)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok\n")) })
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
@@ -264,7 +270,6 @@ func (m *Manager) Handler() http.Handler {
 		}
 		_, _ = w.Write([]byte("ok\n"))
 	})
-	return mux
 }
 
 // MetricsHandler serves Prometheus metrics.
@@ -304,7 +309,9 @@ func (h *handler) OnDisconnect(s *gateway.Session) {
 	m.log.Info("agent disconnected", "node", s.NodeID)
 }
 
-func (h *handler) OnStatus(*gateway.Session, *dataplanev1.Status) {}
+func (h *handler) OnStatus(s *gateway.Session, st *dataplanev1.Status) {
+	(*Manager)(h).presence.status(s, st)
+}
 
 func (h *handler) ServeStream(s *gateway.Session, t dataplanev1.StreamType, ms *wire.MsgStream) {
 	m := (*Manager)(h)
