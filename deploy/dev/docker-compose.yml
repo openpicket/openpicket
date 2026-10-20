@@ -1,5 +1,6 @@
 # Development dependencies of openpicket-manager (scripts/dev-env.sh runs
-# the manager itself on the host). Ports are bound to 127.0.0.1 only.
+# the manager itself on the host and sets OPENPICKET_DEV_PRINCIPAL_KEY).
+# Ports are bound to 127.0.0.1 only.
 name: openpicket-dev
 
 services:
@@ -29,9 +30,7 @@ services:
   # (BOUNCER_KEY_<name>).
   crowdsec:
     image: openpicket-crowdsec:dev
-    build:
-      context: ../..
-      dockerfile: deploy/images/crowdsec/Dockerfile
+    pull_policy: never # built by scripts/dev-env.sh
     environment:
       OPENPICKET_ACQUIS_TOKEN: dev-token
       AGENT_USERNAME: openpicket-manager
@@ -48,3 +47,23 @@ services:
       test: ["CMD-SHELL", "cscli lapi status >/dev/null 2>&1 && wget -q -O /dev/null --header \"X-OpenPicket-Token: $$OPENPICKET_ACQUIS_TOKEN\" http://127.0.0.1:8081/openpicket"]
       interval: 3s
       retries: 60
+
+  # Suricata management, proxied by the manager at /suricata/.
+  suricontroller:
+    image: openpicket-suricontroller:dev
+    pull_policy: never # built by scripts/dev-env.sh
+    environment:
+      OPENPICKET_DATABASE_URL: postgres://postgres:dev@postgres:5432/postgres?sslmode=disable
+      # Verifies the manager's per-request tokens.
+      OPENPICKET_SURI_PRINCIPAL_PUBLIC_KEY: ${OPENPICKET_DEV_PRINCIPAL_KEY:-}
+      OPENPICKET_SURI_LOGIN_URL: /login?next=/suricata/
+      OPENPICKET_SURI_TRUST_PROXY_HEADERS: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:18082:8080" # UI/API (via the manager) and agents' channel A
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 3s
+      retries: 40

@@ -1,0 +1,135 @@
+{{- $full := include "openpicket.fullname" . }}
+{{- $mon := .Values.monitoring }}
+{{- if $mon.serviceMonitor.enabled }}
+{{- range $c := list (dict "component" "manager" "port" "metrics" "path" "/metrics") (dict "component" "crowdsec-lapi" "port" "metrics" "path" "/metrics") (dict "component" "crowdsec-agent" "port" "metrics" "path" "/metrics") }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $full }}-{{ $c.component }}
+  labels:
+    {{- include "openpicket.labels" $ | nindent 4 }}
+    {{- with $mon.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list $ $c.component) | nindent 6 }}
+  endpoints:
+    - port: {{ $c.port }}
+      path: {{ $c.path }}
+      interval: {{ $mon.serviceMonitor.interval }}
+{{- end }}
+{{- if $.Values.loki.builtin.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $full }}-loki
+  labels:
+    {{- include "openpicket.labels" $ | nindent 4 }}
+    {{- with $mon.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list $ "loki") | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ $mon.serviceMonitor.interval }}
+{{- end }}
+{{- end }}
+{{- if $mon.prometheusRule.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $full }}
+  labels:
+    {{- include "openpicket.labels" . | nindent 4 }}
+    {{- with $mon.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: openpicket
+      rules:
+        - alert: OpenPicketManagerDown
+          expr: sum(up{namespace="{{ .Release.Namespace }}", service="{{ $full }}-manager"}) == 0
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: No openpicket-manager replica is up.
+            description: Agents buffer their logs and keep their last blocks, but nothing is processed or distributed.
+        - alert: OpenPicketManagerReplicaDown
+          expr: count(up{namespace="{{ .Release.Namespace }}", service="{{ $full }}-manager"} == 0) > 0
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: An openpicket-manager replica is down.
+        - alert: OpenPicketSinkFailing
+          expr: max by (sink) (openpicket_sink_circuit_open{namespace="{{ .Release.Namespace }}"}) == 1
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: "Deliveries to {{ "{{ $labels.sink }}" }} are failing."
+            description: Batches are retried and agents buffer; agents drop the oldest records once their queues are full.
+        - alert: OpenPicketAgentDroppingLogs
+          expr: sum by (node) (increase(openpicket_node_log_dropped_total{namespace="{{ .Release.Namespace }}"}[15m])) > 0
+          labels: { severity: warning }
+          annotations:
+            summary: "Node {{ "{{ $labels.node }}" }} dropped log records."
+            description: The agent's queue was full; check the manager and sinks, or raise inflight/queue limits.
+        - alert: OpenPicketNodeApplyError
+          expr: max by (node, what) (openpicket_node_apply_error{namespace="{{ .Release.Namespace }}"}) == 1
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "Node {{ "{{ $labels.node }}" }} cannot apply {{ "{{ $labels.what }}" }}."
+        - alert: OpenPicketDecisionRelayStale
+          expr: time() - max(openpicket_relay_last_pull_timestamp_seconds{namespace="{{ .Release.Namespace }}"}) > 300
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: CrowdSec decisions have not been pulled for 5 minutes.
+            description: New bans do not reach the nodes. Check the LAPI and the relay leader logs.
+        - alert: OpenPicketAlertSyncFailing
+          expr: increase(openpicket_alerts_sync_errors_total{namespace="{{ .Release.Namespace }}"}[15m]) > 3
+          labels: { severity: warning }
+          annotations:
+            summary: "Alerts of LAPI {{ "{{ $labels.instance }}" }} cannot be synced."
+        - alert: OpenPicketCrowdSecAgentDown
+          expr: sum(up{namespace="{{ .Release.Namespace }}", service="{{ $full }}-crowdsec-agents"}) == 0
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: No CrowdSec agent is up; records are not analysed.
+        - alert: OpenPicketCrowdSecLAPIDown
+          expr: sum(up{namespace="{{ .Release.Namespace }}", service="{{ $full }}-crowdsec-lapi"}) == 0
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: No CrowdSec LAPI is up.
+{{- end }}
+{{- if $mon.grafanaDashboards.enabled }}
+{{- range $path, $_ := .Files.Glob "dashboards/*.json" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $full }}-dashboard-{{ base $path | trimSuffix ".json" }}
+  labels:
+    {{- include "openpicket.labels" $ | nindent 4 }}
+    {{- toYaml $mon.grafanaDashboards.labels | nindent 4 }}
+  {{- with $mon.grafanaDashboards.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  {{ base $path }}: |-
+    {{- $.Files.Get $path | nindent 4 }}
+{{- end }}
+{{- end }}

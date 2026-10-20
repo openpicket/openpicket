@@ -1,0 +1,41 @@
+{{- if .Values.ingress.enabled }}
+{{- $full := include "openpicket.fullname" . }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $full }}
+  labels:
+    {{- include "openpicket.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with .Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          {{- if .Values.suricontroller.enabled }}
+          # Agents' channel A (Suricata management).
+          - path: /agent/v1/connect
+            pathType: Exact
+            backend:
+              service:
+                name: {{ $full }}-suricontroller
+                port: { name: http }
+          {{- end }}
+          # UI, API, /suricata/ proxy and the agents' data plane.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $full }}-manager
+                port: { name: http }
+{{- end }}

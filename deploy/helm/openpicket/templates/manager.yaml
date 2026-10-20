@@ -1,0 +1,229 @@
+{{- $full := include "openpicket.fullname" . }}
+{{- $secret := include "openpicket.secret" . }}
+{{- $m := .Values.manager }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}-manager
+  labels:
+    {{- include "openpicket.componentLabels" (list . "manager") | nindent 4 }}
+spec:
+  selector:
+    {{- include "openpicket.selector" (list . "manager") | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $full }}-manager
+  labels:
+    {{- include "openpicket.componentLabels" (list . "manager") | nindent 4 }}
+spec:
+  replicas: {{ $m.replicas }}
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "manager") | nindent 6 }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "openpicket.componentLabels" (list . "manager") | nindent 8 }}
+      annotations:
+        checksum/auth: {{ toYaml $m.auth | sha256sum | trunc 16 }}
+    spec:
+      {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      # Agents move to another replica; the replica saves its watermarks
+      # first (graceful drain).
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: manager
+          image: {{ include "openpicket.image" (list . $m.image) }}
+          args: [serve]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          env:
+            {{- include "openpicket.dbEnv" . | nindent 12 }}
+            - name: OPENPICKET_REPLICA_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPENPICKET_HOST_KEY_FILE
+              value: /secrets/host_key/host_key
+            - name: OPENPICKET_LOG_LEVEL
+              value: {{ $m.logLevel | quote }}
+            - name: OPENPICKET_PUBLIC_URL
+              value: {{ .Values.publicURL | quote }}
+            - name: OPENPICKET_TRUST_PROXY_HEADERS
+              value: {{ $m.trustProxyHeaders | quote }}
+            - name: OPENPICKET_READ_ONLY
+              value: {{ $m.readOnly | quote }}
+            - name: OPENPICKET_INSECURE_COOKIES
+              value: {{ $m.auth.insecureCookies | quote }}
+            {{- with $m.allowedOrigins }}
+            - name: OPENPICKET_ALLOWED_ORIGINS
+              value: {{ join "," . | quote }}
+            {{- end }}
+            {{- if $m.auth.admin.enabled }}
+            - name: OPENPICKET_ADMIN_USERNAME
+              value: {{ $m.auth.admin.username | quote }}
+            - name: OPENPICKET_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default $secret $m.auth.admin.existingSecret }}
+                  key: {{ ternary $m.auth.admin.passwordKey "admin-password" (not (empty $m.auth.admin.existingSecret)) }}
+            {{- end }}
+            {{- if $m.auth.config }}
+            - name: OPENPICKET_AUTH_CONFIG_FILE
+              value: /secrets/auth/auth-config
+            {{- end }}
+            # Loki
+            - name: OPENPICKET_LOKI_URL
+              value: {{ include "openpicket.lokiURL" . | quote }}
+            - name: OPENPICKET_LOKI_MAX_AGE
+              value: {{ .Values.loki.maxAge | quote }}
+            {{- if not .Values.loki.builtin.enabled }}
+            - name: OPENPICKET_LOKI_TENANT
+              value: {{ .Values.loki.external.tenant | quote }}
+            {{- with .Values.loki.external.queryURL }}
+            - name: OPENPICKET_LOKI_QUERY_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if .Values.loki.external.username }}
+            - name: OPENPICKET_LOKI_USERNAME
+              value: {{ .Values.loki.external.username | quote }}
+            - name: OPENPICKET_LOKI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default $secret .Values.loki.external.existingSecret }}
+                  key: {{ ternary .Values.loki.external.passwordKey "loki-password" (not (empty .Values.loki.external.existingSecret)) }}
+            {{- end }}
+            {{- end }}
+            # CrowdSec agents (records) and LAPI (decisions, alerts)
+            - name: OPENPICKET_CROWDSEC_DISCOVERY_HOST
+              value: {{ $full }}-crowdsec-agents
+            - name: OPENPICKET_CROWDSEC_DISCOVERY_PORT
+              value: "8081"
+            - name: OPENPICKET_CROWDSEC_AUTH_HEADER
+              value: X-OpenPicket-Token
+            - name: OPENPICKET_CROWDSEC_AUTH_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: acquis-token
+            - name: OPENPICKET_CROWDSEC_METRICS_DISCOVERY_HOSTS
+              value: {{ printf "%s-crowdsec-agents,%s-crowdsec-lapi-pods" $full $full | quote }}
+            - name: OPENPICKET_LAPI_URL
+              value: {{ include "openpicket.lapiURL" . | quote }}
+            - name: OPENPICKET_LAPI_BOUNCER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: relay-bouncer-key
+            - name: OPENPICKET_LAPI_LOGIN
+              value: openpicket-manager
+            - name: OPENPICKET_LAPI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: watcher-password
+            - name: OPENPICKET_ALERT_RETENTION
+              value: {{ $m.alertRetention | quote }}
+            {{- with $m.extraLAPIs }}
+            - name: OPENPICKET_LAPI_EXTRA
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if .Values.suricontroller.enabled }}
+            - name: OPENPICKET_SURICONTROLLER_URL
+              value: http://{{ $full }}-suricontroller:8080
+            {{- end }}
+            {{- with $m.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: metrics
+              containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+          resources:
+            {{- toYaml $m.resources | nindent 12 }}
+          volumeMounts:
+            - name: host-key
+              mountPath: /secrets/host_key
+              readOnly: true
+            {{- if $m.auth.config }}
+            - name: auth
+              mountPath: /secrets/auth
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: host-key
+          secret:
+            secretName: {{ include "openpicket.hostKeySecret" . }}
+            items: [{ key: host_key, path: host_key }]
+        {{- if $m.auth.config }}
+        - name: auth
+          secret:
+            secretName: {{ $secret }}
+            items: [{ key: auth-config, path: auth-config }]
+        {{- end }}
+      {{- with $m.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $m.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $m.affinity }}
+      affinity:
+        {{- toYaml $m.affinity | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    {{- include "openpicket.selector" (list . "manager") | nindent 20 }}
+      {{- end }}
+{{- if and $m.podDisruptionBudget.enabled (gt (int $m.replicas) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $full }}-manager
+  labels:
+    {{- include "openpicket.componentLabels" (list . "manager") | nindent 4 }}
+spec:
+  minAvailable: {{ $m.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "manager") | nindent 6 }}
+{{- end }}

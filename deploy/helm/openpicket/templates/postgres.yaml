@@ -1,0 +1,97 @@
+{{- if .Values.database.builtin.enabled }}
+{{- $name := printf "%s-postgres" (include "openpicket.fullname" .) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-init
+  labels:
+    {{- include "openpicket.componentLabels" (list . "postgres") | nindent 4 }}
+data:
+  10-crowdsec.sql: |
+    -- The CrowdSec LAPIs keep their own database on the same server.
+    CREATE DATABASE {{ .Values.database.crowdsecDatabase }} OWNER openpicket;
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "openpicket.componentLabels" (list . "postgres") | nindent 4 }}
+spec:
+  selector:
+    {{- include "openpicket.selector" (list . "postgres") | nindent 4 }}
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "openpicket.componentLabels" (list . "postgres") | nindent 4 }}
+spec:
+  serviceName: {{ $name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "postgres") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openpicket.componentLabels" (list . "postgres") | nindent 8 }}
+    spec:
+      {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        fsGroup: 70
+      containers:
+        - name: postgres
+          image: {{ include "openpicket.image" (list . .Values.database.builtin.image) }}
+          env:
+            - name: POSTGRES_USER
+              value: openpicket
+            - name: POSTGRES_DB
+              value: {{ .Values.database.openpicketDatabase }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openpicket.secret" . }}
+                  key: database-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: [pg_isready, -U, openpicket, -d, {{ .Values.database.openpicketDatabase }}]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: [pg_isready, -U, openpicket]
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.database.builtin.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init
+          configMap:
+            name: {{ $name }}-init
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with .Values.database.builtin.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.database.builtin.persistence.size }}
+{{- end }}

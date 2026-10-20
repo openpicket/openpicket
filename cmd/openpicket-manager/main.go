@@ -100,7 +100,7 @@ func loadConfig() (*config, error) {
 	e.String("LAPI_CA_FILE", &c.LAPI.CAFile)
 	e.String("LAPI_NAME", &c.LAPIName)
 	e.List("CROWDSEC_METRICS_URLS", &c.Metrics.URLs)
-	e.String("CROWDSEC_METRICS_DISCOVERY_HOST", &c.Metrics.DiscoveryHost)
+	e.List("CROWDSEC_METRICS_DISCOVERY_HOSTS", &c.Metrics.DiscoveryHosts)
 	e.Int("CROWDSEC_METRICS_DISCOVERY_PORT", &c.Metrics.DiscoveryPort)
 	e.Secret("LAPI_EXTRA", &c.LAPIExtra)
 	e.Duration("ALERT_RETENTION", &c.AlertRetention)

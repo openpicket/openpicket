@@ -1,0 +1,215 @@
+{{- $full := include "openpicket.fullname" . }}
+{{- $secret := include "openpicket.secret" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $full }}-crowdsec-lapi
+  labels:
+    {{- include "openpicket.componentLabels" (list . "crowdsec-lapi") | nindent 4 }}
+data:
+  # Merged into config.yaml by CrowdSec (environment variables expand).
+  config.yaml.local: |
+    db_config:
+      type: postgresql
+      user: {{ include "openpicket.dbUser" . }}
+      password: ${DB_PASSWORD}
+      db_name: {{ .Values.database.crowdsecDatabase }}
+      host: {{ include "openpicket.dbHost" . }}
+      port: {{ include "openpicket.dbPort" . }}
+      sslmode: {{ include "openpicket.dbSSLMode" . }}
+    api:
+      server:
+        trusted_ips:
+          {{- toYaml .Values.crowdsec.lapi.trustedIPs | nindent 10 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}-crowdsec-lapi
+  labels:
+    {{- include "openpicket.componentLabels" (list . "crowdsec-lapi") | nindent 4 }}
+spec:
+  selector:
+    {{- include "openpicket.selector" (list . "crowdsec-lapi") | nindent 4 }}
+  ports:
+    - name: lapi
+      port: 8080
+      targetPort: lapi
+    - name: metrics
+      port: 6060
+      targetPort: metrics
+---
+# Pod addresses of the LAPIs (metrics of every replica).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}-crowdsec-lapi-pods
+  labels:
+    {{- include "openpicket.componentLabels" (list . "crowdsec-lapi") | nindent 4 }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: false
+  selector:
+    {{- include "openpicket.selector" (list . "crowdsec-lapi") | nindent 4 }}
+  ports:
+    - name: metrics
+      port: 6060
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $full }}-crowdsec-lapi
+  labels:
+    {{- include "openpicket.componentLabels" (list . "crowdsec-lapi") | nindent 4 }}
+spec:
+  replicas: {{ .Values.crowdsec.lapi.replicas }}
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "crowdsec-lapi") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openpicket.componentLabels" (list . "crowdsec-lapi") | nindent 8 }}
+      annotations:
+        checksum/config: {{ toYaml .Values.crowdsec.lapi | sha256sum | trunc 16 }}
+    spec:
+      {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: lapi
+          image: {{ include "openpicket.image" (list . .Values.crowdsec.image) }}
+          env:
+            - name: DISABLE_AGENT
+              value: "true"
+            - name: CUSTOM_HOSTNAME
+              value: openpicket-lapi
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openpicket.dbPasswordSecret" . }}
+                  key: {{ include "openpicket.dbPasswordKey" . }}
+            # Machine shared by the agents.
+            - name: AGENT_USERNAME
+              value: openpicket-agents
+            - name: AGENT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: agents-password
+            # Watcher of openpicket-manager (alerts and manual decisions).
+            - name: OPENPICKET_WATCHER_LOGIN
+              value: openpicket-manager
+            - name: OPENPICKET_WATCHER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: watcher-password
+            # Bouncer of the decision relay.
+            - name: BOUNCER_KEY_openpicket_relay
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: relay-bouncer-key
+            {{- range $name, $_ := .Values.crowdsec.bouncers }}
+            - name: BOUNCER_KEY_{{ $name | replace "-" "_" }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: bouncer-{{ $name }}
+            {{- end }}
+          ports:
+            - name: lapi
+              containerPort: 8080
+            - name: metrics
+              containerPort: 6060
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: lapi
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: lapi
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.crowdsec.lapi.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/crowdsec/config.yaml.local
+              subPath: config.yaml.local
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $full }}-crowdsec-lapi
+---
+# Agent pod addresses: openpicket-manager spreads records over them
+# (rendezvous hashing on the remote address) and scrapes their metrics.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}-crowdsec-agents
+  labels:
+    {{- include "openpicket.componentLabels" (list . "crowdsec-agent") | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "openpicket.selector" (list . "crowdsec-agent") | nindent 4 }}
+  ports:
+    - name: acquis
+      port: 8081
+      targetPort: acquis
+    - name: metrics
+      port: 6060
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $full }}-crowdsec-agent
+  labels:
+    {{- include "openpicket.componentLabels" (list . "crowdsec-agent") | nindent 4 }}
+spec:
+  replicas: {{ .Values.crowdsec.agents.replicas }}
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "crowdsec-agent") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openpicket.componentLabels" (list . "crowdsec-agent") | nindent 8 }}
+    spec:
+      {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: agent
+          image: {{ include "openpicket.image" (list . .Values.crowdsec.image) }}
+          env:
+            - name: DISABLE_LOCAL_API
+              value: "true"
+            - name: LOCAL_API_URL
+              value: {{ include "openpicket.lapiURL" . }}
+            - name: AGENT_USERNAME
+              value: openpicket-agents
+            - name: AGENT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: agents-password
+            - name: OPENPICKET_ACQUIS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: acquis-token
+          ports:
+            - name: acquis
+              containerPort: 8081
+            - name: metrics
+              containerPort: 6060
+          readinessProbe:
+            tcpSocket:
+              port: acquis
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.crowdsec.agents.resources | nindent 12 }}

@@ -128,7 +128,7 @@ export default function MetricsPage() {
         <EmptyState
           title={t("No CrowdSec metrics endpoint is configured")}
           description={t(
-            "Set OPENPICKET_CROWDSEC_METRICS_URLS (e.g. http://crowdsec-lapi:6060/metrics) or OPENPICKET_CROWDSEC_METRICS_DISCOVERY_HOST (a headless service of the agents) on openpicket-manager.",
+            "Set OPENPICKET_CROWDSEC_METRICS_URLS (e.g. http://crowdsec-lapi:6060/metrics) or OPENPICKET_CROWDSEC_METRICS_DISCOVERY_HOSTS (headless services of the agents and LAPIs) on openpicket-manager.",
           )}
         />
       </>

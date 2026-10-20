@@ -1,0 +1,116 @@
+{{- if .Values.loki.builtin.enabled }}
+{{- $name := printf "%s-loki" (include "openpicket.fullname" .) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "openpicket.componentLabels" (list . "loki") | nindent 4 }}
+data:
+  loki.yaml: |
+    auth_enabled: true
+    server:
+      http_listen_port: 3100
+      grpc_listen_port: 9095
+    common:
+      path_prefix: /var/loki
+      replication_factor: 1
+      ring:
+        kvstore:
+          store: inmemory
+      storage:
+        filesystem:
+          chunks_directory: /var/loki/chunks
+          rules_directory: /var/loki/rules
+    schema_config:
+      configs:
+        - from: 2024-01-01
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: index_
+            period: 24h
+    limits_config:
+      allow_structured_metadata: true
+      reject_old_samples: true
+      reject_old_samples_max_age: {{ .Values.loki.maxAge }}
+      retention_period: {{ .Values.loki.builtin.retention }}
+    compactor:
+      working_directory: /var/loki/compactor
+      retention_enabled: true
+      delete_request_store: filesystem
+    analytics:
+      reporting_enabled: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "openpicket.componentLabels" (list . "loki") | nindent 4 }}
+spec:
+  selector:
+    {{- include "openpicket.selector" (list . "loki") | nindent 4 }}
+  ports:
+    - name: http
+      port: 3100
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "openpicket.componentLabels" (list . "loki") | nindent 4 }}
+spec:
+  serviceName: {{ $name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "loki") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openpicket.componentLabels" (list . "loki") | nindent 8 }}
+    spec:
+      {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        fsGroup: 10001
+        runAsUser: 10001
+        runAsNonRoot: true
+      containers:
+        - name: loki
+          image: {{ include "openpicket.image" (list . .Values.loki.builtin.image) }}
+          args: [-config.file=/etc/loki/loki.yaml, -target=all]
+          ports:
+            - name: http
+              containerPort: 3100
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+          resources:
+            {{- toYaml .Values.loki.builtin.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/loki
+            - name: data
+              mountPath: /var/loki
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $name }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with .Values.loki.builtin.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.loki.builtin.persistence.size }}
+{{- end }}

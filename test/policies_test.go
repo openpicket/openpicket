@@ -190,4 +190,10 @@ func TestPortPoliciesReachTheEdge(t *testing.T) {
 		n.Policy.Version != uint64(acked) || n.Policy.Current != uint64(acked) {
 		t.Fatalf("node: %v", n)
 	}
+	// Per-node metrics of the sessions on this replica.
+	rec := httptest.NewRecorder()
+	m.MetricsHandler().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
+	if !strings.Contains(rec.Body.String(), `openpicket_node_connected{node="edge-01",site="seoul"} 1`) {
+		t.Fatalf("node metrics missing:\n%s", rec.Body.String())
+	}
 }

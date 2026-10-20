@@ -52,3 +52,6 @@ RUN set -eux; \
 ENV DISABLE_ONLINE_API=true \
     NO_HUB_UPGRADE=true \
     CROWDSEC_BYPASS_DB_VOLUME_CHECK=true
+
+COPY deploy/images/crowdsec/start.sh /usr/local/bin/openpicket-crowdsec-start
+ENTRYPOINT ["/usr/local/bin/openpicket-crowdsec-start"]

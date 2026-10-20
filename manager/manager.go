@@ -155,6 +155,7 @@ func New(opts Options) (*Manager, error) {
 	m.gw = gateway.New(gateway.Config{
 		StaticKey: static, Nodes: m.nodes, Handler: (*handler)(m), Logger: opts.Logger, TrustProxyHeaders: opts.TrustProxyHeaders,
 	})
+	m.reg.MustRegister(&nodeCollector{gw: m.gw, nodes: m.nodes})
 	m.presence = &presence{db: opts.DB, replica: opts.ReplicaID, gw: m.gw, log: opts.Logger.With("component", "presence")}
 
 	var ack []pipeline.Sink

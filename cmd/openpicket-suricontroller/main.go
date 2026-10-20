@@ -54,7 +54,7 @@ type config struct {
 }
 
 func loadConfig() (*config, error) {
-	c := &config{Listen: ":8080", DataDir: "/var/lib/openpicket-suricontroller", LoginURL: "/#/login", UIBase: "/suricata/", LogLevel: "info"}
+	c := &config{Listen: ":8080", DataDir: "/var/lib/openpicket-suricontroller", LoginURL: "/login", UIBase: "/suricata/", LogLevel: "info"}
 	e := envconf.New("OPENPICKET_")
 	e.String("SURI_LISTEN", &c.Listen)
 	e.String("SURI_DATA_DIR", &c.DataDir)

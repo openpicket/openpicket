@@ -1,0 +1,113 @@
+{{- if .Values.suricontroller.enabled }}
+{{- $full := include "openpicket.fullname" . }}
+{{- $s := .Values.suricontroller }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}-suricontroller
+  labels:
+    {{- include "openpicket.componentLabels" (list . "suricontroller") | nindent 4 }}
+spec:
+  selector:
+    {{- include "openpicket.selector" (list . "suricontroller") | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $full }}-suricontroller
+  labels:
+    {{- include "openpicket.componentLabels" (list . "suricontroller") | nindent 4 }}
+spec:
+  # Single writer of the rule and configuration repositories.
+  replicas: 1
+  serviceName: {{ $full }}-suricontroller
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "suricontroller") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openpicket.componentLabels" (list . "suricontroller") | nindent 8 }}
+    spec:
+      {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      initContainers:
+        # The principal key is derived from the manager host key: print its
+        # public half for the token checks.
+        - name: principal-key
+          image: {{ include "openpicket.image" (list . .Values.manager.image) }}
+          command: [sh, -c, "openpicket-manager principal-pubkey > /shared/principal.pub"]
+          env:
+            - name: OPENPICKET_HOST_KEY_FILE
+              value: /secrets/host_key/host_key
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - name: host-key
+              mountPath: /secrets/host_key
+              readOnly: true
+            - name: shared
+              mountPath: /shared
+      containers:
+        - name: suricontroller
+          image: {{ include "openpicket.image" (list . $s.image) }}
+          args: [serve]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          env:
+            {{- include "openpicket.dbEnv" . | nindent 12 }}
+            - name: OPENPICKET_SURI_PRINCIPAL_PUBLIC_KEY_FILE
+              value: /shared/principal.pub
+            - name: OPENPICKET_SURI_UI_BASE
+              value: /suricata/
+            - name: OPENPICKET_SURI_LOGIN_URL
+              value: /login?next=/suricata/
+            - name: OPENPICKET_SURI_TRUST_PROXY_HEADERS
+              value: "true"
+            - name: OPENPICKET_SURI_DISABLE_ET_OPEN
+              value: {{ $s.disableETOpen | quote }}
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          resources:
+            {{- toYaml $s.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/openpicket-suricontroller
+            - name: shared
+              mountPath: /shared
+              readOnly: true
+      volumes:
+        - name: host-key
+          secret:
+            secretName: {{ include "openpicket.hostKeySecret" . }}
+            items: [{ key: host_key, path: host_key }]
+        - name: shared
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with $s.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $s.persistence.size }}
+{{- end }}

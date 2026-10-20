@@ -2,7 +2,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X github.com/openpicket/openpicket/pkg/version.Version=$(VERSION)
 GO      ?= go
 
-.PHONY: all build manager agent suricontroller proto test test-pg test-netns test-crowdsec test-lapi image-crowdsec lint web suricata-web clean
+.PHONY: images image-manager image-suricontroller image-agent all build manager agent suricontroller proto test test-pg test-netns test-crowdsec test-lapi image-crowdsec lint web suricata-web clean
 
 all: build
 
@@ -57,3 +57,27 @@ suricata-web:
 
 clean:
 	rm -rf bin
+
+# Images (built from this repository).
+VERSION ?= dev
+# e.g. --network host where the build network has no DNS
+DOCKER_BUILD_FLAGS ?=
+images: image-manager image-suricontroller image-agent image-crowdsec
+
+image-manager:
+	docker build $(DOCKER_BUILD_FLAGS) -f deploy/images/manager/Dockerfile --build-arg VERSION=$(VERSION) -t openpicket-manager:$(VERSION) .
+
+image-suricontroller:
+	docker build $(DOCKER_BUILD_FLAGS) -f deploy/images/suricontroller/Dockerfile --build-arg VERSION=$(VERSION) -t openpicket-suricontroller:$(VERSION) .
+
+image-agent:
+	docker build $(DOCKER_BUILD_FLAGS) -f deploy/images/agent/Dockerfile --build-arg VERSION=$(VERSION) -t openpicket-agent:$(VERSION) .
+
+helm-lint:
+	helm lint deploy/helm/openpicket
+	helm template t deploy/helm/openpicket --set ingress.enabled=true --set networkPolicy.enabled=true \
+	  --set monitoring.serviceMonitor.enabled=true --set monitoring.prometheusRule.enabled=true \
+	  --set monitoring.grafanaDashboards.enabled=true >/dev/null
+
+airgap:
+	./scripts/airgap-bundle.sh $(VERSION)

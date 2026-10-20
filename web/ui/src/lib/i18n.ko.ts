@@ -475,7 +475,7 @@ export const ko: Record<string, string> = {
   "Send test": "테스트 전송",
   "Sent records": "보낸 레코드",
   "Server URL": "서버 URL",
-  "Set OPENPICKET_CROWDSEC_METRICS_URLS (e.g. http://crowdsec-lapi:6060/metrics) or OPENPICKET_CROWDSEC_METRICS_DISCOVERY_HOST (a headless service of the agents) on openpicket-manager.": "openpicket-manager에 OPENPICKET_CROWDSEC_METRICS_URLS(예: http://crowdsec-lapi:6060/metrics) 또는 OPENPICKET_CROWDSEC_METRICS_DISCOVERY_HOST(에이전트의 headless 서비스)를 설정하세요.",
+  "Set OPENPICKET_CROWDSEC_METRICS_URLS (e.g. http://crowdsec-lapi:6060/metrics) or OPENPICKET_CROWDSEC_METRICS_DISCOVERY_HOSTS (headless services of the agents and LAPIs) on openpicket-manager.": "openpicket-manager에 OPENPICKET_CROWDSEC_METRICS_URLS(예: http://crowdsec-lapi:6060/metrics) 또는 OPENPICKET_CROWDSEC_METRICS_DISCOVERY_HOSTS(에이전트와 LAPI의 headless 서비스)를 설정하세요.",
   "Set OPENPICKET_LOKI_URL (and OPENPICKET_LOKI_QUERY_URL if reads go to another endpoint) on openpicket-manager.": "openpicket-manager에 OPENPICKET_LOKI_URL을 설정하세요(조회를 다른 엔드포인트로 보내면 OPENPICKET_LOKI_QUERY_URL도).",
   "Set elements": "집합 요소",
   "Settings": "설정",

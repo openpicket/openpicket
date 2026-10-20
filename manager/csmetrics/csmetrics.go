@@ -6,6 +6,7 @@ package csmetrics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -31,11 +32,11 @@ import (
 type Config struct {
 	// URLs of metrics endpoints (http://crowdsec-lapi:6060/metrics).
 	URLs []string
-	// DiscoveryHost resolves to agent pods (headless service); each
-	// address is scraped on DiscoveryPort (default 6060).
-	DiscoveryHost string
-	DiscoveryPort int
-	Timeout       time.Duration
+	// DiscoveryHosts resolve to pods (headless services of the agents and
+	// LAPIs); each address is scraped on DiscoveryPort (default 6060).
+	DiscoveryHosts []string
+	DiscoveryPort  int
+	Timeout        time.Duration
 	// CacheTTL of a scrape (default 10s).
 	CacheTTL   time.Duration
 	HTTPClient *http.Client
@@ -74,7 +75,7 @@ func New(cfg Config) *Scraper {
 }
 
 // Configured reports whether any endpoint is configured.
-func (s *Scraper) Configured() bool { return len(s.cfg.URLs) > 0 || s.cfg.DiscoveryHost != "" }
+func (s *Scraper) Configured() bool { return len(s.cfg.URLs) > 0 || len(s.cfg.DiscoveryHosts) > 0 }
 
 type endpoint struct{ name, url string }
 
@@ -90,18 +91,20 @@ func (s *Scraper) endpoints(ctx context.Context) ([]endpoint, error) {
 		}
 		out = append(out, endpoint{name: u.Host, url: u.String()})
 	}
-	if s.cfg.DiscoveryHost != "" {
-		addrs, err := s.cfg.Resolve(ctx, s.cfg.DiscoveryHost)
+	var errs []error
+	for _, host := range s.cfg.DiscoveryHosts {
+		addrs, err := s.cfg.Resolve(ctx, host)
 		if err != nil {
-			return out, fmt.Errorf("csmetrics: resolve %s: %w", s.cfg.DiscoveryHost, err)
+			errs = append(errs, fmt.Errorf("csmetrics: resolve %s: %w", host, err))
+			continue
 		}
 		sort.Strings(addrs)
 		for _, a := range addrs {
 			hp := net.JoinHostPort(a, strconv.Itoa(s.cfg.DiscoveryPort))
-			out = append(out, endpoint{name: hp, url: "http://" + hp + "/metrics"})
+			out = append(out, endpoint{name: host + "/" + a, url: "http://" + hp + "/metrics"})
 		}
 	}
-	return out, nil
+	return out, errors.Join(errs...)
 }
 
 type families map[string]*dto.MetricFamily
