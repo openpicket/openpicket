@@ -10,7 +10,9 @@ import (
 	apiv1 "github.com/openpicket/openpicket/gen/openpicket/api/v1"
 	"github.com/openpicket/openpicket/manager/alerts"
 	"github.com/openpicket/openpicket/manager/api"
+	"github.com/openpicket/openpicket/manager/csmetrics"
 	"github.com/openpicket/openpicket/manager/db"
+	"github.com/openpicket/openpicket/manager/sinks/loki"
 	"github.com/openpicket/openpicket/pkg/version"
 )
 
@@ -25,11 +27,22 @@ func (m *Manager) API(cfg api.Config) (*api.Server, error) {
 	cfg.Replica = m.opts.ReplicaID
 	cfg.Version = version.Version
 	cfg.Status = m.componentStatus
+	cfg.Metrics = csmetrics.New(m.opts.CrowdSecMetrics)
+	cfg.Notify = m.notify
+	if m.opts.Loki.URL != "" {
+		q, err := loki.NewQuerier(m.opts.Loki, m.opts.LokiQueryURL)
+		if err != nil {
+			return nil, err
+		}
+		cfg.Logs = q
+		m.lokiQuery = q
+	}
 	if m.alerts != nil {
 		cfg.Alerts = &alerts.Querier{DB: m.opts.DB}
 		cfg.AlertStore = &alerts.Store{DB: m.opts.DB}
 		cfg.LAPIs = m.lapis
 		cfg.Poke = m.pokeAlerts
+		cfg.Resync = func() { m.pokeAlerts(resyncPayload) }
 	}
 	if cfg.Logger == nil {
 		cfg.Logger = m.log
@@ -37,12 +50,30 @@ func (m *Manager) API(cfg api.Config) (*api.Server, error) {
 	return api.New(cfg)
 }
 
+// resyncPayload on the alerts channel asks for a full pass.
+const resyncPayload = "!full"
+
 // pokeAlerts asks the alerts leader (this or another replica) to sync now.
 func (m *Manager) pokeAlerts(instance string) {
-	m.alerts.Poke(instance)
+	if instance == resyncPayload {
+		m.alerts.Resync()
+	} else {
+		m.alerts.Poke(instance)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	_, _ = m.opts.DB.Exec(ctx, `SELECT pg_notify($1, $2)`, db.ChannelAlerts, instance)
+}
+
+// sinksDown reports the log sinks whose deliveries fail on this replica.
+func (m *Manager) sinksDown() map[string]string {
+	out := map[string]string{}
+	for _, sink := range []string{"loki", "crowdsec"} {
+		if br := m.pipe.Breaker(sink); br != nil && br.Open() {
+			out[sink] = "Deliveries to " + sink + " are failing on " + m.opts.ReplicaID + "; batches are retried and agents buffer."
+		}
+	}
+	return out
 }
 
 // componentStatus reports the health of what this replica depends on.
@@ -58,6 +89,13 @@ func (m *Manager) componentStatus(ctx context.Context) []*apiv1.ComponentStatus 
 		out = append(out, c("postgresql", "down", err.Error()))
 	} else {
 		out = append(out, c("postgresql", "ok", ""))
+	}
+	if m.lokiQuery != nil {
+		if err := m.lokiQuery.Ready(pctx); err != nil {
+			out = append(out, c("loki-query", "down", err.Error()))
+		} else {
+			out = append(out, c("loki-query", "ok", ""))
+		}
 	}
 	for _, sink := range []string{"loki", "crowdsec"} {
 		if br := m.pipe.Breaker(sink); br != nil && br.Open() {

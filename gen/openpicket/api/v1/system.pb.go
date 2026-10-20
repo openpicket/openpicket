@@ -23,6 +23,494 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type ListRecentQueriesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Page          string                 `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRecentQueriesRequest) Reset() {
+	*x = ListRecentQueriesRequest{}
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRecentQueriesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRecentQueriesRequest) ProtoMessage() {}
+
+func (x *ListRecentQueriesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRecentQueriesRequest.ProtoReflect.Descriptor instead.
+func (*ListRecentQueriesRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ListRecentQueriesRequest) GetPage() string {
+	if x != nil {
+		return x.Page
+	}
+	return ""
+}
+
+type ListRecentQueriesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Queries       []string               `protobuf:"bytes,1,rep,name=queries,proto3" json:"queries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRecentQueriesResponse) Reset() {
+	*x = ListRecentQueriesResponse{}
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRecentQueriesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRecentQueriesResponse) ProtoMessage() {}
+
+func (x *ListRecentQueriesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRecentQueriesResponse.ProtoReflect.Descriptor instead.
+func (*ListRecentQueriesResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ListRecentQueriesResponse) GetQueries() []string {
+	if x != nil {
+		return x.Queries
+	}
+	return nil
+}
+
+type AddRecentQueryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Page          string                 `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`
+	Query         string                 `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddRecentQueryRequest) Reset() {
+	*x = AddRecentQueryRequest{}
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddRecentQueryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddRecentQueryRequest) ProtoMessage() {}
+
+func (x *AddRecentQueryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddRecentQueryRequest.ProtoReflect.Descriptor instead.
+func (*AddRecentQueryRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AddRecentQueryRequest) GetPage() string {
+	if x != nil {
+		return x.Page
+	}
+	return ""
+}
+
+func (x *AddRecentQueryRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+type AddRecentQueryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddRecentQueryResponse) Reset() {
+	*x = AddRecentQueryResponse{}
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddRecentQueryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddRecentQueryResponse) ProtoMessage() {}
+
+func (x *AddRecentQueryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddRecentQueryResponse.ProtoReflect.Descriptor instead.
+func (*AddRecentQueryResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{3}
+}
+
+type UISettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Scenarios offered in the Add Decision form.
+	ManualScenarios []string `protobuf:"bytes,1,rep,name=manual_scenarios,json=manualScenarios,proto3" json:"manual_scenarios,omitempty"`
+	// Defaults for users without their own preference.
+	TimeZone string `protobuf:"bytes,2,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	// 24h | 12h
+	Clock string `protobuf:"bytes,3,opt,name=clock,proto3" json:"clock,omitempty"`
+	// iso | us | eu
+	DateFormat    string `protobuf:"bytes,4,opt,name=date_format,json=dateFormat,proto3" json:"date_format,omitempty"`
+	Language      string `protobuf:"bytes,5,opt,name=language,proto3" json:"language,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UISettings) Reset() {
+	*x = UISettings{}
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UISettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UISettings) ProtoMessage() {}
+
+func (x *UISettings) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UISettings.ProtoReflect.Descriptor instead.
+func (*UISettings) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *UISettings) GetManualScenarios() []string {
+	if x != nil {
+		return x.ManualScenarios
+	}
+	return nil
+}
+
+func (x *UISettings) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
+func (x *UISettings) GetClock() string {
+	if x != nil {
+		return x.Clock
+	}
+	return ""
+}
+
+func (x *UISettings) GetDateFormat() string {
+	if x != nil {
+		return x.DateFormat
+	}
+	return ""
+}
+
+func (x *UISettings) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+type GetUISettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUISettingsRequest) Reset() {
+	*x = GetUISettingsRequest{}
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUISettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUISettingsRequest) ProtoMessage() {}
+
+func (x *GetUISettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUISettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetUISettingsRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{5}
+}
+
+type GetUISettingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *UISettings            `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUISettingsResponse) Reset() {
+	*x = GetUISettingsResponse{}
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUISettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUISettingsResponse) ProtoMessage() {}
+
+func (x *GetUISettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUISettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetUISettingsResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetUISettingsResponse) GetSettings() *UISettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+type SetUISettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *UISettings            `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetUISettingsRequest) Reset() {
+	*x = SetUISettingsRequest{}
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetUISettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetUISettingsRequest) ProtoMessage() {}
+
+func (x *SetUISettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetUISettingsRequest.ProtoReflect.Descriptor instead.
+func (*SetUISettingsRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SetUISettingsRequest) GetSettings() *UISettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+type SetUISettingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetUISettingsResponse) Reset() {
+	*x = SetUISettingsResponse{}
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetUISettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetUISettingsResponse) ProtoMessage() {}
+
+func (x *SetUISettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetUISettingsResponse.ProtoReflect.Descriptor instead.
+func (*SetUISettingsResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{8}
+}
+
+type ResyncAlertsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResyncAlertsRequest) Reset() {
+	*x = ResyncAlertsRequest{}
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResyncAlertsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResyncAlertsRequest) ProtoMessage() {}
+
+func (x *ResyncAlertsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResyncAlertsRequest.ProtoReflect.Descriptor instead.
+func (*ResyncAlertsRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{9}
+}
+
+type ResyncAlertsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResyncAlertsResponse) Reset() {
+	*x = ResyncAlertsResponse{}
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResyncAlertsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResyncAlertsResponse) ProtoMessage() {}
+
+func (x *ResyncAlertsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResyncAlertsResponse.ProtoReflect.Descriptor instead.
+func (*ResyncAlertsResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{10}
+}
+
 type GetLogPolicyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -31,7 +519,7 @@ type GetLogPolicyRequest struct {
 
 func (x *GetLogPolicyRequest) Reset() {
 	*x = GetLogPolicyRequest{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[0]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -43,7 +531,7 @@ func (x *GetLogPolicyRequest) String() string {
 func (*GetLogPolicyRequest) ProtoMessage() {}
 
 func (x *GetLogPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[0]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -56,7 +544,7 @@ func (x *GetLogPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogPolicyRequest.ProtoReflect.Descriptor instead.
 func (*GetLogPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{0}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{11}
 }
 
 type GetLogPolicyResponse struct {
@@ -70,7 +558,7 @@ type GetLogPolicyResponse struct {
 
 func (x *GetLogPolicyResponse) Reset() {
 	*x = GetLogPolicyResponse{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[1]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -82,7 +570,7 @@ func (x *GetLogPolicyResponse) String() string {
 func (*GetLogPolicyResponse) ProtoMessage() {}
 
 func (x *GetLogPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[1]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -95,7 +583,7 @@ func (x *GetLogPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogPolicyResponse.ProtoReflect.Descriptor instead.
 func (*GetLogPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{1}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetLogPolicyResponse) GetPolicy() *v1.LogCollectionPolicy {
@@ -123,7 +611,7 @@ type SetLogPolicyRequest struct {
 
 func (x *SetLogPolicyRequest) Reset() {
 	*x = SetLogPolicyRequest{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[2]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -135,7 +623,7 @@ func (x *SetLogPolicyRequest) String() string {
 func (*SetLogPolicyRequest) ProtoMessage() {}
 
 func (x *SetLogPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[2]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -148,7 +636,7 @@ func (x *SetLogPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetLogPolicyRequest.ProtoReflect.Descriptor instead.
 func (*SetLogPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{2}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SetLogPolicyRequest) GetPolicy() *v1.LogCollectionPolicy {
@@ -173,7 +661,7 @@ type SetLogPolicyResponse struct {
 
 func (x *SetLogPolicyResponse) Reset() {
 	*x = SetLogPolicyResponse{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[3]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -185,7 +673,7 @@ func (x *SetLogPolicyResponse) String() string {
 func (*SetLogPolicyResponse) ProtoMessage() {}
 
 func (x *SetLogPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[3]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -198,7 +686,7 @@ func (x *SetLogPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetLogPolicyResponse.ProtoReflect.Descriptor instead.
 func (*SetLogPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{3}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{14}
 }
 
 type AuditEntry struct {
@@ -217,7 +705,7 @@ type AuditEntry struct {
 
 func (x *AuditEntry) Reset() {
 	*x = AuditEntry{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[4]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -229,7 +717,7 @@ func (x *AuditEntry) String() string {
 func (*AuditEntry) ProtoMessage() {}
 
 func (x *AuditEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[4]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -242,7 +730,7 @@ func (x *AuditEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditEntry.ProtoReflect.Descriptor instead.
 func (*AuditEntry) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{4}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AuditEntry) GetId() int64 {
@@ -308,7 +796,7 @@ type ListAuditRequest struct {
 
 func (x *ListAuditRequest) Reset() {
 	*x = ListAuditRequest{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[5]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -320,7 +808,7 @@ func (x *ListAuditRequest) String() string {
 func (*ListAuditRequest) ProtoMessage() {}
 
 func (x *ListAuditRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[5]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -333,7 +821,7 @@ func (x *ListAuditRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAuditRequest.ProtoReflect.Descriptor instead.
 func (*ListAuditRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{5}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListAuditRequest) GetLimit() int32 {
@@ -380,7 +868,7 @@ type ListAuditResponse struct {
 
 func (x *ListAuditResponse) Reset() {
 	*x = ListAuditResponse{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[6]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -392,7 +880,7 @@ func (x *ListAuditResponse) String() string {
 func (*ListAuditResponse) ProtoMessage() {}
 
 func (x *ListAuditResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[6]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -405,7 +893,7 @@ func (x *ListAuditResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAuditResponse.ProtoReflect.Descriptor instead.
 func (*ListAuditResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{6}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ListAuditResponse) GetEntries() []*AuditEntry {
@@ -434,7 +922,7 @@ type SavedFilter struct {
 
 func (x *SavedFilter) Reset() {
 	*x = SavedFilter{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[7]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -446,7 +934,7 @@ func (x *SavedFilter) String() string {
 func (*SavedFilter) ProtoMessage() {}
 
 func (x *SavedFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[7]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -459,7 +947,7 @@ func (x *SavedFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SavedFilter.ProtoReflect.Descriptor instead.
 func (*SavedFilter) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{7}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SavedFilter) GetId() string {
@@ -527,7 +1015,7 @@ type ListSavedFiltersRequest struct {
 
 func (x *ListSavedFiltersRequest) Reset() {
 	*x = ListSavedFiltersRequest{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[8]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -539,7 +1027,7 @@ func (x *ListSavedFiltersRequest) String() string {
 func (*ListSavedFiltersRequest) ProtoMessage() {}
 
 func (x *ListSavedFiltersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[8]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -552,7 +1040,7 @@ func (x *ListSavedFiltersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSavedFiltersRequest.ProtoReflect.Descriptor instead.
 func (*ListSavedFiltersRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{8}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListSavedFiltersRequest) GetPage() string {
@@ -571,7 +1059,7 @@ type ListSavedFiltersResponse struct {
 
 func (x *ListSavedFiltersResponse) Reset() {
 	*x = ListSavedFiltersResponse{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[9]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -583,7 +1071,7 @@ func (x *ListSavedFiltersResponse) String() string {
 func (*ListSavedFiltersResponse) ProtoMessage() {}
 
 func (x *ListSavedFiltersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[9]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -596,7 +1084,7 @@ func (x *ListSavedFiltersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSavedFiltersResponse.ProtoReflect.Descriptor instead.
 func (*ListSavedFiltersResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{9}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListSavedFiltersResponse) GetFilters() []*SavedFilter {
@@ -615,7 +1103,7 @@ type SaveFilterRequest struct {
 
 func (x *SaveFilterRequest) Reset() {
 	*x = SaveFilterRequest{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[10]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -627,7 +1115,7 @@ func (x *SaveFilterRequest) String() string {
 func (*SaveFilterRequest) ProtoMessage() {}
 
 func (x *SaveFilterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[10]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -640,7 +1128,7 @@ func (x *SaveFilterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveFilterRequest.ProtoReflect.Descriptor instead.
 func (*SaveFilterRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{10}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SaveFilterRequest) GetFilter() *SavedFilter {
@@ -659,7 +1147,7 @@ type SaveFilterResponse struct {
 
 func (x *SaveFilterResponse) Reset() {
 	*x = SaveFilterResponse{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[11]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -671,7 +1159,7 @@ func (x *SaveFilterResponse) String() string {
 func (*SaveFilterResponse) ProtoMessage() {}
 
 func (x *SaveFilterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[11]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -684,7 +1172,7 @@ func (x *SaveFilterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveFilterResponse.ProtoReflect.Descriptor instead.
 func (*SaveFilterResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{11}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SaveFilterResponse) GetFilter() *SavedFilter {
@@ -703,7 +1191,7 @@ type DeleteSavedFilterRequest struct {
 
 func (x *DeleteSavedFilterRequest) Reset() {
 	*x = DeleteSavedFilterRequest{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[12]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -715,7 +1203,7 @@ func (x *DeleteSavedFilterRequest) String() string {
 func (*DeleteSavedFilterRequest) ProtoMessage() {}
 
 func (x *DeleteSavedFilterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[12]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -728,7 +1216,7 @@ func (x *DeleteSavedFilterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSavedFilterRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSavedFilterRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{12}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *DeleteSavedFilterRequest) GetId() string {
@@ -746,7 +1234,7 @@ type DeleteSavedFilterResponse struct {
 
 func (x *DeleteSavedFilterResponse) Reset() {
 	*x = DeleteSavedFilterResponse{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[13]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -758,7 +1246,7 @@ func (x *DeleteSavedFilterResponse) String() string {
 func (*DeleteSavedFilterResponse) ProtoMessage() {}
 
 func (x *DeleteSavedFilterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[13]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -771,7 +1259,7 @@ func (x *DeleteSavedFilterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSavedFilterResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSavedFilterResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{13}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{24}
 }
 
 type GetStatusRequest struct {
@@ -782,7 +1270,7 @@ type GetStatusRequest struct {
 
 func (x *GetStatusRequest) Reset() {
 	*x = GetStatusRequest{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[14]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -794,7 +1282,7 @@ func (x *GetStatusRequest) String() string {
 func (*GetStatusRequest) ProtoMessage() {}
 
 func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[14]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -807,7 +1295,7 @@ func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetStatusRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{14}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{25}
 }
 
 type ComponentStatus struct {
@@ -823,7 +1311,7 @@ type ComponentStatus struct {
 
 func (x *ComponentStatus) Reset() {
 	*x = ComponentStatus{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[15]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -835,7 +1323,7 @@ func (x *ComponentStatus) String() string {
 func (*ComponentStatus) ProtoMessage() {}
 
 func (x *ComponentStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[15]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -848,7 +1336,7 @@ func (x *ComponentStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ComponentStatus.ProtoReflect.Descriptor instead.
 func (*ComponentStatus) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{15}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ComponentStatus) GetName() string {
@@ -891,7 +1379,7 @@ type GetStatusResponse struct {
 
 func (x *GetStatusResponse) Reset() {
 	*x = GetStatusResponse{}
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[16]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -903,7 +1391,7 @@ func (x *GetStatusResponse) String() string {
 func (*GetStatusResponse) ProtoMessage() {}
 
 func (x *GetStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_system_proto_msgTypes[16]
+	mi := &file_openpicket_api_v1_system_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -916,7 +1404,7 @@ func (x *GetStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetStatusResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{16}
+	return file_openpicket_api_v1_system_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetStatusResponse) GetVersion() string {
@@ -951,7 +1439,31 @@ var File_openpicket_api_v1_system_proto protoreflect.FileDescriptor
 
 const file_openpicket_api_v1_system_proto_rawDesc = "" +
 	"\n" +
-	"\x1eopenpicket/api/v1/system.proto\x12\x11openpicket.api.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#suricontroller/agent/v1/agent.proto\"\x15\n" +
+	"\x1eopenpicket/api/v1/system.proto\x12\x11openpicket.api.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#suricontroller/agent/v1/agent.proto\".\n" +
+	"\x18ListRecentQueriesRequest\x12\x12\n" +
+	"\x04page\x18\x01 \x01(\tR\x04page\"5\n" +
+	"\x19ListRecentQueriesResponse\x12\x18\n" +
+	"\aqueries\x18\x01 \x03(\tR\aqueries\"A\n" +
+	"\x15AddRecentQueryRequest\x12\x12\n" +
+	"\x04page\x18\x01 \x01(\tR\x04page\x12\x14\n" +
+	"\x05query\x18\x02 \x01(\tR\x05query\"\x18\n" +
+	"\x16AddRecentQueryResponse\"\xa7\x01\n" +
+	"\n" +
+	"UISettings\x12)\n" +
+	"\x10manual_scenarios\x18\x01 \x03(\tR\x0fmanualScenarios\x12\x1b\n" +
+	"\ttime_zone\x18\x02 \x01(\tR\btimeZone\x12\x14\n" +
+	"\x05clock\x18\x03 \x01(\tR\x05clock\x12\x1f\n" +
+	"\vdate_format\x18\x04 \x01(\tR\n" +
+	"dateFormat\x12\x1a\n" +
+	"\blanguage\x18\x05 \x01(\tR\blanguage\"\x16\n" +
+	"\x14GetUISettingsRequest\"R\n" +
+	"\x15GetUISettingsResponse\x129\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1d.openpicket.api.v1.UISettingsR\bsettings\"Q\n" +
+	"\x14SetUISettingsRequest\x129\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1d.openpicket.api.v1.UISettingsR\bsettings\"\x17\n" +
+	"\x15SetUISettingsResponse\"\x15\n" +
+	"\x13ResyncAlertsRequest\"\x16\n" +
+	"\x14ResyncAlertsResponse\"\x15\n" +
 	"\x13GetLogPolicyRequest\"{\n" +
 	"\x14GetLogPolicyResponse\x12D\n" +
 	"\x06policy\x18\x01 \x01(\v2,.suricontroller.agent.v1.LogCollectionPolicyR\x06policy\x12\x1d\n" +
@@ -1013,7 +1525,7 @@ const file_openpicket_api_v1_system_proto_rawDesc = "" +
 	"\breplicas\x18\x03 \x03(\tR\breplicas\x12B\n" +
 	"\n" +
 	"components\x18\x04 \x03(\v2\".openpicket.api.v1.ComponentStatusR\n" +
-	"components2\xb9\x05\n" +
+	"components2\xb9\t\n" +
 	"\rSystemService\x12_\n" +
 	"\fGetLogPolicy\x12&.openpicket.api.v1.GetLogPolicyRequest\x1a'.openpicket.api.v1.GetLogPolicyResponse\x12_\n" +
 	"\fSetLogPolicy\x12&.openpicket.api.v1.SetLogPolicyRequest\x1a'.openpicket.api.v1.SetLogPolicyResponse\x12V\n" +
@@ -1022,7 +1534,12 @@ const file_openpicket_api_v1_system_proto_rawDesc = "" +
 	"\n" +
 	"SaveFilter\x12$.openpicket.api.v1.SaveFilterRequest\x1a%.openpicket.api.v1.SaveFilterResponse\x12n\n" +
 	"\x11DeleteSavedFilter\x12+.openpicket.api.v1.DeleteSavedFilterRequest\x1a,.openpicket.api.v1.DeleteSavedFilterResponse\x12V\n" +
-	"\tGetStatus\x12#.openpicket.api.v1.GetStatusRequest\x1a$.openpicket.api.v1.GetStatusResponseB>Z<github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1b\x06proto3"
+	"\tGetStatus\x12#.openpicket.api.v1.GetStatusRequest\x1a$.openpicket.api.v1.GetStatusResponse\x12n\n" +
+	"\x11ListRecentQueries\x12+.openpicket.api.v1.ListRecentQueriesRequest\x1a,.openpicket.api.v1.ListRecentQueriesResponse\x12e\n" +
+	"\x0eAddRecentQuery\x12(.openpicket.api.v1.AddRecentQueryRequest\x1a).openpicket.api.v1.AddRecentQueryResponse\x12b\n" +
+	"\rGetUISettings\x12'.openpicket.api.v1.GetUISettingsRequest\x1a(.openpicket.api.v1.GetUISettingsResponse\x12b\n" +
+	"\rSetUISettings\x12'.openpicket.api.v1.SetUISettingsRequest\x1a(.openpicket.api.v1.SetUISettingsResponse\x12_\n" +
+	"\fResyncAlerts\x12&.openpicket.api.v1.ResyncAlertsRequest\x1a'.openpicket.api.v1.ResyncAlertsResponseB>Z<github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1b\x06proto3"
 
 var (
 	file_openpicket_api_v1_system_proto_rawDescOnce sync.Once
@@ -1036,58 +1553,81 @@ func file_openpicket_api_v1_system_proto_rawDescGZIP() []byte {
 	return file_openpicket_api_v1_system_proto_rawDescData
 }
 
-var file_openpicket_api_v1_system_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_openpicket_api_v1_system_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_openpicket_api_v1_system_proto_goTypes = []any{
-	(*GetLogPolicyRequest)(nil),       // 0: openpicket.api.v1.GetLogPolicyRequest
-	(*GetLogPolicyResponse)(nil),      // 1: openpicket.api.v1.GetLogPolicyResponse
-	(*SetLogPolicyRequest)(nil),       // 2: openpicket.api.v1.SetLogPolicyRequest
-	(*SetLogPolicyResponse)(nil),      // 3: openpicket.api.v1.SetLogPolicyResponse
-	(*AuditEntry)(nil),                // 4: openpicket.api.v1.AuditEntry
-	(*ListAuditRequest)(nil),          // 5: openpicket.api.v1.ListAuditRequest
-	(*ListAuditResponse)(nil),         // 6: openpicket.api.v1.ListAuditResponse
-	(*SavedFilter)(nil),               // 7: openpicket.api.v1.SavedFilter
-	(*ListSavedFiltersRequest)(nil),   // 8: openpicket.api.v1.ListSavedFiltersRequest
-	(*ListSavedFiltersResponse)(nil),  // 9: openpicket.api.v1.ListSavedFiltersResponse
-	(*SaveFilterRequest)(nil),         // 10: openpicket.api.v1.SaveFilterRequest
-	(*SaveFilterResponse)(nil),        // 11: openpicket.api.v1.SaveFilterResponse
-	(*DeleteSavedFilterRequest)(nil),  // 12: openpicket.api.v1.DeleteSavedFilterRequest
-	(*DeleteSavedFilterResponse)(nil), // 13: openpicket.api.v1.DeleteSavedFilterResponse
-	(*GetStatusRequest)(nil),          // 14: openpicket.api.v1.GetStatusRequest
-	(*ComponentStatus)(nil),           // 15: openpicket.api.v1.ComponentStatus
-	(*GetStatusResponse)(nil),         // 16: openpicket.api.v1.GetStatusResponse
-	(*v1.LogCollectionPolicy)(nil),    // 17: suricontroller.agent.v1.LogCollectionPolicy
-	(*timestamppb.Timestamp)(nil),     // 18: google.protobuf.Timestamp
+	(*ListRecentQueriesRequest)(nil),  // 0: openpicket.api.v1.ListRecentQueriesRequest
+	(*ListRecentQueriesResponse)(nil), // 1: openpicket.api.v1.ListRecentQueriesResponse
+	(*AddRecentQueryRequest)(nil),     // 2: openpicket.api.v1.AddRecentQueryRequest
+	(*AddRecentQueryResponse)(nil),    // 3: openpicket.api.v1.AddRecentQueryResponse
+	(*UISettings)(nil),                // 4: openpicket.api.v1.UISettings
+	(*GetUISettingsRequest)(nil),      // 5: openpicket.api.v1.GetUISettingsRequest
+	(*GetUISettingsResponse)(nil),     // 6: openpicket.api.v1.GetUISettingsResponse
+	(*SetUISettingsRequest)(nil),      // 7: openpicket.api.v1.SetUISettingsRequest
+	(*SetUISettingsResponse)(nil),     // 8: openpicket.api.v1.SetUISettingsResponse
+	(*ResyncAlertsRequest)(nil),       // 9: openpicket.api.v1.ResyncAlertsRequest
+	(*ResyncAlertsResponse)(nil),      // 10: openpicket.api.v1.ResyncAlertsResponse
+	(*GetLogPolicyRequest)(nil),       // 11: openpicket.api.v1.GetLogPolicyRequest
+	(*GetLogPolicyResponse)(nil),      // 12: openpicket.api.v1.GetLogPolicyResponse
+	(*SetLogPolicyRequest)(nil),       // 13: openpicket.api.v1.SetLogPolicyRequest
+	(*SetLogPolicyResponse)(nil),      // 14: openpicket.api.v1.SetLogPolicyResponse
+	(*AuditEntry)(nil),                // 15: openpicket.api.v1.AuditEntry
+	(*ListAuditRequest)(nil),          // 16: openpicket.api.v1.ListAuditRequest
+	(*ListAuditResponse)(nil),         // 17: openpicket.api.v1.ListAuditResponse
+	(*SavedFilter)(nil),               // 18: openpicket.api.v1.SavedFilter
+	(*ListSavedFiltersRequest)(nil),   // 19: openpicket.api.v1.ListSavedFiltersRequest
+	(*ListSavedFiltersResponse)(nil),  // 20: openpicket.api.v1.ListSavedFiltersResponse
+	(*SaveFilterRequest)(nil),         // 21: openpicket.api.v1.SaveFilterRequest
+	(*SaveFilterResponse)(nil),        // 22: openpicket.api.v1.SaveFilterResponse
+	(*DeleteSavedFilterRequest)(nil),  // 23: openpicket.api.v1.DeleteSavedFilterRequest
+	(*DeleteSavedFilterResponse)(nil), // 24: openpicket.api.v1.DeleteSavedFilterResponse
+	(*GetStatusRequest)(nil),          // 25: openpicket.api.v1.GetStatusRequest
+	(*ComponentStatus)(nil),           // 26: openpicket.api.v1.ComponentStatus
+	(*GetStatusResponse)(nil),         // 27: openpicket.api.v1.GetStatusResponse
+	(*v1.LogCollectionPolicy)(nil),    // 28: suricontroller.agent.v1.LogCollectionPolicy
+	(*timestamppb.Timestamp)(nil),     // 29: google.protobuf.Timestamp
 }
 var file_openpicket_api_v1_system_proto_depIdxs = []int32{
-	17, // 0: openpicket.api.v1.GetLogPolicyResponse.policy:type_name -> suricontroller.agent.v1.LogCollectionPolicy
-	17, // 1: openpicket.api.v1.SetLogPolicyRequest.policy:type_name -> suricontroller.agent.v1.LogCollectionPolicy
-	18, // 2: openpicket.api.v1.AuditEntry.time:type_name -> google.protobuf.Timestamp
-	4,  // 3: openpicket.api.v1.ListAuditResponse.entries:type_name -> openpicket.api.v1.AuditEntry
-	18, // 4: openpicket.api.v1.SavedFilter.created_at:type_name -> google.protobuf.Timestamp
-	7,  // 5: openpicket.api.v1.ListSavedFiltersResponse.filters:type_name -> openpicket.api.v1.SavedFilter
-	7,  // 6: openpicket.api.v1.SaveFilterRequest.filter:type_name -> openpicket.api.v1.SavedFilter
-	7,  // 7: openpicket.api.v1.SaveFilterResponse.filter:type_name -> openpicket.api.v1.SavedFilter
-	18, // 8: openpicket.api.v1.ComponentStatus.checked_at:type_name -> google.protobuf.Timestamp
-	15, // 9: openpicket.api.v1.GetStatusResponse.components:type_name -> openpicket.api.v1.ComponentStatus
-	0,  // 10: openpicket.api.v1.SystemService.GetLogPolicy:input_type -> openpicket.api.v1.GetLogPolicyRequest
-	2,  // 11: openpicket.api.v1.SystemService.SetLogPolicy:input_type -> openpicket.api.v1.SetLogPolicyRequest
-	5,  // 12: openpicket.api.v1.SystemService.ListAudit:input_type -> openpicket.api.v1.ListAuditRequest
-	8,  // 13: openpicket.api.v1.SystemService.ListSavedFilters:input_type -> openpicket.api.v1.ListSavedFiltersRequest
-	10, // 14: openpicket.api.v1.SystemService.SaveFilter:input_type -> openpicket.api.v1.SaveFilterRequest
-	12, // 15: openpicket.api.v1.SystemService.DeleteSavedFilter:input_type -> openpicket.api.v1.DeleteSavedFilterRequest
-	14, // 16: openpicket.api.v1.SystemService.GetStatus:input_type -> openpicket.api.v1.GetStatusRequest
-	1,  // 17: openpicket.api.v1.SystemService.GetLogPolicy:output_type -> openpicket.api.v1.GetLogPolicyResponse
-	3,  // 18: openpicket.api.v1.SystemService.SetLogPolicy:output_type -> openpicket.api.v1.SetLogPolicyResponse
-	6,  // 19: openpicket.api.v1.SystemService.ListAudit:output_type -> openpicket.api.v1.ListAuditResponse
-	9,  // 20: openpicket.api.v1.SystemService.ListSavedFilters:output_type -> openpicket.api.v1.ListSavedFiltersResponse
-	11, // 21: openpicket.api.v1.SystemService.SaveFilter:output_type -> openpicket.api.v1.SaveFilterResponse
-	13, // 22: openpicket.api.v1.SystemService.DeleteSavedFilter:output_type -> openpicket.api.v1.DeleteSavedFilterResponse
-	16, // 23: openpicket.api.v1.SystemService.GetStatus:output_type -> openpicket.api.v1.GetStatusResponse
-	17, // [17:24] is the sub-list for method output_type
-	10, // [10:17] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	4,  // 0: openpicket.api.v1.GetUISettingsResponse.settings:type_name -> openpicket.api.v1.UISettings
+	4,  // 1: openpicket.api.v1.SetUISettingsRequest.settings:type_name -> openpicket.api.v1.UISettings
+	28, // 2: openpicket.api.v1.GetLogPolicyResponse.policy:type_name -> suricontroller.agent.v1.LogCollectionPolicy
+	28, // 3: openpicket.api.v1.SetLogPolicyRequest.policy:type_name -> suricontroller.agent.v1.LogCollectionPolicy
+	29, // 4: openpicket.api.v1.AuditEntry.time:type_name -> google.protobuf.Timestamp
+	15, // 5: openpicket.api.v1.ListAuditResponse.entries:type_name -> openpicket.api.v1.AuditEntry
+	29, // 6: openpicket.api.v1.SavedFilter.created_at:type_name -> google.protobuf.Timestamp
+	18, // 7: openpicket.api.v1.ListSavedFiltersResponse.filters:type_name -> openpicket.api.v1.SavedFilter
+	18, // 8: openpicket.api.v1.SaveFilterRequest.filter:type_name -> openpicket.api.v1.SavedFilter
+	18, // 9: openpicket.api.v1.SaveFilterResponse.filter:type_name -> openpicket.api.v1.SavedFilter
+	29, // 10: openpicket.api.v1.ComponentStatus.checked_at:type_name -> google.protobuf.Timestamp
+	26, // 11: openpicket.api.v1.GetStatusResponse.components:type_name -> openpicket.api.v1.ComponentStatus
+	11, // 12: openpicket.api.v1.SystemService.GetLogPolicy:input_type -> openpicket.api.v1.GetLogPolicyRequest
+	13, // 13: openpicket.api.v1.SystemService.SetLogPolicy:input_type -> openpicket.api.v1.SetLogPolicyRequest
+	16, // 14: openpicket.api.v1.SystemService.ListAudit:input_type -> openpicket.api.v1.ListAuditRequest
+	19, // 15: openpicket.api.v1.SystemService.ListSavedFilters:input_type -> openpicket.api.v1.ListSavedFiltersRequest
+	21, // 16: openpicket.api.v1.SystemService.SaveFilter:input_type -> openpicket.api.v1.SaveFilterRequest
+	23, // 17: openpicket.api.v1.SystemService.DeleteSavedFilter:input_type -> openpicket.api.v1.DeleteSavedFilterRequest
+	25, // 18: openpicket.api.v1.SystemService.GetStatus:input_type -> openpicket.api.v1.GetStatusRequest
+	0,  // 19: openpicket.api.v1.SystemService.ListRecentQueries:input_type -> openpicket.api.v1.ListRecentQueriesRequest
+	2,  // 20: openpicket.api.v1.SystemService.AddRecentQuery:input_type -> openpicket.api.v1.AddRecentQueryRequest
+	5,  // 21: openpicket.api.v1.SystemService.GetUISettings:input_type -> openpicket.api.v1.GetUISettingsRequest
+	7,  // 22: openpicket.api.v1.SystemService.SetUISettings:input_type -> openpicket.api.v1.SetUISettingsRequest
+	9,  // 23: openpicket.api.v1.SystemService.ResyncAlerts:input_type -> openpicket.api.v1.ResyncAlertsRequest
+	12, // 24: openpicket.api.v1.SystemService.GetLogPolicy:output_type -> openpicket.api.v1.GetLogPolicyResponse
+	14, // 25: openpicket.api.v1.SystemService.SetLogPolicy:output_type -> openpicket.api.v1.SetLogPolicyResponse
+	17, // 26: openpicket.api.v1.SystemService.ListAudit:output_type -> openpicket.api.v1.ListAuditResponse
+	20, // 27: openpicket.api.v1.SystemService.ListSavedFilters:output_type -> openpicket.api.v1.ListSavedFiltersResponse
+	22, // 28: openpicket.api.v1.SystemService.SaveFilter:output_type -> openpicket.api.v1.SaveFilterResponse
+	24, // 29: openpicket.api.v1.SystemService.DeleteSavedFilter:output_type -> openpicket.api.v1.DeleteSavedFilterResponse
+	27, // 30: openpicket.api.v1.SystemService.GetStatus:output_type -> openpicket.api.v1.GetStatusResponse
+	1,  // 31: openpicket.api.v1.SystemService.ListRecentQueries:output_type -> openpicket.api.v1.ListRecentQueriesResponse
+	3,  // 32: openpicket.api.v1.SystemService.AddRecentQuery:output_type -> openpicket.api.v1.AddRecentQueryResponse
+	6,  // 33: openpicket.api.v1.SystemService.GetUISettings:output_type -> openpicket.api.v1.GetUISettingsResponse
+	8,  // 34: openpicket.api.v1.SystemService.SetUISettings:output_type -> openpicket.api.v1.SetUISettingsResponse
+	10, // 35: openpicket.api.v1.SystemService.ResyncAlerts:output_type -> openpicket.api.v1.ResyncAlertsResponse
+	24, // [24:36] is the sub-list for method output_type
+	12, // [12:24] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_openpicket_api_v1_system_proto_init() }
@@ -1101,7 +1641,7 @@ func file_openpicket_api_v1_system_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_openpicket_api_v1_system_proto_rawDesc), len(file_openpicket_api_v1_system_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

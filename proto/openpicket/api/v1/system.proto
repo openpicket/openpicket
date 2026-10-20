@@ -18,7 +18,53 @@ service SystemService {
   // Components and their health (LAPI instances, Loki, CrowdSec agents,
   // GeoIP, leaders).
   rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  // Recent searches of the caller (last 5 per page).
+  rpc ListRecentQueries(ListRecentQueriesRequest) returns (ListRecentQueriesResponse);
+  rpc AddRecentQuery(AddRecentQueryRequest) returns (AddRecentQueryResponse);
+  // UI settings: manual decision scenarios and display defaults.
+  rpc GetUISettings(GetUISettingsRequest) returns (GetUISettingsResponse);
+  rpc SetUISettings(SetUISettingsRequest) returns (SetUISettingsResponse);
+  // Rebuilds the alert copy from the LAPIs.
+  rpc ResyncAlerts(ResyncAlertsRequest) returns (ResyncAlertsResponse);
 }
+
+message ListRecentQueriesRequest {
+  string page = 1;
+}
+message ListRecentQueriesResponse {
+  repeated string queries = 1;
+}
+
+message AddRecentQueryRequest {
+  string page = 1;
+  string query = 2;
+}
+message AddRecentQueryResponse {}
+
+message UISettings {
+  // Scenarios offered in the Add Decision form.
+  repeated string manual_scenarios = 1;
+  // Defaults for users without their own preference.
+  string time_zone = 2;
+  // 24h | 12h
+  string clock = 3;
+  // iso | us | eu
+  string date_format = 4;
+  string language = 5;
+}
+
+message GetUISettingsRequest {}
+message GetUISettingsResponse {
+  UISettings settings = 1;
+}
+
+message SetUISettingsRequest {
+  UISettings settings = 1;
+}
+message SetUISettingsResponse {}
+
+message ResyncAlertsRequest {}
+message ResyncAlertsResponse {}
 
 message GetLogPolicyRequest {}
 message GetLogPolicyResponse {

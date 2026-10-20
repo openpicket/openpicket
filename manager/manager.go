@@ -28,10 +28,12 @@ import (
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/manager/alerts"
 	"github.com/openpicket/openpicket/manager/api"
+	"github.com/openpicket/openpicket/manager/csmetrics"
 	"github.com/openpicket/openpicket/manager/db"
 	"github.com/openpicket/openpicket/manager/gateway"
 	"github.com/openpicket/openpicket/manager/geo"
 	"github.com/openpicket/openpicket/manager/lapi"
+	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/pipeline"
 	"github.com/openpicket/openpicket/manager/policy"
 	"github.com/openpicket/openpicket/manager/registry"
@@ -54,7 +56,10 @@ type Options struct {
 	// ReplicaID identifies this replica (default: hostname + pid).
 	ReplicaID string
 	Loki      loki.Config
-	CrowdSec  crowdsec.Config
+	// LokiQueryURL is the Loki read endpoint for the log explorer (default:
+	// the push URL's host).
+	LokiQueryURL string
+	CrowdSec     crowdsec.Config
 	// LAPI is the primary CrowdSec Local API (decision relay). An empty URL
 	// disables decision distribution.
 	LAPI lapi.Config
@@ -67,6 +72,10 @@ type Options struct {
 	AlertRetention time.Duration
 	// AlertPollInterval overrides the alert poll interval (tests).
 	AlertPollInterval time.Duration
+	// PublicURL is the external URL of the UI (links in notifications).
+	PublicURL string
+	// CrowdSecMetrics lists CrowdSec Prometheus endpoints shown in the UI.
+	CrowdSecMetrics csmetrics.Config
 	// EdgeRules select and orient the decisions sent to nodes; zero value
 	// uses relay.DefaultRules.
 	EdgeRules *relay.Rules
@@ -108,6 +117,8 @@ type Manager struct {
 	geo        *geo.Store
 	policies   *policy.Service
 	alerts     *alerts.Syncer
+	lokiQuery  *loki.Querier
+	notify     *notify.Engine
 	lapis      []api.LAPI
 
 	runOnce sync.Once
@@ -199,12 +210,19 @@ func New(opts Options) (*Manager, error) {
 	} else {
 		m.log.Warn("no LAPI configured: decisions are not distributed to nodes")
 	}
+	m.notify = notify.NewEngine(notify.Config{DB: opts.DB, PublicURL: opts.PublicURL, Logger: opts.Logger, Health: m.sinksDown})
 	if err := m.setupAlerts(); err != nil {
 		return nil, err
 	}
 	if m.alerts != nil {
 		// Changes made through another replica's API.
-		m.listener.Handle(db.ChannelAlerts, m.alerts.Poke)
+		m.listener.Handle(db.ChannelAlerts, func(payload string) {
+			if payload == resyncPayload {
+				m.alerts.Resync()
+				return
+			}
+			m.alerts.Poke(payload)
+		})
 	}
 	m.listener.OnResync(func() { m.nodes.Resync(context.Background()) })
 	m.settings.OnChange = func(key string) {
@@ -297,6 +315,9 @@ func (m *Manager) Run(ctx context.Context) error {
 		},
 		func(ctx context.Context) { m.presence.run(ctx, 30*time.Second) },
 		func(ctx context.Context) {
+			db.RunLeader(ctx, m.opts.DB, "notify", m.opts.ReplicaID, m.log, func(ctx context.Context, l *db.Leadership) { m.notify.Run(ctx, l) })
+		},
+		func(ctx context.Context) {
 			if m.alerts != nil {
 				db.RunLeader(ctx, m.opts.DB, "alerts", m.opts.ReplicaID, m.log, func(ctx context.Context, l *db.Leadership) { m.alerts.Run(ctx, l) })
 			}
@@ -333,6 +354,10 @@ func (m *Manager) Handler() http.Handler {
 func (m *Manager) Mount(mux *http.ServeMux) {
 	mux.Handle(dpwire.Path, m.gw)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok\n")) })
+	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()

@@ -107,9 +107,7 @@ func auditDetail(m proto.Message) string {
 		return ""
 	}
 	c := proto.Clone(m)
-	if f := c.ProtoReflect().Descriptor().Fields().ByName("password"); f != nil {
-		c.ProtoReflect().Clear(f)
-	}
+	scrub(c.ProtoReflect())
 	raw, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(c)
 	if err != nil {
 		return ""
@@ -118,6 +116,26 @@ func auditDetail(m proto.Message) string {
 		return string(raw[:maxAuditDetail]) + "…"
 	}
 	return string(raw)
+}
+
+// secretFields are never written to the audit log.
+var secretFields = map[protoreflect.Name]bool{"password": true, "secrets": true}
+
+// scrub clears secret fields at any depth.
+func scrub(m protoreflect.Message) {
+	m.Range(func(f protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		switch {
+		case secretFields[f.Name()]:
+			m.Clear(f)
+		case f.Kind() == protoreflect.MessageKind && f.IsList():
+			for i := 0; i < v.List().Len(); i++ {
+				scrub(v.List().Get(i).Message())
+			}
+		case f.Kind() == protoreflect.MessageKind && !f.IsMap():
+			scrub(v.Message())
+		}
+		return true
+	})
 }
 
 // limiter allows n attempts per key and window (login).

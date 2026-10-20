@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package openpicket.api.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1";
+
+// Notification rules, destinations and the in-app notification center.
+service NotificationService {
+  rpc ListDestinations(ListDestinationsRequest) returns (ListDestinationsResponse);
+  rpc PutDestination(PutDestinationRequest) returns (PutDestinationResponse);
+  rpc DeleteDestination(DeleteDestinationRequest) returns (DeleteDestinationResponse);
+  rpc TestDestination(TestDestinationRequest) returns (TestDestinationResponse);
+  rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
+  rpc PutRule(PutRuleRequest) returns (PutRuleResponse);
+  rpc DeleteRule(DeleteRuleRequest) returns (DeleteRuleResponse);
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc MarkNotificationsRead(MarkNotificationsReadRequest) returns (MarkNotificationsReadResponse);
+}
+
+message Destination {
+  string id = 1;
+  string name = 2;
+  // webhook | slack | discord | ntfy | gotify | email | mqtt
+  string type = 3;
+  bool enabled = 4;
+  // Type options (url, topic, host, port, from, to, template...).
+  map<string, string> config = 5;
+  // Write only (password, token, headers with credentials). Keys of the
+  // stored secrets are listed in secret_keys; an empty value keeps the
+  // stored one.
+  map<string, string> secrets = 6;
+  repeated string secret_keys = 7;
+  // Severities sent here (empty: all).
+  repeated string min_severity = 8;
+}
+
+message ListDestinationsRequest {}
+message ListDestinationsResponse {
+  repeated Destination destinations = 1;
+}
+
+message PutDestinationRequest {
+  Destination destination = 1;
+}
+message PutDestinationResponse {
+  Destination destination = 1;
+}
+
+message DeleteDestinationRequest {
+  string id = 1;
+}
+message DeleteDestinationResponse {}
+
+message TestDestinationRequest {
+  // Saved destination, or an unsaved one (secrets left empty are taken
+  // from the saved destination with the same id).
+  Destination destination = 1;
+}
+message TestDestinationResponse {
+  bool ok = 1;
+  string error = 2;
+}
+
+message Rule {
+  string id = 1;
+  string name = 2;
+  bool enabled = 3;
+  // new_alert | new_decision | ip_ban | compromised_host |
+  // alert_threshold | alert_spike | lapi_down | node_offline |
+  // policy_error | sink_down
+  string type = 4;
+  // info | warning | critical
+  string severity = 5;
+  // Alert search query (new_alert, new_decision, ip_ban, threshold, spike).
+  string query = 6;
+  // threshold: alerts in window; spike: minimum count.
+  int32 threshold = 7;
+  int32 window_seconds = 8;
+  // spike: factor over the average of the previous windows.
+  double spike_factor = 9;
+  // A rule fires at most once per subject in this period.
+  int32 cooldown_seconds = 10;
+  repeated string destinations = 11;
+  // ip_ban: only for these addresses or CIDRs (empty: all).
+  repeated string ip_filters = 12;
+  bool include_simulated = 13;
+  google.protobuf.Timestamp last_fired_at = 14;
+}
+
+message ListRulesRequest {}
+message ListRulesResponse {
+  repeated Rule rules = 1;
+}
+
+message PutRuleRequest {
+  Rule rule = 1;
+}
+message PutRuleResponse {
+  Rule rule = 1;
+}
+
+message DeleteRuleRequest {
+  string id = 1;
+}
+message DeleteRuleResponse {}
+
+message Delivery {
+  string destination = 1;
+  // pending | sent | failed
+  string status = 2;
+  int32 attempts = 3;
+  string error = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message Notification {
+  int64 id = 1;
+  google.protobuf.Timestamp time = 2;
+  string rule_id = 3;
+  string rule_name = 4;
+  string severity = 5;
+  string title = 6;
+  string body = 7;
+  // Subject the rule fired for (IP, node, scenario).
+  string subject = 8;
+  // Link inside the UI (alerts query, node page).
+  string link = 9;
+  bool read = 10;
+  repeated Delivery deliveries = 11;
+}
+
+message ListNotificationsRequest {
+  int32 limit = 1;
+  int64 before_id = 2;
+  bool unread_only = 3;
+}
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  int64 unread = 2;
+}
+
+message MarkNotificationsReadRequest {
+  repeated int64 ids = 1;
+  bool all = 2;
+}
+message MarkNotificationsReadResponse {}

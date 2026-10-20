@@ -66,6 +66,8 @@ var DecisionSchema = &search.Schema{
 		"ip":        {SQL: "d.value"},
 		"scope":     {SQL: "d.scope", NoFreeText: true},
 		"type":      {SQL: "d.type", NoFreeText: true},
+		"action":    {SQL: "d.type", NoFreeText: true},
+		"status":    {SQL: "(CASE WHEN d.until > now() THEN 'active' ELSE 'expired' END)", NoFreeText: true},
 		"origin":    {SQL: "d.origin"},
 		"scenario":  {SQL: "d.scenario"},
 		"until":     {SQL: "d.until", Kind: search.Time},

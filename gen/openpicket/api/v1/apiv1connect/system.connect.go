@@ -52,6 +52,21 @@ const (
 	SystemServiceDeleteSavedFilterProcedure = "/openpicket.api.v1.SystemService/DeleteSavedFilter"
 	// SystemServiceGetStatusProcedure is the fully-qualified name of the SystemService's GetStatus RPC.
 	SystemServiceGetStatusProcedure = "/openpicket.api.v1.SystemService/GetStatus"
+	// SystemServiceListRecentQueriesProcedure is the fully-qualified name of the SystemService's
+	// ListRecentQueries RPC.
+	SystemServiceListRecentQueriesProcedure = "/openpicket.api.v1.SystemService/ListRecentQueries"
+	// SystemServiceAddRecentQueryProcedure is the fully-qualified name of the SystemService's
+	// AddRecentQuery RPC.
+	SystemServiceAddRecentQueryProcedure = "/openpicket.api.v1.SystemService/AddRecentQuery"
+	// SystemServiceGetUISettingsProcedure is the fully-qualified name of the SystemService's
+	// GetUISettings RPC.
+	SystemServiceGetUISettingsProcedure = "/openpicket.api.v1.SystemService/GetUISettings"
+	// SystemServiceSetUISettingsProcedure is the fully-qualified name of the SystemService's
+	// SetUISettings RPC.
+	SystemServiceSetUISettingsProcedure = "/openpicket.api.v1.SystemService/SetUISettings"
+	// SystemServiceResyncAlertsProcedure is the fully-qualified name of the SystemService's
+	// ResyncAlerts RPC.
+	SystemServiceResyncAlertsProcedure = "/openpicket.api.v1.SystemService/ResyncAlerts"
 )
 
 // SystemServiceClient is a client for the openpicket.api.v1.SystemService service.
@@ -65,6 +80,14 @@ type SystemServiceClient interface {
 	// Components and their health (LAPI instances, Loki, CrowdSec agents,
 	// GeoIP, leaders).
 	GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error)
+	// Recent searches of the caller (last 5 per page).
+	ListRecentQueries(context.Context, *connect.Request[v1.ListRecentQueriesRequest]) (*connect.Response[v1.ListRecentQueriesResponse], error)
+	AddRecentQuery(context.Context, *connect.Request[v1.AddRecentQueryRequest]) (*connect.Response[v1.AddRecentQueryResponse], error)
+	// UI settings: manual decision scenarios and display defaults.
+	GetUISettings(context.Context, *connect.Request[v1.GetUISettingsRequest]) (*connect.Response[v1.GetUISettingsResponse], error)
+	SetUISettings(context.Context, *connect.Request[v1.SetUISettingsRequest]) (*connect.Response[v1.SetUISettingsResponse], error)
+	// Rebuilds the alert copy from the LAPIs.
+	ResyncAlerts(context.Context, *connect.Request[v1.ResyncAlertsRequest]) (*connect.Response[v1.ResyncAlertsResponse], error)
 }
 
 // NewSystemServiceClient constructs a client for the openpicket.api.v1.SystemService service. By
@@ -120,6 +143,36 @@ func NewSystemServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(systemServiceMethods.ByName("GetStatus")),
 			connect.WithClientOptions(opts...),
 		),
+		listRecentQueries: connect.NewClient[v1.ListRecentQueriesRequest, v1.ListRecentQueriesResponse](
+			httpClient,
+			baseURL+SystemServiceListRecentQueriesProcedure,
+			connect.WithSchema(systemServiceMethods.ByName("ListRecentQueries")),
+			connect.WithClientOptions(opts...),
+		),
+		addRecentQuery: connect.NewClient[v1.AddRecentQueryRequest, v1.AddRecentQueryResponse](
+			httpClient,
+			baseURL+SystemServiceAddRecentQueryProcedure,
+			connect.WithSchema(systemServiceMethods.ByName("AddRecentQuery")),
+			connect.WithClientOptions(opts...),
+		),
+		getUISettings: connect.NewClient[v1.GetUISettingsRequest, v1.GetUISettingsResponse](
+			httpClient,
+			baseURL+SystemServiceGetUISettingsProcedure,
+			connect.WithSchema(systemServiceMethods.ByName("GetUISettings")),
+			connect.WithClientOptions(opts...),
+		),
+		setUISettings: connect.NewClient[v1.SetUISettingsRequest, v1.SetUISettingsResponse](
+			httpClient,
+			baseURL+SystemServiceSetUISettingsProcedure,
+			connect.WithSchema(systemServiceMethods.ByName("SetUISettings")),
+			connect.WithClientOptions(opts...),
+		),
+		resyncAlerts: connect.NewClient[v1.ResyncAlertsRequest, v1.ResyncAlertsResponse](
+			httpClient,
+			baseURL+SystemServiceResyncAlertsProcedure,
+			connect.WithSchema(systemServiceMethods.ByName("ResyncAlerts")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -132,6 +185,11 @@ type systemServiceClient struct {
 	saveFilter        *connect.Client[v1.SaveFilterRequest, v1.SaveFilterResponse]
 	deleteSavedFilter *connect.Client[v1.DeleteSavedFilterRequest, v1.DeleteSavedFilterResponse]
 	getStatus         *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
+	listRecentQueries *connect.Client[v1.ListRecentQueriesRequest, v1.ListRecentQueriesResponse]
+	addRecentQuery    *connect.Client[v1.AddRecentQueryRequest, v1.AddRecentQueryResponse]
+	getUISettings     *connect.Client[v1.GetUISettingsRequest, v1.GetUISettingsResponse]
+	setUISettings     *connect.Client[v1.SetUISettingsRequest, v1.SetUISettingsResponse]
+	resyncAlerts      *connect.Client[v1.ResyncAlertsRequest, v1.ResyncAlertsResponse]
 }
 
 // GetLogPolicy calls openpicket.api.v1.SystemService.GetLogPolicy.
@@ -169,6 +227,31 @@ func (c *systemServiceClient) GetStatus(ctx context.Context, req *connect.Reques
 	return c.getStatus.CallUnary(ctx, req)
 }
 
+// ListRecentQueries calls openpicket.api.v1.SystemService.ListRecentQueries.
+func (c *systemServiceClient) ListRecentQueries(ctx context.Context, req *connect.Request[v1.ListRecentQueriesRequest]) (*connect.Response[v1.ListRecentQueriesResponse], error) {
+	return c.listRecentQueries.CallUnary(ctx, req)
+}
+
+// AddRecentQuery calls openpicket.api.v1.SystemService.AddRecentQuery.
+func (c *systemServiceClient) AddRecentQuery(ctx context.Context, req *connect.Request[v1.AddRecentQueryRequest]) (*connect.Response[v1.AddRecentQueryResponse], error) {
+	return c.addRecentQuery.CallUnary(ctx, req)
+}
+
+// GetUISettings calls openpicket.api.v1.SystemService.GetUISettings.
+func (c *systemServiceClient) GetUISettings(ctx context.Context, req *connect.Request[v1.GetUISettingsRequest]) (*connect.Response[v1.GetUISettingsResponse], error) {
+	return c.getUISettings.CallUnary(ctx, req)
+}
+
+// SetUISettings calls openpicket.api.v1.SystemService.SetUISettings.
+func (c *systemServiceClient) SetUISettings(ctx context.Context, req *connect.Request[v1.SetUISettingsRequest]) (*connect.Response[v1.SetUISettingsResponse], error) {
+	return c.setUISettings.CallUnary(ctx, req)
+}
+
+// ResyncAlerts calls openpicket.api.v1.SystemService.ResyncAlerts.
+func (c *systemServiceClient) ResyncAlerts(ctx context.Context, req *connect.Request[v1.ResyncAlertsRequest]) (*connect.Response[v1.ResyncAlertsResponse], error) {
+	return c.resyncAlerts.CallUnary(ctx, req)
+}
+
 // SystemServiceHandler is an implementation of the openpicket.api.v1.SystemService service.
 type SystemServiceHandler interface {
 	GetLogPolicy(context.Context, *connect.Request[v1.GetLogPolicyRequest]) (*connect.Response[v1.GetLogPolicyResponse], error)
@@ -180,6 +263,14 @@ type SystemServiceHandler interface {
 	// Components and their health (LAPI instances, Loki, CrowdSec agents,
 	// GeoIP, leaders).
 	GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error)
+	// Recent searches of the caller (last 5 per page).
+	ListRecentQueries(context.Context, *connect.Request[v1.ListRecentQueriesRequest]) (*connect.Response[v1.ListRecentQueriesResponse], error)
+	AddRecentQuery(context.Context, *connect.Request[v1.AddRecentQueryRequest]) (*connect.Response[v1.AddRecentQueryResponse], error)
+	// UI settings: manual decision scenarios and display defaults.
+	GetUISettings(context.Context, *connect.Request[v1.GetUISettingsRequest]) (*connect.Response[v1.GetUISettingsResponse], error)
+	SetUISettings(context.Context, *connect.Request[v1.SetUISettingsRequest]) (*connect.Response[v1.SetUISettingsResponse], error)
+	// Rebuilds the alert copy from the LAPIs.
+	ResyncAlerts(context.Context, *connect.Request[v1.ResyncAlertsRequest]) (*connect.Response[v1.ResyncAlertsResponse], error)
 }
 
 // NewSystemServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -231,6 +322,36 @@ func NewSystemServiceHandler(svc SystemServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(systemServiceMethods.ByName("GetStatus")),
 		connect.WithHandlerOptions(opts...),
 	)
+	systemServiceListRecentQueriesHandler := connect.NewUnaryHandler(
+		SystemServiceListRecentQueriesProcedure,
+		svc.ListRecentQueries,
+		connect.WithSchema(systemServiceMethods.ByName("ListRecentQueries")),
+		connect.WithHandlerOptions(opts...),
+	)
+	systemServiceAddRecentQueryHandler := connect.NewUnaryHandler(
+		SystemServiceAddRecentQueryProcedure,
+		svc.AddRecentQuery,
+		connect.WithSchema(systemServiceMethods.ByName("AddRecentQuery")),
+		connect.WithHandlerOptions(opts...),
+	)
+	systemServiceGetUISettingsHandler := connect.NewUnaryHandler(
+		SystemServiceGetUISettingsProcedure,
+		svc.GetUISettings,
+		connect.WithSchema(systemServiceMethods.ByName("GetUISettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	systemServiceSetUISettingsHandler := connect.NewUnaryHandler(
+		SystemServiceSetUISettingsProcedure,
+		svc.SetUISettings,
+		connect.WithSchema(systemServiceMethods.ByName("SetUISettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	systemServiceResyncAlertsHandler := connect.NewUnaryHandler(
+		SystemServiceResyncAlertsProcedure,
+		svc.ResyncAlerts,
+		connect.WithSchema(systemServiceMethods.ByName("ResyncAlerts")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/openpicket.api.v1.SystemService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SystemServiceGetLogPolicyProcedure:
@@ -247,6 +368,16 @@ func NewSystemServiceHandler(svc SystemServiceHandler, opts ...connect.HandlerOp
 			systemServiceDeleteSavedFilterHandler.ServeHTTP(w, r)
 		case SystemServiceGetStatusProcedure:
 			systemServiceGetStatusHandler.ServeHTTP(w, r)
+		case SystemServiceListRecentQueriesProcedure:
+			systemServiceListRecentQueriesHandler.ServeHTTP(w, r)
+		case SystemServiceAddRecentQueryProcedure:
+			systemServiceAddRecentQueryHandler.ServeHTTP(w, r)
+		case SystemServiceGetUISettingsProcedure:
+			systemServiceGetUISettingsHandler.ServeHTTP(w, r)
+		case SystemServiceSetUISettingsProcedure:
+			systemServiceSetUISettingsHandler.ServeHTTP(w, r)
+		case SystemServiceResyncAlertsProcedure:
+			systemServiceResyncAlertsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -282,4 +413,24 @@ func (UnimplementedSystemServiceHandler) DeleteSavedFilter(context.Context, *con
 
 func (UnimplementedSystemServiceHandler) GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.SystemService.GetStatus is not implemented"))
+}
+
+func (UnimplementedSystemServiceHandler) ListRecentQueries(context.Context, *connect.Request[v1.ListRecentQueriesRequest]) (*connect.Response[v1.ListRecentQueriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.SystemService.ListRecentQueries is not implemented"))
+}
+
+func (UnimplementedSystemServiceHandler) AddRecentQuery(context.Context, *connect.Request[v1.AddRecentQueryRequest]) (*connect.Response[v1.AddRecentQueryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.SystemService.AddRecentQuery is not implemented"))
+}
+
+func (UnimplementedSystemServiceHandler) GetUISettings(context.Context, *connect.Request[v1.GetUISettingsRequest]) (*connect.Response[v1.GetUISettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.SystemService.GetUISettings is not implemented"))
+}
+
+func (UnimplementedSystemServiceHandler) SetUISettings(context.Context, *connect.Request[v1.SetUISettingsRequest]) (*connect.Response[v1.SetUISettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.SystemService.SetUISettings is not implemented"))
+}
+
+func (UnimplementedSystemServiceHandler) ResyncAlerts(context.Context, *connect.Request[v1.ResyncAlertsRequest]) (*connect.Response[v1.ResyncAlertsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.SystemService.ResyncAlerts is not implemented"))
 }

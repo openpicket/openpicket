@@ -19,6 +19,7 @@ import (
 	"log/slog"
 	"net/url"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -59,9 +60,10 @@ type Fencer interface {
 
 // Syncer copies alerts.
 type Syncer struct {
-	cfg  Config
-	log  *slog.Logger
-	poke chan string
+	cfg       Config
+	log       *slog.Logger
+	poke      chan string
+	forceFull atomic.Bool
 
 	synced *prometheus.CounterVec
 	errs   *prometheus.CounterVec
@@ -106,6 +108,12 @@ func (s *Syncer) Poke(instance string) {
 	}
 }
 
+// Resync asks for a full pass over every instance.
+func (s *Syncer) Resync() {
+	s.forceFull.Store(true)
+	s.Poke("")
+}
+
 // Run syncs while leader.
 func (s *Syncer) Run(ctx context.Context, l Fencer) {
 	type state struct{ lastActive, lastFull time.Time }
@@ -114,9 +122,10 @@ func (s *Syncer) Run(ctx context.Context, l Fencer) {
 	defer t.Stop()
 	for {
 		now := s.cfg.Now()
+		forced := s.forceFull.Swap(false)
 		for i, inst := range s.cfg.Instances {
 			st := &states[i]
-			full := now.Sub(st.lastFull) >= s.cfg.FullInterval
+			full := forced || now.Sub(st.lastFull) >= s.cfg.FullInterval
 			active := full || now.Sub(st.lastActive) >= s.cfg.ActiveInterval
 			if err := s.syncInstance(ctx, l, inst, active, full); err != nil {
 				if ctx.Err() != nil {

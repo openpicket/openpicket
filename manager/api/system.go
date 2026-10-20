@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	agentv1 "github.com/jc-lab/suricontroller/gen/suricontroller/agent/v1"
@@ -174,4 +175,96 @@ func (y *systemService) GetStatus(ctx context.Context, _ *connect.Request[apiv1.
 		rows.Close()
 	}
 	return connect.NewResponse(res), nil
+}
+
+const maxRecent = 5
+
+func (y *systemService) ListRecentQueries(ctx context.Context, req *connect.Request[apiv1.ListRecentQueriesRequest]) (*connect.Response[apiv1.ListRecentQueriesResponse], error) {
+	rows, err := y.s.cfg.DB.Query(ctx, `SELECT query FROM openpicket.recent_queries WHERE owner = $1 AND page = $2 ORDER BY used_at DESC LIMIT $3`,
+		by(ctx), req.Msg.GetPage(), maxRecent)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	defer rows.Close()
+	res := &apiv1.ListRecentQueriesResponse{}
+	for rows.Next() {
+		var q string
+		if err := rows.Scan(&q); err != nil {
+			return nil, toConnectError(err)
+		}
+		res.Queries = append(res.Queries, q)
+	}
+	return connect.NewResponse(res), toConnectError(rows.Err())
+}
+
+func (y *systemService) AddRecentQuery(ctx context.Context, req *connect.Request[apiv1.AddRecentQueryRequest]) (*connect.Response[apiv1.AddRecentQueryResponse], error) {
+	m := req.Msg
+	if !savedFilterPages[m.GetPage()] || m.GetQuery() == "" || len(m.GetQuery()) > 4096 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a page and a query of at most 4096 bytes are required"))
+	}
+	owner := by(ctx)
+	if _, err := y.s.cfg.DB.Exec(ctx, `INSERT INTO openpicket.recent_queries (owner, page, query) VALUES ($1,$2,$3)
+		ON CONFLICT (owner, page, query) DO UPDATE SET used_at = now()`, owner, m.GetPage(), m.GetQuery()); err != nil {
+		return nil, toConnectError(err)
+	}
+	if _, err := y.s.cfg.DB.Exec(ctx, `DELETE FROM openpicket.recent_queries WHERE owner = $1 AND page = $2 AND query NOT IN
+		(SELECT query FROM openpicket.recent_queries WHERE owner = $1 AND page = $2 ORDER BY used_at DESC LIMIT $3)`, owner, m.GetPage(), maxRecent); err != nil {
+		return nil, toConnectError(err)
+	}
+	return connect.NewResponse(&apiv1.AddRecentQueryResponse{}), nil
+}
+
+// KeyUISettings stores apiv1.UISettings (protojson).
+const KeyUISettings = "ui.settings"
+
+// DefaultManualScenarios are offered in the Add Decision form.
+var DefaultManualScenarios = []string{"openpicket/manual", "openpicket/manual-both", "manual/web-ui"}
+
+func (y *systemService) GetUISettings(ctx context.Context, _ *connect.Request[apiv1.GetUISettingsRequest]) (*connect.Response[apiv1.GetUISettingsResponse], error) {
+	var raw json.RawMessage
+	st := &apiv1.UISettings{}
+	ok, err := y.s.cfg.Settings.Get(ctx, KeyUISettings, &raw)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	if ok {
+		_ = protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(raw, st)
+	}
+	if len(st.ManualScenarios) == 0 {
+		st.ManualScenarios = DefaultManualScenarios
+	}
+	return connect.NewResponse(&apiv1.GetUISettingsResponse{Settings: st}), nil
+}
+
+func (y *systemService) SetUISettings(ctx context.Context, req *connect.Request[apiv1.SetUISettingsRequest]) (*connect.Response[apiv1.SetUISettingsResponse], error) {
+	st := req.Msg.GetSettings()
+	if st == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("settings are required"))
+	}
+	if len(st.ManualScenarios) > 50 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("at most 50 manual decision scenarios"))
+	}
+	for _, s := range st.ManualScenarios {
+		if !scenarioRe.MatchString(s) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scenario %q", s))
+		}
+	}
+	if st.TimeZone != "" {
+		if _, err := time.LoadLocation(st.TimeZone); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown time zone %q", st.TimeZone))
+		}
+	}
+	raw, _ := protojson.Marshal(st)
+	if err := y.s.cfg.Settings.Put(ctx, KeyUISettings, json.RawMessage(raw)); err != nil {
+		return nil, toConnectError(err)
+	}
+	return connect.NewResponse(&apiv1.SetUISettingsResponse{}), nil
+}
+
+func (y *systemService) ResyncAlerts(ctx context.Context, _ *connect.Request[apiv1.ResyncAlertsRequest]) (*connect.Response[apiv1.ResyncAlertsResponse], error) {
+	if y.s.cfg.Resync == nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("no CrowdSec LAPI is configured"))
+	}
+	y.s.cfg.Resync()
+	return connect.NewResponse(&apiv1.ResyncAlertsResponse{}), nil
 }

@@ -30,6 +30,7 @@ import (
 	"github.com/openpicket/openpicket/manager"
 	"github.com/openpicket/openpicket/manager/api"
 	"github.com/openpicket/openpicket/manager/auth"
+	"github.com/openpicket/openpicket/manager/csmetrics"
 	"github.com/openpicket/openpicket/manager/lapi"
 	"github.com/openpicket/openpicket/manager/relay"
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
@@ -46,6 +47,9 @@ type config struct {
 	TrustProxyHeaders bool
 	LogLevel          string
 	Loki              loki.Config
+	LokiQueryURL      string
+	PublicURL         string
+	Metrics           csmetrics.Config
 	CrowdSec          crowdsec.Config
 	LAPI              lapi.Config
 	LAPIName          string
@@ -76,6 +80,8 @@ func loadConfig() (*config, error) {
 	e.String("LOG_LEVEL", &c.LogLevel)
 	e.String("LOKI_URL", &c.Loki.URL)
 	e.String("LOKI_TENANT", &c.Loki.TenantID)
+	e.String("LOKI_QUERY_URL", &c.LokiQueryURL)
+	e.String("PUBLIC_URL", &c.PublicURL)
 	e.String("LOKI_USERNAME", &c.Loki.Username)
 	e.Secret("LOKI_PASSWORD", &c.Loki.Password)
 	e.Duration("LOKI_MAX_AGE", &c.Loki.MaxAge)
@@ -92,6 +98,9 @@ func loadConfig() (*config, error) {
 	e.Secret("LAPI_PASSWORD", &c.LAPI.Password)
 	e.String("LAPI_CA_FILE", &c.LAPI.CAFile)
 	e.String("LAPI_NAME", &c.LAPIName)
+	e.List("CROWDSEC_METRICS_URLS", &c.Metrics.URLs)
+	e.String("CROWDSEC_METRICS_DISCOVERY_HOST", &c.Metrics.DiscoveryHost)
+	e.Int("CROWDSEC_METRICS_DISCOVERY_PORT", &c.Metrics.DiscoveryPort)
 	e.Secret("LAPI_EXTRA", &c.LAPIExtra)
 	e.Duration("ALERT_RETENTION", &c.AlertRetention)
 	e.List("EDGE_TYPES", &c.Rules.Types)
@@ -305,7 +314,7 @@ func serve() error {
 	}
 	m, err := manager.New(manager.Options{
 		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
-		LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
+		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
 		TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
 	})
 	if err != nil {

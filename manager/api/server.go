@@ -26,9 +26,12 @@ import (
 	"github.com/openpicket/openpicket/gen/openpicket/api/v1/apiv1connect"
 	"github.com/openpicket/openpicket/manager/alerts"
 	"github.com/openpicket/openpicket/manager/auth"
+	"github.com/openpicket/openpicket/manager/csmetrics"
 	"github.com/openpicket/openpicket/manager/geo"
+	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/policy"
 	"github.com/openpicket/openpicket/manager/settings"
+	"github.com/openpicket/openpicket/manager/sinks/loki"
 )
 
 // Config holds the dependencies of the API.
@@ -60,6 +63,14 @@ type Config struct {
 	AlertStore *alerts.Store
 	// LAPIs change alerts and decisions.
 	LAPIs []LAPI
+	// Notify sends test notifications.
+	Notify *notify.Engine
+	// Metrics scrapes CrowdSec Prometheus endpoints.
+	Metrics *csmetrics.Scraper
+	// Logs queries Loki; nil disables the log explorer.
+	Logs *loki.Querier
+	// Resync asks for a full alert sync of every instance.
+	Resync func()
 	// Poke asks the alert syncer to sync an instance now.
 	Poke func(instance string)
 	// Status reports the health of the manager's components.
@@ -151,6 +162,22 @@ var procedures = map[string]spec{
 	apiv1connect.GeoServiceDeleteDatabaseProcedure: adm,
 	geoUploadPath: adm,
 
+	apiv1connect.LogServiceQueryLogsProcedure:      read,
+	apiv1connect.LogServiceTailLogsProcedure:       read,
+	apiv1connect.LogServiceLogLabelValuesProcedure: read,
+
+	apiv1connect.MetricsServiceGetCrowdSecMetricsProcedure: read,
+
+	apiv1connect.NotificationServiceListNotificationsProcedure:     read,
+	apiv1connect.NotificationServiceMarkNotificationsReadProcedure: own,
+	apiv1connect.NotificationServiceListRulesProcedure:             read,
+	apiv1connect.NotificationServiceListDestinationsProcedure:      {role: auth.RoleOperator},
+	apiv1connect.NotificationServicePutRuleProcedure:               op,
+	apiv1connect.NotificationServiceDeleteRuleProcedure:            op,
+	apiv1connect.NotificationServicePutDestinationProcedure:        adm,
+	apiv1connect.NotificationServiceDeleteDestinationProcedure:     adm,
+	apiv1connect.NotificationServiceTestDestinationProcedure:       {role: auth.RoleAdmin, write: true},
+
 	apiv1connect.SystemServiceGetLogPolicyProcedure:      read,
 	apiv1connect.SystemServiceGetStatusProcedure:         read,
 	apiv1connect.SystemServiceListSavedFiltersProcedure:  read,
@@ -158,6 +185,11 @@ var procedures = map[string]spec{
 	apiv1connect.SystemServiceDeleteSavedFilterProcedure: own,
 	apiv1connect.SystemServiceListAuditProcedure:         {role: auth.RoleOperator},
 	apiv1connect.SystemServiceSetLogPolicyProcedure:      adm,
+	apiv1connect.SystemServiceListRecentQueriesProcedure: read,
+	apiv1connect.SystemServiceAddRecentQueryProcedure:    own,
+	apiv1connect.SystemServiceGetUISettingsProcedure:     public,
+	apiv1connect.SystemServiceSetUISettingsProcedure:     adm,
+	apiv1connect.SystemServiceResyncAlertsProcedure:      op,
 }
 
 const geoUploadPath = "/geo/upload"
@@ -174,6 +206,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(apiv1connect.NewAlertServiceHandler(&alertService{s}, opts...))
 	mux.Handle(apiv1connect.NewDecisionServiceHandler(&decisionService{s}, opts...))
 	mux.Handle(apiv1connect.NewDashboardServiceHandler(&dashboardService{s}, opts...))
+	mux.Handle(apiv1connect.NewLogServiceHandler(&logService{s}, opts...))
+	mux.Handle(apiv1connect.NewMetricsServiceHandler(&metricsService{s}, opts...))
+	mux.Handle(apiv1connect.NewNotificationServiceHandler(&notificationService{s}, opts...))
 	mux.HandleFunc("POST "+geoUploadPath, s.uploadGeo)
 	return s.middleware(mux)
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -13,13 +14,17 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 
 	"github.com/jc-lab/suricontroller/pkg/sshkey"
 
@@ -32,8 +37,10 @@ import (
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/geo"
 	"github.com/openpicket/openpicket/manager/lapi"
+	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/policy"
 	"github.com/openpicket/openpicket/manager/settings"
+	"github.com/openpicket/openpicket/manager/sinks/loki"
 	"github.com/openpicket/openpicket/pkg/geoip/geoiptest"
 	"github.com/openpicket/openpicket/pkg/principal"
 )
@@ -538,5 +545,184 @@ func TestDecisions(t *testing.T) {
 	audit, _ := e.clients(viewerHeaders("olga", "secops")).system.ListAudit(ctx, connect.NewRequest(&apiv1.ListAuditRequest{ActionPrefix: "DecisionService."}))
 	if len(audit.Msg.Entries) != 3 || audit.Msg.Entries[2].Target != "198.51.100.9" || audit.Msg.Entries[0].Target != "198.51.100.4" {
 		t.Fatalf("audit: %v", audit.Msg.Entries)
+	}
+}
+
+func TestLogQL(t *testing.T) {
+	q, err := LogQL(&apiv1.LogFilter{Nodes: []string{"edge-01", "edge.02"}, Types: []string{"eve"}, EventTypes: []string{"alert"}, Ip: "198.51.100.4",
+		Text: "ET SCAN (x)", Direction: "inbound"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{job="openpicket", node=~"^(edge-01|edge\\.02)$", type=~"^(eve)$", event_type=~"^(alert)$"} |~ "(?i)ET SCAN \\(x\\)"` +
+		` | src_ip="198.51.100.4" or dest_ip="198.51.100.4" or remote_ip="198.51.100.4" | direction="inbound"`
+	if q != want {
+		t.Fatalf("got  %s\nwant %s", q, want)
+	}
+	if _, err := LogQL(&apiv1.LogFilter{Nodes: []string{`a"}`}}); code(err) != connect.CodeInvalidArgument {
+		t.Fatalf("injection: %v", err)
+	}
+}
+
+func TestLogsAndNotifications(t *testing.T) {
+	e := setup(t, false)
+	ctx := context.Background()
+	var mu sync.Mutex
+	type line struct {
+		ts   time.Time
+		text string
+	}
+	var lines []line
+	add := func(text string) {
+		mu.Lock()
+		defer mu.Unlock()
+		lines = append(lines, line{time.Now(), text})
+		time.Sleep(time.Millisecond)
+	}
+	fakeLoki := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Scope-OrgID") != "openpicket" {
+			http.Error(w, "no tenant", http.StatusUnauthorized)
+			return
+		}
+		if strings.Contains(r.URL.Query().Get("query"), "bad") {
+			http.Error(w, "parse error", http.StatusBadRequest)
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		start, _ := strconv.ParseInt(r.URL.Query().Get("start"), 10, 64)
+		var values [][]any
+		for _, l := range lines {
+			if l.ts.UnixNano() < start {
+				continue
+			}
+			values = append(values, []any{strconv.FormatInt(l.ts.UnixNano(), 10), l.text,
+				map[string]any{"structuredMetadata": map[string]any{"src_ip": "198.51.100.4"}}})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": "success", "data": map[string]any{"resultType": "streams",
+			"result": []any{map[string]any{"stream": map[string]string{"node": "edge-01", "type": "eve"}, "values": values}}}})
+	}))
+	defer fakeLoki.Close()
+	lq, _ := loki.NewQuerier(loki.Config{URL: fakeLoki.URL + "/loki/api/v1/push"}, "")
+	e.server.cfg.Logs = lq
+	add(`{"event_type":"alert","n":1}`)
+	add(`{"event_type":"alert","n":2}`)
+	viewer := e.clients(viewerHeaders("vera", "staff"))
+	logs := apiv1connect.NewLogServiceClient(viewer.http, e.srv.URL+"/api")
+	res, err := logs.QueryLogs(ctx, connect.NewRequest(&apiv1.QueryLogsRequest{Filter: &apiv1.LogFilter{Nodes: []string{"edge-01"}}}))
+	if err != nil || len(res.Msg.Entries) != 2 || res.Msg.Entries[0].Line != lines[1].text || res.Msg.Entries[0].Labels["src_ip"] != "198.51.100.4" {
+		t.Fatalf("query: %v %v", res, err)
+	}
+	if _, err := logs.QueryLogs(ctx, connect.NewRequest(&apiv1.QueryLogsRequest{Filter: &apiv1.LogFilter{Logql: `{job="bad"}`}})); code(err) != connect.CodeInvalidArgument {
+		t.Fatalf("bad logql: %v", err)
+	}
+	TailInterval = 50 * time.Millisecond
+	tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	stream, err := logs.TailLogs(tctx, connect.NewRequest(&apiv1.TailLogsRequest{Filter: &apiv1.LogFilter{}}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stream.Receive() || len(stream.Msg().Entries) != 2 {
+		t.Fatalf("first tail batch: %v", stream.Err())
+	}
+	add(`{"event_type":"alert","n":3}`)
+	if !stream.Receive() || len(stream.Msg().Entries) != 1 || !strings.Contains(stream.Msg().Entries[0].Line, `"n":3`) {
+		t.Fatalf("second tail batch: %v %v", stream.Msg(), stream.Err())
+	}
+	cancel()
+	_ = stream.Close()
+
+	// Notifications: secrets are write-only and never audited.
+	admin := e.clients(viewerHeaders("root", "secops"))
+	e.server.cfg.Auth.Roles = auth.Roles{Admin: auth.RoleConfig{Users: []string{"root"}}, Viewer: auth.RoleConfig{Groups: []string{"staff"}}}
+	e.server.cfg.Notify = notify.NewEngine(notify.Config{DB: e.server.cfg.DB})
+	nc := apiv1connect.NewNotificationServiceClient(admin.http, e.srv.URL+"/api")
+	hook, ch := httptestCapture(t)
+	put, err := nc.PutDestination(ctx, connect.NewRequest(&apiv1.PutDestinationRequest{Destination: &apiv1.Destination{Id: "hook", Name: "Hook", Type: "webhook",
+		Enabled: true, Config: map[string]string{"url": hook}, Secrets: map[string]string{"authorization": "Bearer s3cr3t-token"}}}))
+	if err != nil || len(put.Msg.Destination.Secrets) != 0 || put.Msg.Destination.SecretKeys[0] != "authorization" {
+		t.Fatalf("put destination: %v %v", put, err)
+	}
+	// Saving again without the secret keeps it; the test uses it.
+	if _, err := nc.PutDestination(ctx, connect.NewRequest(&apiv1.PutDestinationRequest{Destination: &apiv1.Destination{Id: "hook", Name: "Hook 2", Type: "webhook",
+		Enabled: true, Config: map[string]string{"url": hook}}})); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := nc.TestDestination(ctx, connect.NewRequest(&apiv1.TestDestinationRequest{Destination: &apiv1.Destination{Id: "hook", Name: "Hook", Type: "webhook",
+		Config: map[string]string{"url": hook}}}))
+	if err != nil || !tr.Msg.Ok {
+		t.Fatalf("test: %v %v", tr, err)
+	}
+	if auth := <-ch; auth != "Bearer s3cr3t-token" {
+		t.Fatalf("secret not kept: %q", auth)
+	}
+	if _, err := nc.PutRule(ctx, connect.NewRequest(&apiv1.PutRuleRequest{Rule: &apiv1.Rule{Id: "bans", Name: "Bans", Type: "ip_ban", Enabled: true,
+		Destinations: []string{"hook"}}})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := nc.PutRule(ctx, connect.NewRequest(&apiv1.PutRuleRequest{Rule: &apiv1.Rule{Id: "x", Name: "X", Type: "telepathy"}})); code(err) != connect.CodeInvalidArgument {
+		t.Fatalf("bad rule: %v", err)
+	}
+	vn := apiv1connect.NewNotificationServiceClient(viewer.http, e.srv.URL+"/api")
+	if _, err := vn.ListDestinations(ctx, connect.NewRequest(&apiv1.ListDestinationsRequest{})); code(err) != connect.CodePermissionDenied {
+		t.Fatalf("viewer destinations: %v", err)
+	}
+	if _, err := e.server.cfg.DB.Exec(ctx, `INSERT INTO openpicket.notifications (rule_id, rule_name, severity, title, body) VALUES ('bans','Bans','warning','Ban x','b')`); err != nil {
+		t.Fatal(err)
+	}
+	ln, err := vn.ListNotifications(ctx, connect.NewRequest(&apiv1.ListNotificationsRequest{}))
+	if err != nil || ln.Msg.Unread != 1 || ln.Msg.Notifications[0].Read {
+		t.Fatalf("list: %v %v", ln, err)
+	}
+	if _, err := vn.MarkNotificationsRead(ctx, connect.NewRequest(&apiv1.MarkNotificationsReadRequest{All: true})); err != nil {
+		t.Fatal(err)
+	}
+	ln, _ = vn.ListNotifications(ctx, connect.NewRequest(&apiv1.ListNotificationsRequest{}))
+	if ln.Msg.Unread != 0 || !ln.Msg.Notifications[0].Read {
+		t.Fatalf("after read: %v", ln.Msg)
+	}
+	// Another user still has it unread.
+	other, _ := apiv1connect.NewNotificationServiceClient(admin.http, e.srv.URL+"/api").ListNotifications(ctx, connect.NewRequest(&apiv1.ListNotificationsRequest{}))
+	if other.Msg.Unread != 1 {
+		t.Fatalf("other user: %v", other.Msg)
+	}
+	audit, _ := admin.system.ListAudit(ctx, connect.NewRequest(&apiv1.ListAuditRequest{ActionPrefix: "NotificationService."}))
+	for _, a := range audit.Msg.Entries {
+		if strings.Contains(a.Detail, "s3cr3t") {
+			t.Fatalf("secret in audit: %s", a.Detail)
+		}
+	}
+	if len(audit.Msg.Entries) < 3 {
+		t.Fatalf("audit: %v", audit.Msg.Entries)
+	}
+}
+
+func httptestCapture(t *testing.T) (string, chan string) {
+	ch := make(chan string, 4)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { ch <- r.Header.Get("Authorization") }))
+	t.Cleanup(srv.Close)
+	return srv.URL, ch
+}
+
+// Every procedure of every API service must be in the access table: a
+// missing one is refused at runtime.
+func TestEveryProcedureHasAnEntry(t *testing.T) {
+	n := 0
+	protoregistry.GlobalFiles.RangeFilesByPackage("openpicket.api.v1", func(fd protoreflect.FileDescriptor) bool {
+		for i := 0; i < fd.Services().Len(); i++ {
+			svc := fd.Services().Get(i)
+			for j := 0; j < svc.Methods().Len(); j++ {
+				p := "/" + string(svc.FullName()) + "/" + string(svc.Methods().Get(j).Name())
+				n++
+				if _, ok := procedures[p]; !ok {
+					t.Errorf("%s has no access entry", p)
+				}
+			}
+		}
+		return true
+	})
+	if n < 50 {
+		t.Fatalf("only %d procedures found", n)
 	}
 }
