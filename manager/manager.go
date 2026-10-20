@@ -26,6 +26,8 @@ import (
 	"github.com/jc-lab/suricontroller/pkg/wire"
 
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
+	"github.com/openpicket/openpicket/manager/alerts"
+	"github.com/openpicket/openpicket/manager/api"
 	"github.com/openpicket/openpicket/manager/db"
 	"github.com/openpicket/openpicket/manager/gateway"
 	"github.com/openpicket/openpicket/manager/geo"
@@ -56,6 +58,15 @@ type Options struct {
 	// LAPI is the primary CrowdSec Local API (decision relay). An empty URL
 	// disables decision distribution.
 	LAPI lapi.Config
+	// LAPIName names the primary LAPI in the UI (default "default").
+	LAPIName string
+	// ExtraLAPIs are more LAPI instances shown in the UI (alerts and
+	// decisions); only the primary feeds the edge.
+	ExtraLAPIs []NamedLAPI
+	// AlertRetention of the alert copy (default 30d).
+	AlertRetention time.Duration
+	// AlertPollInterval overrides the alert poll interval (tests).
+	AlertPollInterval time.Duration
 	// EdgeRules select and orient the decisions sent to nodes; zero value
 	// uses relay.DefaultRules.
 	EdgeRules *relay.Rules
@@ -71,6 +82,12 @@ type Options struct {
 	Logger            *slog.Logger
 	// Registry for metrics; nil creates one (served by MetricsHandler).
 	Registry *prometheus.Registry
+}
+
+// NamedLAPI is an additional LAPI instance.
+type NamedLAPI struct {
+	Name   string
+	Config lapi.Config
 }
 
 // Manager is a running openpicket-manager replica.
@@ -90,6 +107,8 @@ type Manager struct {
 	dist       *relay.Distributor
 	geo        *geo.Store
 	policies   *policy.Service
+	alerts     *alerts.Syncer
+	lapis      []api.LAPI
 
 	runOnce sync.Once
 }
@@ -180,6 +199,13 @@ func New(opts Options) (*Manager, error) {
 	} else {
 		m.log.Warn("no LAPI configured: decisions are not distributed to nodes")
 	}
+	if err := m.setupAlerts(); err != nil {
+		return nil, err
+	}
+	if m.alerts != nil {
+		// Changes made through another replica's API.
+		m.listener.Handle(db.ChannelAlerts, m.alerts.Poke)
+	}
 	m.listener.OnResync(func() { m.nodes.Resync(context.Background()) })
 	m.settings.OnChange = func(key string) {
 		if key == settings.KeyLogPolicy {
@@ -187,6 +213,47 @@ func New(opts Options) (*Manager, error) {
 		}
 	}
 	return m, nil
+}
+
+// setupAlerts creates the watcher clients and the alert syncer for every
+// LAPI with watcher credentials.
+func (m *Manager) setupAlerts() error {
+	all := []NamedLAPI{}
+	if m.opts.LAPI.URL != "" {
+		name := m.opts.LAPIName
+		if name == "" {
+			name = "default"
+		}
+		all = append(all, NamedLAPI{Name: name, Config: m.opts.LAPI})
+	}
+	all = append(all, m.opts.ExtraLAPIs...)
+	var instances []alerts.Instance
+	seen := map[string]bool{}
+	for _, l := range all {
+		if l.Config.Login == "" {
+			m.log.Warn("LAPI without watcher credentials: its alerts are not shown", "instance", l.Name)
+			continue
+		}
+		if seen[l.Name] {
+			return fmt.Errorf("manager: duplicate LAPI name %q", l.Name)
+		}
+		seen[l.Name] = true
+		c, err := lapi.New(l.Config)
+		if err != nil {
+			return err
+		}
+		w, err := c.Watcher()
+		if err != nil {
+			return err
+		}
+		instances = append(instances, alerts.Instance{Name: l.Name, URL: c.URL(), Watcher: w})
+		m.lapis = append(m.lapis, api.LAPI{Name: l.Name, Watcher: w})
+	}
+	if len(instances) > 0 {
+		m.alerts = alerts.NewSyncer(alerts.Config{DB: m.opts.DB, Instances: instances, Retention: m.opts.AlertRetention,
+			PollInterval: m.opts.AlertPollInterval, Logger: m.log, Registerer: m.reg})
+	}
+	return nil
 }
 
 // HostPublicKey returns the line agents pin as openpicket.host_key.
@@ -229,6 +296,11 @@ func (m *Manager) Run(ctx context.Context) error {
 			}
 		},
 		func(ctx context.Context) { m.presence.run(ctx, 30*time.Second) },
+		func(ctx context.Context) {
+			if m.alerts != nil {
+				db.RunLeader(ctx, m.opts.DB, "alerts", m.opts.ReplicaID, m.log, func(ctx context.Context, l *db.Leadership) { m.alerts.Run(ctx, l) })
+			}
+		},
 	} {
 		wg.Add(1)
 		go func() {

@@ -24,6 +24,7 @@ import (
 
 	apiv1 "github.com/openpicket/openpicket/gen/openpicket/api/v1"
 	"github.com/openpicket/openpicket/gen/openpicket/api/v1/apiv1connect"
+	"github.com/openpicket/openpicket/manager/alerts"
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/geo"
 	"github.com/openpicket/openpicket/manager/policy"
@@ -54,6 +55,13 @@ type Config struct {
 	Suricontroller *url.URL
 	// PrincipalKey signs the principal tokens of proxied requests.
 	PrincipalKey ed25519.PrivateKey
+	// Alerts reads the alert copy; nil without LAPI.
+	Alerts     *alerts.Querier
+	AlertStore *alerts.Store
+	// LAPIs change alerts and decisions.
+	LAPIs []LAPI
+	// Poke asks the alert syncer to sync an instance now.
+	Poke func(instance string)
 	// Status reports the health of the manager's components.
 	Status func(ctx context.Context) []*apiv1.ComponentStatus
 	Logger *slog.Logger
@@ -163,9 +171,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(apiv1connect.NewPolicyServiceHandler(&policyService{s}, opts...))
 	mux.Handle(apiv1connect.NewGeoServiceHandler(&geoService{s}, opts...))
 	mux.Handle(apiv1connect.NewSystemServiceHandler(&systemService{s}, opts...))
-	mux.Handle(apiv1connect.NewAlertServiceHandler(apiv1connect.UnimplementedAlertServiceHandler{}, opts...))
-	mux.Handle(apiv1connect.NewDecisionServiceHandler(apiv1connect.UnimplementedDecisionServiceHandler{}, opts...))
-	mux.Handle(apiv1connect.NewDashboardServiceHandler(apiv1connect.UnimplementedDashboardServiceHandler{}, opts...))
+	mux.Handle(apiv1connect.NewAlertServiceHandler(&alertService{s}, opts...))
+	mux.Handle(apiv1connect.NewDecisionServiceHandler(&decisionService{s}, opts...))
+	mux.Handle(apiv1connect.NewDashboardServiceHandler(&dashboardService{s}, opts...))
 	mux.HandleFunc("POST "+geoUploadPath, s.uploadGeo)
 	return s.middleware(mux)
 }

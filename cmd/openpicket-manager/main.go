@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -47,6 +48,9 @@ type config struct {
 	Loki              loki.Config
 	CrowdSec          crowdsec.Config
 	LAPI              lapi.Config
+	LAPIName          string
+	LAPIExtra         string
+	AlertRetention    time.Duration
 	Rules             relay.Rules
 
 	// UI and API
@@ -87,6 +91,9 @@ func loadConfig() (*config, error) {
 	e.String("LAPI_LOGIN", &c.LAPI.Login)
 	e.Secret("LAPI_PASSWORD", &c.LAPI.Password)
 	e.String("LAPI_CA_FILE", &c.LAPI.CAFile)
+	e.String("LAPI_NAME", &c.LAPIName)
+	e.Secret("LAPI_EXTRA", &c.LAPIExtra)
+	e.Duration("ALERT_RETENTION", &c.AlertRetention)
 	e.List("EDGE_TYPES", &c.Rules.Types)
 	e.List("EDGE_SCOPES", &c.Rules.Scopes)
 	e.List("EDGE_EXCLUDE_ORIGINS", &c.Rules.ExcludeOrigins)
@@ -219,6 +226,34 @@ func pubkey(principal bool) error {
 	return nil
 }
 
+// parseExtraLAPIs parses OPENPICKET_LAPI_EXTRA:
+// [{"name":"dc2","url":"http://...","login":"...","password":"...","ca_file":"..."}]
+func parseExtraLAPIs(raw string) ([]manager.NamedLAPI, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+	var in []struct {
+		Name     string `json:"name"`
+		URL      string `json:"url"`
+		Login    string `json:"login"`
+		Password string `json:"password"`
+		CAFile   string `json:"ca_file"`
+	}
+	dec := json.NewDecoder(strings.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&in); err != nil {
+		return nil, fmt.Errorf("OPENPICKET_LAPI_EXTRA: %w", err)
+	}
+	var out []manager.NamedLAPI
+	for _, l := range in {
+		if l.Name == "" || l.URL == "" || l.Login == "" {
+			return nil, errors.New("OPENPICKET_LAPI_EXTRA: name, url and login are required")
+		}
+		out = append(out, manager.NamedLAPI{Name: l.Name, Config: lapi.Config{URL: l.URL, Login: l.Login, Password: l.Password, CAFile: l.CAFile}})
+	}
+	return out, nil
+}
+
 // buildAuth creates the provider chain from OPENPICKET_AUTH_CONFIG and the
 // OPENPICKET_ADMIN_* shortcut for the static login.
 func buildAuth(cfg *config, sessionKey []byte) (*auth.Chain, error) {
@@ -264,8 +299,13 @@ func serve() error {
 	if err := schema.Migrate(ctx, pool); err != nil {
 		return err
 	}
+	extra, err := parseExtraLAPIs(cfg.LAPIExtra)
+	if err != nil {
+		return err
+	}
 	m, err := manager.New(manager.Options{
 		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
+		LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
 		TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
 	})
 	if err != nil {

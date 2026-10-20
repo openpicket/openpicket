@@ -8,7 +8,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	apiv1 "github.com/openpicket/openpicket/gen/openpicket/api/v1"
+	"github.com/openpicket/openpicket/manager/alerts"
 	"github.com/openpicket/openpicket/manager/api"
+	"github.com/openpicket/openpicket/manager/db"
 	"github.com/openpicket/openpicket/pkg/version"
 )
 
@@ -23,10 +25,24 @@ func (m *Manager) API(cfg api.Config) (*api.Server, error) {
 	cfg.Replica = m.opts.ReplicaID
 	cfg.Version = version.Version
 	cfg.Status = m.componentStatus
+	if m.alerts != nil {
+		cfg.Alerts = &alerts.Querier{DB: m.opts.DB}
+		cfg.AlertStore = &alerts.Store{DB: m.opts.DB}
+		cfg.LAPIs = m.lapis
+		cfg.Poke = m.pokeAlerts
+	}
 	if cfg.Logger == nil {
 		cfg.Logger = m.log
 	}
 	return api.New(cfg)
+}
+
+// pokeAlerts asks the alerts leader (this or another replica) to sync now.
+func (m *Manager) pokeAlerts(instance string) {
+	m.alerts.Poke(instance)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_, _ = m.opts.DB.Exec(ctx, `SELECT pg_notify($1, $2)`, db.ChannelAlerts, instance)
 }
 
 // componentStatus reports the health of what this replica depends on.
@@ -56,6 +72,27 @@ func (m *Manager) componentStatus(ctx context.Context) []*apiv1.ComponentStatus 
 		out = append(out, c("crowdsec-agents", "degraded", fmt.Sprintf("%d of %d endpoints healthy", up, total)))
 	} else {
 		out = append(out, c("crowdsec-agents", "ok", fmt.Sprintf("%d endpoints", total)))
+	}
+	rows, err := m.opts.DB.Query(ctx, `SELECT instance, last_poll_at, last_error FROM openpicket.alert_sync ORDER BY instance`)
+	if err == nil {
+		for rows.Next() {
+			var (
+				name, lastErr string
+				poll          *time.Time
+			)
+			if rows.Scan(&name, &poll, &lastErr) != nil {
+				continue
+			}
+			switch {
+			case lastErr != "":
+				out = append(out, c("lapi-alerts/"+name, "degraded", lastErr))
+			case poll == nil || time.Since(*poll) > 5*time.Minute:
+				out = append(out, c("lapi-alerts/"+name, "degraded", "alerts not synced recently"))
+			default:
+				out = append(out, c("lapi-alerts/"+name, "ok", "synced "+poll.UTC().Format(time.RFC3339)))
+			}
+		}
+		rows.Close()
 	}
 	if m.relay == nil {
 		out = append(out, c("lapi", "disabled", "no LAPI configured: decisions are not distributed"))

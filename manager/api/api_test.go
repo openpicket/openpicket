@@ -18,16 +18,20 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/jc-lab/suricontroller/pkg/sshkey"
 
 	apiv1 "github.com/openpicket/openpicket/gen/openpicket/api/v1"
 	"github.com/openpicket/openpicket/gen/openpicket/api/v1/apiv1connect"
+	"github.com/openpicket/openpicket/internal/lapitest"
 	"github.com/openpicket/openpicket/internal/pgtest"
 	"github.com/openpicket/openpicket/internal/schema"
+	"github.com/openpicket/openpicket/manager/alerts"
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/geo"
+	"github.com/openpicket/openpicket/manager/lapi"
 	"github.com/openpicket/openpicket/manager/policy"
 	"github.com/openpicket/openpicket/manager/settings"
 	"github.com/openpicket/openpicket/pkg/geoip/geoiptest"
@@ -36,6 +40,9 @@ import (
 
 type env struct {
 	t      *testing.T
+	lapi   *lapitest.LAPI
+	syncer *alerts.Syncer
+	pokes  chan string
 	srv    *httptest.Server
 	server *Server
 	suri   chan *http.Request
@@ -69,8 +76,16 @@ func setup(t *testing.T, readOnly bool) *env {
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 	e.pub = pub
 	g := geo.New(pool, log)
+	e.lapi = lapitest.New()
+	t.Cleanup(e.lapi.Close)
+	lc, _ := lapi.New(lapi.Config{URL: e.lapi.URL, Login: e.lapi.Login, Password: e.lapi.Password})
+	w, _ := lc.Watcher()
+	e.syncer = alerts.NewSyncer(alerts.Config{DB: pool, Instances: []alerts.Instance{{Name: "default", URL: e.lapi.URL, Watcher: w}}, Logger: log})
+	e.pokes = make(chan string, 16)
 	e.server, err = New(Config{DB: pool, Auth: chain, ReadOnly: readOnly, Geo: g, Policies: policy.New(pool, g, log), Settings: settings.New(pool),
-		HostKey: "ssh-ed25519 AAAA host", Replica: "r1", Version: "test", Suricontroller: su, PrincipalKey: priv, Logger: log})
+		HostKey: "ssh-ed25519 AAAA host", Replica: "r1", Version: "test", Suricontroller: su, PrincipalKey: priv, Logger: log,
+		Alerts: &alerts.Querier{DB: pool}, AlertStore: &alerts.Store{DB: pool}, LAPIs: []LAPI{{Name: "default", Watcher: w}},
+		Poke: func(i string) { e.pokes <- i }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,6 +100,9 @@ func setup(t *testing.T, readOnly bool) *env {
 // every request.
 type clients struct {
 	http   *http.Client
+	alerts apiv1connect.AlertServiceClient
+	dec    apiv1connect.DecisionServiceClient
+	dash   apiv1connect.DashboardServiceClient
 	auth   apiv1connect.AuthServiceClient
 	nodes  apiv1connect.NodeServiceClient
 	pol    apiv1connect.PolicyServiceClient
@@ -113,6 +131,8 @@ func (e *env) clients(h http.Header) *clients {
 	hc := &http.Client{Jar: jar, Transport: headerRT{h: h, base: http.DefaultTransport}}
 	base := e.srv.URL + "/api"
 	return &clients{http: hc,
+		alerts: apiv1connect.NewAlertServiceClient(hc, base), dec: apiv1connect.NewDecisionServiceClient(hc, base),
+		dash: apiv1connect.NewDashboardServiceClient(hc, base),
 		auth: apiv1connect.NewAuthServiceClient(hc, base), nodes: apiv1connect.NewNodeServiceClient(hc, base),
 		pol: apiv1connect.NewPolicyServiceClient(hc, base), system: apiv1connect.NewSystemServiceClient(hc, base),
 		geo: apiv1connect.NewGeoServiceClient(hc, base)}
@@ -438,5 +458,85 @@ func TestLimiter(t *testing.T) {
 	}
 	if !l.allow("a", now.Add(61*time.Second)) {
 		t.Fatal("window")
+	}
+}
+
+type fence struct{ s *Server }
+
+func (f fence) Fenced(ctx context.Context, fn func(tx pgx.Tx) error) error {
+	return pgx.BeginFunc(ctx, f.s.cfg.DB, fn)
+}
+
+func TestDecisions(t *testing.T) {
+	e := setup(t, false)
+	ctx := context.Background()
+	sync := func() {
+		t.Helper()
+		if err := e.syncer.SyncOnce(ctx, fence{e.server}, true, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	e.lapi.Add("crowdsecurity/ssh-bf", "198.51.100.4", "CN", "edge-01", 4*time.Hour, time.Now())
+	sync()
+	op := e.clients(viewerHeaders("olga", "secops"))
+	viewer := e.clients(viewerHeaders("vera", "staff"))
+	if _, err := viewer.dec.AddDecision(ctx, connect.NewRequest(&apiv1.AddDecisionRequest{Value: "198.51.100.9"})); code(err) != connect.CodePermissionDenied {
+		t.Fatalf("viewer add: %v", err)
+	}
+	for _, bad := range []*apiv1.AddDecisionRequest{
+		{Value: "not-an-ip"}, {Scope: "Range", Value: "10.0.0.0/4"}, {Value: "198.51.100.9", Duration: "forever"}, {Value: "198.51.100.9", Type: "nuke"},
+	} {
+		if _, err := op.dec.AddDecision(ctx, connect.NewRequest(bad)); code(err) != connect.CodeInvalidArgument {
+			t.Errorf("%v: %v", bad, err)
+		}
+	}
+	if _, err := op.dec.AddDecision(ctx, connect.NewRequest(&apiv1.AddDecisionRequest{Value: "198.51.100.9", Duration: "30d", Reason: "phishing",
+		Scenario: "openpicket/manual-both"})); err != nil {
+		t.Fatal(err)
+	}
+	if got := <-e.pokes; got != "default" {
+		t.Fatalf("poke %q", got)
+	}
+	created := e.lapi.Alerts()[1]
+	d := created.Decisions[0]
+	if *d.Origin != "cscli" || *d.Scenario != "openpicket/manual-both" || *d.Value != "198.51.100.9" || !strings.Contains(*created.Message, "olga") {
+		t.Fatalf("pushed alert: %+v %+v", created, d)
+	}
+	if until, _ := time.Parse(time.RFC3339, d.Until); time.Until(until) < 29*24*time.Hour {
+		t.Fatalf("until %v", d.Until)
+	}
+	sync()
+	list, err := viewer.dec.SearchDecisions(ctx, connect.NewRequest(&apiv1.SearchDecisionsRequest{}))
+	if err != nil || list.Msg.Total != 2 || list.Msg.Decisions[0].Value != "198.51.100.9" {
+		t.Fatalf("decisions: %v %v", list, err)
+	}
+	if _, err := viewer.dec.SearchDecisions(ctx, connect.NewRequest(&apiv1.SearchDecisionsRequest{Query: "bad:"})); code(err) != connect.CodeInvalidArgument {
+		t.Fatalf("bad query: %v", err)
+	}
+	del, err := op.dec.DeleteDecisions(ctx, connect.NewRequest(&apiv1.DeleteDecisionsRequest{Instance: "default", Ids: []int64{list.Msg.Decisions[0].Id}}))
+	if err != nil || del.Msg.Deleted != 1 {
+		t.Fatalf("delete: %v %v", del, err)
+	}
+	// The copy follows at once, before the next sync.
+	list, _ = viewer.dec.SearchDecisions(ctx, connect.NewRequest(&apiv1.SearchDecisionsRequest{}))
+	if list.Msg.Total != 1 {
+		t.Fatalf("after delete: %v", list.Msg)
+	}
+	cl, err := op.dec.CleanupIP(ctx, connect.NewRequest(&apiv1.CleanupIPRequest{Ip: "198.51.100.4", DeleteAlerts: true}))
+	if err != nil || cl.Msg.DecisionsDeleted != 1 || cl.Msg.AlertsDeleted != 1 {
+		t.Fatalf("cleanup: %v %v", cl, err)
+	}
+	sync()
+	al, _ := viewer.alerts.SearchAlerts(ctx, connect.NewRequest(&apiv1.SearchAlertsRequest{}))
+	if al.Msg.Total != 1 || al.Msg.Alerts[0].Scenario != "openpicket/manual-both" {
+		t.Fatalf("alerts: %v", al.Msg)
+	}
+	sum, err := viewer.dash.GetSummary(ctx, connect.NewRequest(&apiv1.GetSummaryRequest{}))
+	if err != nil || sum.Msg.Alerts != 1 || sum.Msg.ActiveDecisions != 0 {
+		t.Fatalf("summary: %v %v", sum, err)
+	}
+	audit, _ := e.clients(viewerHeaders("olga", "secops")).system.ListAudit(ctx, connect.NewRequest(&apiv1.ListAuditRequest{ActionPrefix: "DecisionService."}))
+	if len(audit.Msg.Entries) != 3 || audit.Msg.Entries[2].Target != "198.51.100.9" || audit.Msg.Entries[0].Target != "198.51.100.4" {
+		t.Fatalf("audit: %v", audit.Msg.Entries)
 	}
 }

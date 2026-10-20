@@ -16,7 +16,13 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/openpicket/openpicket/pkg/version"
 )
+
+// userAgent must be "name/version": LAPI parses the version and refuses
+// a watcher login without one.
+var userAgent = "openpicket-manager/" + version.Version
 
 // Decision is a LAPI decision as returned by the stream.
 type Decision struct {
@@ -122,7 +128,7 @@ func (c *Client) Stream(ctx context.Context, startup bool) (*Stream, error) {
 		return nil, err
 	}
 	req.Header.Set("X-Api-Key", c.cfg.BouncerKey)
-	req.Header.Set("User-Agent", "openpicket-relay")
+	req.Header.Set("User-Agent", userAgent)
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err

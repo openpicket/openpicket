@@ -2,7 +2,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X github.com/openpicket/openpicket/pkg/version.Version=$(VERSION)
 GO      ?= go
 
-.PHONY: all build manager agent suricontroller proto test test-pg test-netns test-crowdsec image-crowdsec lint web suricata-web clean
+.PHONY: all build manager agent suricontroller proto test test-pg test-netns test-crowdsec test-lapi image-crowdsec lint web suricata-web clean
 
 all: build
 
@@ -38,6 +38,10 @@ image-crowdsec:
 # The CrowdSec image detects and decides offline (docker --network none).
 test-crowdsec: image-crowdsec
 	./scripts/crowdsec-image-test.sh openpicket-crowdsec:dev
+
+# Watcher, alert copy and bouncer stream against a real LAPI.
+test-lapi: image-crowdsec
+	./scripts/lapi-test.sh
 
 lint:
 	golangci-lint run ./...

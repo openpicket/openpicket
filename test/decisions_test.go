@@ -185,14 +185,21 @@ func TestDecisionsReachTheEdge(t *testing.T) {
 	a.stop()
 	fl.add(5, "198.51.100.40", "manual/web-ui", time.Hour)
 	waitUntil("decision after failover", func(s *dataplanev1.EnforcerStatus) bool { return s.BanInV4 == 2 })
+	// The node's acknowledgement is recorded asynchronously.
+	var acked int64
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		err := pool.QueryRow(ctx, `SELECT version FROM openpicket.node_decision_state WHERE node_id = 'edge-01'`).Scan(&acked)
+		if err == nil && uint64(acked) == enf.Version() {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("acked version %d vs node %d (%v)", acked, enf.Version(), err)
+		}
+	}
 	b.stop()
 	before := enf.Status()
 	time.Sleep(500 * time.Millisecond)
 	if after := enf.Status(); after.BanInV4 != before.BanInV4 || after.BanBothV4 != before.BanBothV4 {
 		t.Fatalf("blocks changed while the manager is down: %+v -> %+v", before, after)
-	}
-	var acked int64
-	if err := pool.QueryRow(ctx, `SELECT version FROM openpicket.node_decision_state WHERE node_id = 'edge-01'`).Scan(&acked); err != nil || uint64(acked) != enf.Version() {
-		t.Fatalf("acked version %d vs node %d (%v)", acked, enf.Version(), err)
 	}
 }
