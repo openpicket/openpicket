@@ -32,6 +32,7 @@ import (
 	"github.com/openpicket/openpicket/agent/localnets"
 	"github.com/openpicket/openpicket/agent/nflog"
 	"github.com/openpicket/openpicket/agent/nft"
+	"github.com/openpicket/openpicket/agent/policy"
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/pkg/direction"
 	"github.com/openpicket/openpicket/pkg/version"
@@ -64,6 +65,7 @@ type Agent struct {
 	miss    *nft.DNATMiss
 	allow   *allowlist
 	enf     *enforcer.Enforcer
+	pol     *policy.Sink
 
 	nets      atomic.Pointer[direction.Nets]
 	localNets atomic.Pointer[dataplanev1.LocalNets]
@@ -145,9 +147,18 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 			MaxElements: e.MaxElements, StateFile: filepath.Join(cfg.Suri.StateDir, "openpicket", "decisions.json"), Logger: log,
 		})
 	}
+	if p := cfg.OpenPicket.Policy; p.Enabled {
+		a.pol = policy.New(policy.Config{
+			Host: a.host, Table: nft.PolicyConfig{WAN: cfg.OpenPicket.WANInterfaces}, Allow: a.allow.Prefixes,
+			MaxElements: p.MaxElements, StateFile: filepath.Join(cfg.Suri.StateDir, "openpicket", "policy.pb"), Logger: log,
+		})
+	}
 	handlers := dataplane.Handlers{Hello: a.hello, Status: a.status, LogPolicy: a.shipper.SetPolicy, Shipper: a.shipper}
 	if a.enf != nil {
 		handlers.Decisions = a.enf
+	}
+	if a.pol != nil {
+		handlers.Policy = a.pol
 	}
 	a.client = dataplane.NewClient(dataplane.DialConfig{
 		URL: cfg.OpenPicket.URL, Headers: headers, HTTPClient: client, Key: key, ServerKey: hostKey,
@@ -209,6 +220,11 @@ func (a *Agent) Run(ctx context.Context) error {
 			a.log.Error("restore ban table", "err", err)
 		}
 	}
+	if a.pol != nil {
+		if err := a.pol.Restore(ctx); err != nil {
+			a.log.Error("restore port policies", "err", err)
+		}
+	}
 	var wg sync.WaitGroup
 	workers := []func(context.Context){
 		func(ctx context.Context) { _ = a.suri.Run(ctx) },
@@ -221,8 +237,14 @@ func (a *Agent) Run(ctx context.Context) error {
 	if a.miss != nil {
 		workers = append(workers, a.keepDNATMiss)
 	}
+	if a.enf != nil || a.pol != nil {
+		workers = append(workers, a.allow.run)
+	}
 	if a.enf != nil {
-		workers = append(workers, a.enf.Run, a.allow.run)
+		workers = append(workers, a.enf.Run)
+	}
+	if a.pol != nil {
+		workers = append(workers, a.pol.Run)
 	}
 	for _, fn := range workers {
 		wg.Add(1)
@@ -291,6 +313,9 @@ func (a *Agent) capabilities() []string {
 	if a.enf != nil {
 		caps = append(caps, "enforcer")
 	}
+	if a.pol != nil {
+		caps = append(caps, "policy")
+	}
 	return caps
 }
 
@@ -306,6 +331,9 @@ func (a *Agent) status(ctx context.Context) *dataplanev1.Status {
 	}
 	if a.enf != nil {
 		st.Enforcer = a.enf.Status()
+	}
+	if a.pol != nil {
+		st.Policy = a.pol.Status(ctx)
 	}
 	return st
 }

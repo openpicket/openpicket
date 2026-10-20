@@ -8,10 +8,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/jc-lab/suricontroller/agent/platform"
+
+	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 )
 
 // nftCheck validates a script with `nft -c` on a real kernel
@@ -102,5 +105,75 @@ func TestNetnsBanElements(t *testing.T) {
 	}
 	if err := h.Apply(ctx, AllowScript([]netip.Prefix{netip.MustParsePrefix("10.0.0.0/8"), netip.MustParsePrefix("2001:db8:1::/48")})); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func examplePolicyBundle() *dataplanev1.PolicyBundle {
+	return &dataplanev1.PolicyBundle{Version: 3,
+		Sets: []*dataplanev1.NamedSet{
+			{Id: "https_block_cn_r0", Cidrs: []string{"1.0.0.0/23", "2001:db8:cc::/48"}},
+			{Id: "smtp_submission_r0", Cidrs: []string{"2.0.0.0/16"}},
+			{Id: "smtp_submission_r1", Cidrs: []string{"8.8.4.0/24", "8.8.8.0/24", "142.250.0.0/15"}},
+		},
+		Policies: []*dataplanev1.PortPolicy{
+			{Id: "https_block_cn", Mode: dataplanev1.PolicyMode_POLICY_MODE_ENFORCE, Proto: dataplanev1.L4Proto_L4_PROTO_TCP,
+				Ports: []*dataplanev1.PortRange{{From: 443, To: 443}}, DefaultAction: dataplanev1.PolicyAction_POLICY_ACTION_ACCEPT,
+				Rules: []*dataplanev1.PolicyRule{{SetId: "https_block_cn_r0", Action: dataplanev1.PolicyAction_POLICY_ACTION_DROP}}},
+			{Id: "smtp_submission", Mode: dataplanev1.PolicyMode_POLICY_MODE_ENFORCE, Proto: dataplanev1.L4Proto_L4_PROTO_TCP, LogDrops: true,
+				Ports: []*dataplanev1.PortRange{{From: 587, To: 587}, {From: 465, To: 465}}, DefaultAction: dataplanev1.PolicyAction_POLICY_ACTION_REJECT,
+				Rules: []*dataplanev1.PolicyRule{{SetId: "smtp_submission_r0", Action: dataplanev1.PolicyAction_POLICY_ACTION_ACCEPT},
+					{SetId: "smtp_submission_r1", Action: dataplanev1.PolicyAction_POLICY_ACTION_ACCEPT}}},
+			{Id: "dns_observe", Mode: dataplanev1.PolicyMode_POLICY_MODE_OBSERVE, Proto: dataplanev1.L4Proto_L4_PROTO_UDP,
+				Ports: []*dataplanev1.PortRange{{From: 5300, To: 5399}}, DefaultAction: dataplanev1.PolicyAction_POLICY_ACTION_DROP},
+		}}
+}
+
+func TestKernelAcceptsPolicyTable(t *testing.T) {
+	allow := []netip.Prefix{netip.MustParsePrefix("192.168.0.0/16")}
+	s := PolicyConfig{WAN: []string{"wan"}}.PolicyScript(examplePolicyBundle(), allow)
+	for _, want := range []string{
+		"tcp dport { 443 } jump p_https_cn_block",
+		"tcp dport { 587, 465 } jump p_smtp_submission",
+		"udp dport { 5300-5399 } jump p_dns_observe",
+		`ip saddr @s_https_block_cn_r0_4 counter drop comment "https_block_cn/r0"`,
+		`ip6 saddr @s_https_block_cn_r0_6 counter drop`,
+		`counter reject with tcp reset comment "smtp_submission/default"`,
+		`log group 101 prefix "POLICY-DROP: smtp_submission/default "`,
+		`log group 101 prefix "POLICY-DROP: dns_observe/default observe "`,
+		`counter accept comment "dns_observe/default"`,
+	} {
+		if want == "tcp dport { 443 } jump p_https_cn_block" {
+			want = "tcp dport { 443 } jump p_https_block_cn"
+		}
+		if !strings.Contains(s, want) {
+			t.Fatalf("script lacks %q:\n%s", want, s)
+		}
+	}
+	nftCheck(t, s)
+	if got := (PolicyConfig{WAN: []string{"wan"}}).PolicyScript(&dataplanev1.PolicyBundle{}, nil); !strings.Contains(got, "delete table inet openpicket_policy") {
+		t.Fatalf("empty bundle: %q", got)
+	}
+}
+
+func TestNetnsPolicyCounters(t *testing.T) {
+	if os.Getenv("OPENPICKET_TEST_NETNS") != "1" {
+		t.Skip("OPENPICKET_TEST_NETNS not set")
+	}
+	h := &Host{Exec: platform.LocalExec{}}
+	ctx := context.Background()
+	if err := h.Apply(ctx, PolicyConfig{WAN: []string{"wan"}}.PolicyScript(examplePolicyBundle(), nil)); err != nil {
+		t.Fatal(err)
+	}
+	if !h.PolicyTablePresent(ctx) {
+		t.Fatal("policy table missing")
+	}
+	c, err := h.PolicyCounters(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range []string{"https_block_cn/r0", "https_block_cn/default", "smtp_submission/r1", "dns_observe/default"} {
+		if _, ok := c[k]; !ok {
+			t.Fatalf("counter %s missing in %v", k, c)
+		}
 	}
 }

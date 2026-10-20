@@ -28,8 +28,10 @@ import (
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/manager/db"
 	"github.com/openpicket/openpicket/manager/gateway"
+	"github.com/openpicket/openpicket/manager/geo"
 	"github.com/openpicket/openpicket/manager/lapi"
 	"github.com/openpicket/openpicket/manager/pipeline"
+	"github.com/openpicket/openpicket/manager/policy"
 	"github.com/openpicket/openpicket/manager/registry"
 	"github.com/openpicket/openpicket/manager/relay"
 	"github.com/openpicket/openpicket/manager/settings"
@@ -86,6 +88,8 @@ type Manager struct {
 	cs         *crowdsec.Sink
 	relay      *relay.Relay
 	dist       *relay.Distributor
+	geo        *geo.Store
+	policies   *policy.Service
 
 	runOnce sync.Once
 }
@@ -137,13 +141,25 @@ func New(opts Options) (*Manager, error) {
 		return nil, err
 	}
 	ack = append(ack, m.cs)
+	m.geo = geo.New(opts.DB, opts.Logger)
+	m.policies = policy.New(opts.DB, m.geo, opts.Logger)
 	m.watermarks = pipeline.NewWatermarks(opts.DB, opts.Logger)
 	m.pipe = pipeline.New(pipeline.Config{
-		AckSinks: ack, Watermarks: m.watermarks, Logger: opts.Logger, Registerer: m.reg, OpenAfter: opts.PipelineOpenAfter,
+		AckSinks: ack, Watermarks: m.watermarks, Geo: m.geo, Logger: opts.Logger, Registerer: m.reg, OpenAfter: opts.PipelineOpenAfter,
 	})
 
 	m.nodes.OnRevoked = func(id string) { m.gw.Disconnect(id, "") }
-	m.listener.Handle(db.ChannelNodes, func(id string) { m.nodes.Changed(context.Background(), id) })
+	m.listener.Handle(db.ChannelNodes, func(id string) {
+		m.nodes.Changed(context.Background(), id)
+		// Bundles depend on node labels.
+		m.policies.Notified("")
+	})
+	m.listener.Handle(db.ChannelGeo, m.geo.Notified)
+	m.listener.Handle(db.ChannelPolicy, m.policies.Notified)
+	m.listener.OnResync(func() {
+		m.geo.Notified("")
+		m.policies.Notified("")
+	})
 	m.listener.Handle(db.ChannelSessions, m.presence.notified)
 	m.listener.Handle(db.ChannelSettings, m.settings.Notified)
 	m.dist = relay.NewDistributor(opts.DB, opts.Logger)
@@ -182,6 +198,12 @@ func (m *Manager) Gateway() *gateway.Gateway { return m.gw }
 // Settings returns the settings store.
 func (m *Manager) Settings() *settings.Store { return m.settings }
 
+// Geo returns the GeoIP store.
+func (m *Manager) Geo() *geo.Store { return m.geo }
+
+// Policies returns the port policy service.
+func (m *Manager) Policies() *policy.Service { return m.policies }
+
 // Pipeline returns the log pipeline.
 func (m *Manager) Pipeline() *pipeline.Pipeline { return m.pipe }
 
@@ -191,6 +213,9 @@ func (m *Manager) Run(ctx context.Context) error {
 	m.runOnce.Do(func() { started = true })
 	if !started {
 		return errors.New("manager: Run called twice")
+	}
+	if err := m.geo.Load(ctx); err != nil {
+		m.log.Warn("load geo databases", "err", err)
 	}
 	var wg sync.WaitGroup
 	for _, fn := range []func(context.Context){
@@ -289,6 +314,13 @@ func (h *handler) ServeStream(s *gateway.Session, t dataplanev1.StreamType, ms *
 		err = m.pipe.Serve(s.Context(), s.Node, ms)
 	case dataplanev1.StreamType_STREAM_TYPE_DECISIONS:
 		err = m.dist.Serve(s.Context(), s.NodeID, ms)
+	case dataplanev1.StreamType_STREAM_TYPE_POLICY:
+		err = m.policies.Serve(s.Context(), func() *registry.Node {
+			if cur := m.nodes.Node(s.NodeID); cur != nil {
+				return cur
+			}
+			return s.Node
+		}, ms)
 	default:
 		// Decisions and policies are served once their distributors exist;
 		// until then the stream stays open and idle.

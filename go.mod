@@ -10,6 +10,8 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/jc-lab/suricontroller v0.0.3-0.20261020062121-871258f31877
 	github.com/klauspost/compress v1.20.3
+	github.com/maxmind/mmdbwriter v1.2.0
+	github.com/oschwald/maxminddb-golang/v2 v2.1.1
 	github.com/prometheus/client_golang v1.23.2
 	go.yaml.in/yaml/v3 v3.0.5
 	google.golang.org/protobuf v1.36.12
@@ -52,6 +54,7 @@ require (
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
+	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
