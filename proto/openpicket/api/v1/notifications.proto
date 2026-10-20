@@ -69,7 +69,7 @@ message Rule {
   bool enabled = 3;
   // new_alert | new_decision | ip_ban | compromised_host |
   // alert_threshold | alert_spike | lapi_down | node_offline |
-  // policy_error | sink_down
+  // policy_error | sink_down | approval_pending
   string type = 4;
   // info | warning | critical
   string severity = 5;

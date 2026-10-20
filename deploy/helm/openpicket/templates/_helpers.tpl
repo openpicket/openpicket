@@ -107,3 +107,14 @@ postgres://{{ include "openpicket.dbUser" . }}@{{ include "openpicket.dbHost" . 
 {{- end -}}
 
 {{- define "openpicket.lapiURL" -}}http://{{ include "openpicket.fullname" . }}-crowdsec-lapi:8080{{- end -}}
+
+{{/* MISP */}}
+{{- define "openpicket.mispURL" -}}
+{{- if .Values.misp.external.url -}}{{ .Values.misp.external.url }}{{- else -}}http://{{ include "openpicket.fullname" . }}-misp{{- end -}}
+{{- end -}}
+{{- define "openpicket.mispKeySecret" -}}
+{{- if and .Values.misp.external.url .Values.misp.external.existingSecret -}}{{ .Values.misp.external.existingSecret }}{{- else -}}{{ include "openpicket.secret" . }}{{- end -}}
+{{- end -}}
+{{- define "openpicket.mispKeyKey" -}}
+{{- if and .Values.misp.external.url .Values.misp.external.existingSecret -}}{{ .Values.misp.external.apiKeyKey }}{{- else -}}misp-api-key{{- end -}}
+{{- end -}}

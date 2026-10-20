@@ -109,7 +109,11 @@ func TestLAPIWatcher(t *testing.T) {
 		time.Until(decs[0].Until.AsTime()) < 29*24*time.Hour {
 		t.Fatalf("manual decision: %v %v", decs, err)
 	}
-	// The bouncer stream (relay) sees both bans.
+	// MISP decisions (origin "misp", both-way scenario) are accepted.
+	if _, err := w.PushAlerts(ctx, []*lapi.Alert{lapi.DecisionAlert("Ip", "198.51.100.201", "ban", "12h0m0s", "openpicket/misp-ip-dst", "misp", "MISP test", time.Now())}); err != nil {
+		t.Fatalf("misp decision: %v", err)
+	}
+	// The bouncer stream (relay) sees the bans.
 	st, err := c.Stream(ctx, true)
 	if err != nil {
 		t.Fatal(err)
@@ -117,8 +121,11 @@ func TestLAPIWatcher(t *testing.T) {
 	var values []string
 	for _, d := range st.New {
 		values = append(values, d.Value)
+		if d.Value == "198.51.100.201" && (d.Origin != "misp" || d.Scenario != "openpicket/misp-ip-dst") {
+			t.Fatalf("misp decision in stream: %+v", d)
+		}
 	}
-	if !slices.Contains(values, "198.51.100.200") || !slices.Contains(values, "198.51.100.77") {
+	if !slices.Contains(values, "198.51.100.200") || !slices.Contains(values, "198.51.100.77") || !slices.Contains(values, "198.51.100.201") {
 		t.Fatalf("stream: %v", values)
 	}
 
@@ -130,6 +137,9 @@ func TestLAPIWatcher(t *testing.T) {
 	n, err = w.DeleteDecisions(ctx, url.Values{"ip": {"198.51.100.77"}})
 	if err != nil || n < 1 {
 		t.Fatalf("delete decisions by ip: %d %v", n, err)
+	}
+	if n, err := w.DeleteDecisions(ctx, url.Values{"ip": {"198.51.100.201"}}); err != nil || n != 1 {
+		t.Fatalf("delete misp decision: %d %v", n, err)
 	}
 	if err := syncer.SyncOnce(ctx, txFence{pool}, true, false); err != nil {
 		t.Fatal(err)

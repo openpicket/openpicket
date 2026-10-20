@@ -196,6 +196,64 @@ opensearch:
   replicas: 1
 
 # ---------------------------------------------------------------------------
+# MISP (optional): approval queue of indicators blocked at the edge.
+# ---------------------------------------------------------------------------
+misp:
+  enabled: false
+  # External MISP: set url and the API key (secret). Empty url deploys the
+  # built-in MISP (misp-core, MariaDB, Valkey).
+  external:
+    url: ""
+    apiKey: ""
+    existingSecret: ""
+    apiKeyKey: api-key
+    caSecret: ""
+    insecureSkipVerify: false
+  # Automatic proposals: sources with this many alerts in the window
+  # (0: only proposals from the UI).
+  proposeMinAlerts: 5
+  proposeWindow: 168h
+  defaultTTL: 30d
+  syncInterval: 5m
+  renew: 6h
+  builtin:
+    # Pinned by digest (MISP 2.5.50); override tag/digest to upgrade.
+    image:
+      repository: ghcr.io/misp/misp-docker/misp-core
+      tag: ""
+      digest: "sha256:37e236d9f39ffc61ee08e74ed35180990e533036a1ac106e8218532b79b21df4"
+    nginxImage:
+      repository: ghcr.io/misp/misp-docker/misp-nginx
+      tag: ""
+      digest: "sha256:9c823a0e73f55b5385dd78f5e3c5c34f6791a4b2fcc90213f9585cdb8175c967"
+    # Public URL of the MISP UI (its links and redirects).
+    baseURL: https://misp.example.com
+    adminEmail: admin@admin.test
+    org: OpenPicket
+    ingress:
+      enabled: false
+      host: misp.example.com
+      annotations: {}
+      tls: []
+    persistence:
+      size: 10Gi
+      storageClass: ""
+    resources:
+      requests: { cpu: 200m, memory: 1Gi }
+      limits: { memory: 4Gi }
+    mariadb:
+      image:
+        repository: mariadb
+        tag: "10.11"
+      persistence:
+        size: 10Gi
+        storageClass: ""
+    valkey:
+      image:
+        repository: valkey/valkey
+        tag: "7.2"
+
+# ---------------------------------------------------------------------------
 # Prometheus Operator and Grafana.
 # ---------------------------------------------------------------------------
 monitoring:

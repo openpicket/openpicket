@@ -234,7 +234,7 @@ export type Rule = Message<"openpicket.api.v1.Rule"> & {
   /**
    * new_alert | new_decision | ip_ban | compromised_host |
    * alert_threshold | alert_spike | lapi_down | node_offline |
-   * policy_error | sink_down
+   * policy_error | sink_down | approval_pending
    *
    * @generated from field: string type = 4;
    */

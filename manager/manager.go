@@ -33,6 +33,7 @@ import (
 	"github.com/openpicket/openpicket/manager/gateway"
 	"github.com/openpicket/openpicket/manager/geo"
 	"github.com/openpicket/openpicket/manager/lapi"
+	"github.com/openpicket/openpicket/manager/misp"
 	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/pipeline"
 	"github.com/openpicket/openpicket/manager/policy"
@@ -76,6 +77,8 @@ type Options struct {
 	// OpenSearch, when set, receives every record after the
 	// acknowledgement (best effort) and the LAPI alerts.
 	OpenSearch *opensearch.Config
+	// MISP enables the MISP source and approval queue.
+	MISP *MISPOptions
 	// PublicURL is the external URL of the UI (links in notifications).
 	PublicURL string
 	// CrowdSecMetrics lists CrowdSec Prometheus endpoints shown in the UI.
@@ -95,6 +98,16 @@ type Options struct {
 	Logger            *slog.Logger
 	// Registry for metrics; nil creates one (served by MetricsHandler).
 	Registry *prometheus.Registry
+}
+
+// MISPOptions configure the MISP integration.
+type MISPOptions struct {
+	Client           misp.ClientConfig
+	Interval         time.Duration
+	Renew            time.Duration
+	DefaultTTL       string
+	ProposeMinAlerts int
+	ProposeWindow    time.Duration
 }
 
 // NamedLAPI is an additional LAPI instance.
@@ -124,6 +137,7 @@ type Manager struct {
 	lokiQuery  *loki.Querier
 	notify     *notify.Engine
 	search     *opensearch.Client
+	misp       *misp.Service
 	lapis      []api.LAPI
 
 	runOnce sync.Once
@@ -227,6 +241,11 @@ func New(opts Options) (*Manager, error) {
 	if err := m.setupAlerts(); err != nil {
 		return nil, err
 	}
+	if opts.MISP != nil && opts.MISP.Client.URL != "" {
+		if err := m.setupMISP(); err != nil {
+			return nil, err
+		}
+	}
 	if m.alerts != nil {
 		// Changes made through another replica's API.
 		m.listener.Handle(db.ChannelAlerts, func(payload string) {
@@ -287,6 +306,31 @@ func (m *Manager) setupAlerts() error {
 	return nil
 }
 
+// setupMISP creates the MISP service; it needs the primary LAPI with
+// watcher credentials (decisions are added as a watcher).
+func (m *Manager) setupMISP() error {
+	if m.opts.LAPI.URL == "" || m.opts.LAPI.Login == "" {
+		return fmt.Errorf("manager: MISP needs the primary LAPI with watcher credentials")
+	}
+	c, err := misp.NewClient(m.opts.MISP.Client)
+	if err != nil {
+		return err
+	}
+	lc, err := lapi.New(m.opts.LAPI)
+	if err != nil {
+		return err
+	}
+	w, err := lc.Watcher()
+	if err != nil {
+		return err
+	}
+	o := m.opts.MISP
+	m.misp = misp.New(misp.Config{DB: m.opts.DB, Client: c, LAPI: w, Interval: o.Interval, Renew: o.Renew, DefaultTTL: o.DefaultTTL,
+		ProposeMinAlerts: o.ProposeMinAlerts, ProposeWindow: o.ProposeWindow, Logger: m.log})
+	m.listener.Handle(db.ChannelMISP, func(string) { m.misp.Poke() })
+	return nil
+}
+
 // HostPublicKey returns the line agents pin as openpicket.host_key.
 func (m *Manager) HostPublicKey() string { return m.opts.HostKey.Public(HostKeyComment).String() }
 
@@ -332,6 +376,11 @@ func (m *Manager) Run(ctx context.Context) error {
 				db.RunLeader(ctx, m.opts.DB, "opensearch", m.opts.ReplicaID, m.log, func(ctx context.Context, _ *db.Leadership) {
 					m.search.RunLeader(ctx, m.opts.DB, m.log.With("component", "opensearch"), 30*time.Second)
 				})
+			}
+		},
+		func(ctx context.Context) {
+			if m.misp != nil {
+				db.RunLeader(ctx, m.opts.DB, "misp", m.opts.ReplicaID, m.log, func(ctx context.Context, l *db.Leadership) { m.misp.Run(ctx, l) })
 			}
 		},
 		func(ctx context.Context) {

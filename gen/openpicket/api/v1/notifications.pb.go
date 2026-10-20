@@ -481,7 +481,7 @@ type Rule struct {
 	Enabled bool                   `protobuf:"varint,3,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	// new_alert | new_decision | ip_ban | compromised_host |
 	// alert_threshold | alert_spike | lapi_down | node_offline |
-	// policy_error | sink_down
+	// policy_error | sink_down | approval_pending
 	Type string `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
 	// info | warning | critical
 	Severity string `protobuf:"bytes,5,opt,name=severity,proto3" json:"severity,omitempty"`

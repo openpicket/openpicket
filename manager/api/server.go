@@ -28,6 +28,7 @@ import (
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/csmetrics"
 	"github.com/openpicket/openpicket/manager/geo"
+	"github.com/openpicket/openpicket/manager/misp"
 	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/policy"
 	"github.com/openpicket/openpicket/manager/settings"
@@ -63,6 +64,11 @@ type Config struct {
 	AlertStore *alerts.Store
 	// LAPIs change alerts and decisions.
 	LAPIs []LAPI
+	// MISP manages the approval queue; nil when MISP is not configured.
+	MISP         *misp.Service
+	MISPSettings MISPSettings
+	// PokeMISP asks the MISP leader to sync now.
+	PokeMISP func()
 	// Notify sends test notifications.
 	Notify *notify.Engine
 	// Metrics scrapes CrowdSec Prometheus endpoints.
@@ -77,6 +83,12 @@ type Config struct {
 	Status func(ctx context.Context) []*apiv1.ComponentStatus
 	Logger *slog.Logger
 	Now    func() time.Time
+}
+
+// MISPSettings are shown in the intel status.
+type MISPSettings struct {
+	ProposeMinAlerts int
+	DefaultTTL       string
 }
 
 // Server serves the API.
@@ -166,6 +178,11 @@ var procedures = map[string]spec{
 	apiv1connect.LogServiceTailLogsProcedure:       read,
 	apiv1connect.LogServiceLogLabelValuesProcedure: read,
 
+	apiv1connect.IntelServiceGetIntelStatusProcedure: read,
+	apiv1connect.IntelServiceListIOCsProcedure:       read,
+	apiv1connect.IntelServiceSetIOCStateProcedure:    op,
+	apiv1connect.IntelServiceProposeIOCProcedure:     op,
+
 	apiv1connect.MetricsServiceGetCrowdSecMetricsProcedure: read,
 
 	apiv1connect.NotificationServiceListNotificationsProcedure:     read,
@@ -209,6 +226,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(apiv1connect.NewLogServiceHandler(&logService{s}, opts...))
 	mux.Handle(apiv1connect.NewMetricsServiceHandler(&metricsService{s}, opts...))
 	mux.Handle(apiv1connect.NewNotificationServiceHandler(&notificationService{s}, opts...))
+	mux.Handle(apiv1connect.NewIntelServiceHandler(&intelService{s}, opts...))
 	mux.HandleFunc("POST "+geoUploadPath, s.uploadGeo)
 	return s.middleware(mux)
 }

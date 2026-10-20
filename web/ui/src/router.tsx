@@ -10,6 +10,7 @@ const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const AlertsPage = lazy(() => import("./pages/AlertsPage"));
 const AlertPage = lazy(() => import("./pages/AlertPage"));
 const DecisionsPage = lazy(() => import("./pages/DecisionsPage"));
+const ApprovalsPage = lazy(() => import("./pages/ApprovalsPage"));
 const IpPage = lazy(() => import("./pages/IpPage"));
 const LogsPage = lazy(() => import("./pages/LogsPage"));
 const NodesPage = lazy(() => import("./pages/NodesPage"));
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
       { path: "alerts", element: page(<AlertsPage />) },
       { path: "alerts/:instance/:id", element: page(<AlertPage />) },
       { path: "decisions", element: page(<DecisionsPage />) },
+      { path: "approvals", element: page(<ApprovalsPage />) },
       { path: "ip", element: page(<IpPage />) },
       { path: "ip/:ip", element: page(<IpPage />) },
       { path: "logs", element: page(<LogsPage />) },

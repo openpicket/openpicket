@@ -22,6 +22,7 @@ import { CopyText, EmptyState, ErrorAlert, KeyValue, LoadingBlock, PageHeader, T
 import { Country } from "../components/geo";
 import { AddDecisionModal, CleanupIpModal, DirectionBadge, Scenario } from "../components/crowdsec";
 import { Propagation } from "../components/Propagation";
+import { IocState, ProposeModal } from "./ApprovalsPage";
 import { formatDateTime, formatNumber, toNumber, tsDate } from "../lib/format";
 import { useInstance } from "../lib/scope";
 import { t } from "../lib/i18n";
@@ -64,6 +65,13 @@ export default function IpPage() {
   const instance = useInstance();
   const [ban, setBan] = useState(false);
   const [cleanup, setCleanup] = useState(false);
+  const [proposing, setProposing] = useState(false);
+  const intel = useQuery({ queryKey: ["intelStatus"], queryFn: () => api.intel.getIntelStatus({}), staleTime: 60_000 });
+  const iocs = useQuery({
+    queryKey: ["iocs", "ip", ip],
+    enabled: IP_RE.test(ip) && intel.data?.configured === true,
+    queryFn: async () => (await api.intel.listIOCs({ value: ip, limit: 20 })).iocs.filter((i) => i.value.split("|")[0] === ip),
+  });
   const valid = IP_RE.test(ip);
   const quoted = `"${ip}"`;
   const geo = useQuery({
@@ -210,6 +218,37 @@ export default function IpPage() {
             </Paper>
           </Grid.Col>
         </Grid>
+        {intel.data?.configured && (
+          <Paper withBorder p="md" radius="md">
+            <Group justify="space-between" mb="sm">
+              <Title order={5}>MISP</Title>
+              {access.canOperate && (iocs.data ?? []).every((i) => i.state === "revoked") && (
+                <Button size="xs" variant="light" onClick={() => setProposing(true)}>
+                  {t("Propose to MISP")}
+                </Button>
+              )}
+            </Group>
+            {(iocs.data ?? []).length === 0 ? (
+              <Text size="sm" c="dimmed">
+                {t("Not in MISP.")}
+              </Text>
+            ) : (
+              <Stack gap={4}>
+                {(iocs.data ?? []).map((i) => (
+                  <Group key={i.uuid} gap="sm">
+                    <IocState state={i.state} />
+                    <Text size="sm">{i.type}</Text>
+                    <Text size="sm" c="dimmed">
+                      {i.eventInfo}
+                    </Text>
+                    {i.expiresAt && <TimeLeft ts={i.expiresAt} />}
+                    <Link to={`/approvals?state=${i.state}`}>{t("Approvals")}</Link>
+                  </Group>
+                ))}
+              </Stack>
+            )}
+          </Paper>
+        )}
         <Paper withBorder p="md" radius="md">
           <Title order={5} mb="sm">
             {t("Decisions")}
@@ -313,6 +352,7 @@ export default function IpPage() {
       </Stack>
       <AddDecisionModal opened={ban} onClose={() => setBan(false)} initialValue={ip} />
       <CleanupIpModal opened={cleanup} onClose={() => setCleanup(false)} ip={ip} />
+      <ProposeModal opened={proposing} onClose={() => setProposing(false)} value={ip} />
     </>
   );
 }

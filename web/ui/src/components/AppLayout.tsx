@@ -19,6 +19,7 @@ import { useDisclosure } from "@mantine/hooks";
 import {
   IconBell,
   IconChartBar,
+  IconChecklist,
   IconChevronDown,
   IconDeviceDesktop,
   IconExternalLink,
@@ -66,6 +67,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
     items: [
       { to: "/alerts", label: "Alerts", icon: IconRadar2 },
       { to: "/decisions", label: "Decisions", icon: IconGavel },
+      { to: "/approvals", label: "Approvals", icon: IconChecklist },
       { to: "/ip", label: "IP lookup", icon: IconSearch },
       { to: "/logs", label: "Logs", icon: IconFileText, feature: "logs" },
     ],

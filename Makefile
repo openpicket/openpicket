@@ -77,11 +77,15 @@ image-agent:
 test-opensearch:
 	./scripts/opensearch-test.sh
 
+# MISP client against a real MISP (several minutes to start).
+test-misp:
+	./scripts/misp-test.sh
+
 helm-lint:
 	helm lint deploy/helm/openpicket
 	helm template t deploy/helm/openpicket --set ingress.enabled=true --set networkPolicy.enabled=true \
 	  --set monitoring.serviceMonitor.enabled=true --set monitoring.prometheusRule.enabled=true \
-	  --set monitoring.grafanaDashboards.enabled=true >/dev/null
+	  --set monitoring.grafanaDashboards.enabled=true --set misp.enabled=true >/dev/null
 
 airgap:
 	./scripts/airgap-bundle.sh $(VERSION)

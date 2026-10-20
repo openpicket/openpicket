@@ -38,6 +38,7 @@ export const RULE_TYPES: { value: string; label: string; description: string }[]
   { value: "node_offline", label: "Node offline", description: "A node lost its data plane connection for the window." },
   { value: "policy_error", label: "Apply error", description: "A node could not apply decisions or port policies." },
   { value: "sink_down", label: "Log sink down", description: "Deliveries to Loki or CrowdSec are failing." },
+  { value: "approval_pending", label: "Approval pending", description: "A MISP proposal waits for approval (once per proposal)." },
 ];
 
 export function ruleTypeLabel(type: string): string {

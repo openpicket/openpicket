@@ -52,6 +52,7 @@ type config struct {
 	LokiQueryURL      string
 	PublicURL         string
 	OpenSearch        opensearch.Config
+	MISP              manager.MISPOptions
 	Metrics           csmetrics.Config
 	CrowdSec          crowdsec.Config
 	LAPI              lapi.Config
@@ -85,6 +86,15 @@ func loadConfig() (*config, error) {
 	e.String("LOKI_TENANT", &c.Loki.TenantID)
 	e.String("LOKI_QUERY_URL", &c.LokiQueryURL)
 	e.String("PUBLIC_URL", &c.PublicURL)
+	e.String("MISP_URL", &c.MISP.Client.URL)
+	e.Secret("MISP_API_KEY", &c.MISP.Client.APIKey)
+	e.String("MISP_CA_FILE", &c.MISP.Client.CAFile)
+	e.Bool("MISP_INSECURE_SKIP_VERIFY", &c.MISP.Client.InsecureSkipVerify)
+	e.Duration("MISP_SYNC_INTERVAL", &c.MISP.Interval)
+	e.Duration("MISP_RENEW", &c.MISP.Renew)
+	e.String("MISP_DEFAULT_TTL", &c.MISP.DefaultTTL)
+	e.Int("MISP_PROPOSE_MIN_ALERTS", &c.MISP.ProposeMinAlerts)
+	e.Duration("MISP_PROPOSE_WINDOW", &c.MISP.ProposeWindow)
 	e.String("OPENSEARCH_URL", &c.OpenSearch.URL)
 	e.String("OPENSEARCH_USERNAME", &c.OpenSearch.Username)
 	e.Secret("OPENSEARCH_PASSWORD", &c.OpenSearch.Password)
@@ -324,7 +334,7 @@ func serve() error {
 	}
 	m, err := manager.New(manager.Options{
 		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
-		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, OpenSearch: &cfg.OpenSearch, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
+		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, OpenSearch: &cfg.OpenSearch, MISP: &cfg.MISP, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
 		TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
 	})
 	if err != nil {

@@ -19,6 +19,13 @@ mkdir -p "$work/images"
 
 own=(openpicket-manager openpicket-suricontroller openpicket-crowdsec openpicket-agent)
 third=(postgres:16-alpine grafana/loki:3.5.0)
+# INCLUDE_MISP=1 adds the built-in MISP images (pinned in values.yaml).
+if [ "${INCLUDE_MISP:-0}" = 1 ]; then
+  v=deploy/helm/openpicket/values.yaml
+  core="$(awk '/misp-core$/{f=1} f&&/digest:/{gsub(/"/,"",$2); print $2; exit}' "$v")"
+  nginx="$(awk '/misp-nginx$/{f=1} f&&/digest:/{gsub(/"/,"",$2); print $2; exit}' "$v")"
+  third+=("ghcr.io/misp/misp-docker/misp-core@$core" "ghcr.io/misp/misp-docker/misp-nginx@$nginx" mariadb:10.11 valkey/valkey:7.2)
+fi
 for name in "${own[@]}"; do
   docker image inspect "$name:$VERSION" >/dev/null
   docker tag "$name:$VERSION" "ghcr.io/openpicket/$name:$VERSION"
@@ -27,7 +34,7 @@ for name in "${own[@]}"; do
 done
 for img in "${third[@]}"; do
   docker pull --platform "$PLATFORM" "$img" >/dev/null
-  docker save --platform "$PLATFORM" "$img" | gzip > "$work/images/$(echo "$img" | tr '/:' '__').tar.gz"
+  docker save --platform "$PLATFORM" "$img" | gzip > "$work/images/$(echo "$img" | tr '/:@' '___').tar.gz"
   echo "saved $img"
 done
 

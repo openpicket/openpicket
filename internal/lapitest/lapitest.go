@@ -111,6 +111,15 @@ func (l *LAPI) serve(w http.ResponseWriter, r *http.Request) {
 				})
 			})
 		}
+		if sc := q.Get("scenario"); sc != "" {
+			// LAPI matches the alert's scenario or one of its decisions'.
+			out = slices.DeleteFunc(out, func(a *lapi.Alert) bool {
+				if a.Scenario != nil && *a.Scenario == sc {
+					return false
+				}
+				return !slices.ContainsFunc(a.Decisions, func(d *lapi.AlertDecision) bool { return d.Scenario != nil && *d.Scenario == sc })
+			})
+		}
 		if q.Get("sort") != "ASC" {
 			slices.Reverse(out)
 		}

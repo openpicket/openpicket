@@ -31,12 +31,14 @@ import (
 	apiv1 "github.com/openpicket/openpicket/gen/openpicket/api/v1"
 	"github.com/openpicket/openpicket/gen/openpicket/api/v1/apiv1connect"
 	"github.com/openpicket/openpicket/internal/lapitest"
+	"github.com/openpicket/openpicket/internal/misptest"
 	"github.com/openpicket/openpicket/internal/pgtest"
 	"github.com/openpicket/openpicket/internal/schema"
 	"github.com/openpicket/openpicket/manager/alerts"
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/geo"
 	"github.com/openpicket/openpicket/manager/lapi"
+	"github.com/openpicket/openpicket/manager/misp"
 	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/policy"
 	"github.com/openpicket/openpicket/manager/settings"
@@ -724,5 +726,55 @@ func TestEveryProcedureHasAnEntry(t *testing.T) {
 	})
 	if n < 50 {
 		t.Fatalf("only %d procedures found", n)
+	}
+}
+
+func TestIntel(t *testing.T) {
+	e := setup(t, false)
+	ctx := context.Background()
+	viewer := e.clients(viewerHeaders("vera", "staff"))
+	ic := apiv1connect.NewIntelServiceClient(viewer.http, e.srv.URL+"/api")
+	st, err := ic.GetIntelStatus(ctx, connect.NewRequest(&apiv1.GetIntelStatusRequest{}))
+	if err != nil || st.Msg.Configured {
+		t.Fatalf("unconfigured: %v %v", st, err)
+	}
+	fake := misptest.New()
+	defer fake.Close()
+	mc, _ := misp.NewClient(misp.ClientConfig{URL: fake.URL, APIKey: fake.Key})
+	lc, _ := lapi.New(lapi.Config{URL: e.lapi.URL, Login: e.lapi.Login, Password: e.lapi.Password})
+	w, _ := lc.Watcher()
+	svc := misp.New(misp.Config{DB: e.server.cfg.DB, Client: mc, LAPI: w, Logger: slog.New(slog.DiscardHandler)})
+	e.server.cfg.MISP = svc
+	e.server.cfg.MISPSettings = MISPSettings{DefaultTTL: "30d"}
+	if _, err := ic.ProposeIOC(ctx, connect.NewRequest(&apiv1.ProposeIOCRequest{Value: "198.51.100.8"})); code(err) != connect.CodePermissionDenied {
+		t.Fatalf("viewer propose: %v", err)
+	}
+	op := apiv1connect.NewIntelServiceClient(e.clients(viewerHeaders("olga", "secops")).http, e.srv.URL+"/api")
+	if _, err := op.ProposeIOC(ctx, connect.NewRequest(&apiv1.ProposeIOCRequest{Value: "not-ip"})); code(err) != connect.CodeInvalidArgument {
+		t.Fatalf("bad value: %v", err)
+	}
+	res, err := op.ProposeIOC(ctx, connect.NewRequest(&apiv1.ProposeIOCRequest{Value: "198.51.100.8", Type: "ip-dst", Comment: "phishing"}))
+	if err != nil || res.Msg.Ioc.State != "proposed" {
+		t.Fatalf("propose: %v %v", res, err)
+	}
+	if a := fake.Attributes(); len(a) != 1 || !strings.Contains(a[0].Comment, "olga") || !strings.Contains(a[0].Comment, "phishing") {
+		t.Fatalf("misp attribute: %+v", a)
+	}
+	if err := svc.Sync(ctx, fence{e.server}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := op.SetIOCState(ctx, connect.NewRequest(&apiv1.SetIOCStateRequest{Uuids: []string{res.Msg.Ioc.Uuid}, State: "approved", Ttl: "forever"})); code(err) != connect.CodeInvalidArgument {
+		t.Fatalf("bad ttl: %v", err)
+	}
+	if _, err := op.SetIOCState(ctx, connect.NewRequest(&apiv1.SetIOCStateRequest{Uuids: []string{res.Msg.Ioc.Uuid}, State: "approved", Ttl: "7d"})); err != nil {
+		t.Fatal(err)
+	}
+	list, err := ic.ListIOCs(ctx, connect.NewRequest(&apiv1.ListIOCsRequest{State: "approved"}))
+	if err != nil || list.Msg.Total != 1 || list.Msg.Iocs[0].Ttl != "7d" || list.Msg.Iocs[0].ExpiresAt == nil {
+		t.Fatalf("list: %v %v", list, err)
+	}
+	audit, _ := e.clients(viewerHeaders("olga", "secops")).system.ListAudit(ctx, connect.NewRequest(&apiv1.ListAuditRequest{ActionPrefix: "IntelService."}))
+	if len(audit.Msg.Entries) != 2 {
+		t.Fatalf("audit: %v", audit.Msg.Entries)
 	}
 }

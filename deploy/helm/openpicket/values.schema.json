@@ -546,6 +546,200 @@
           "minimum": 0
         }
       }
+    },
+    "misp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "external": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "apiKey": {
+              "type": "string"
+            },
+            "existingSecret": {
+              "type": "string"
+            },
+            "apiKeyKey": {
+              "type": "string"
+            },
+            "caSecret": {
+              "type": "string"
+            },
+            "insecureSkipVerify": {
+              "type": "boolean"
+            }
+          }
+        },
+        "proposeMinAlerts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "proposeWindow": {
+          "type": "string"
+        },
+        "defaultTTL": {
+          "type": "string",
+          "pattern": "^[0-9]+[dwh]$"
+        },
+        "syncInterval": {
+          "type": "string"
+        },
+        "renew": {
+          "type": "string"
+        },
+        "builtin": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "image": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "repository": {
+                  "type": "string"
+                },
+                "tag": {
+                  "type": "string"
+                },
+                "digest": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "repository"
+              ]
+            },
+            "baseURL": {
+              "type": "string"
+            },
+            "adminEmail": {
+              "type": "string"
+            },
+            "org": {
+              "type": "string"
+            },
+            "ingress": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "host": {
+                  "type": "string"
+                },
+                "annotations": {
+                  "type": "object"
+                },
+                "tls": {
+                  "type": "array"
+                }
+              }
+            },
+            "persistence": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "size": {
+                  "type": "string"
+                },
+                "storageClass": {
+                  "type": "string"
+                }
+              }
+            },
+            "resources": {
+              "type": "object"
+            },
+            "mariadb": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "image": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "repository": {
+                      "type": "string"
+                    },
+                    "tag": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "repository"
+                  ]
+                },
+                "persistence": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "size": {
+                      "type": "string"
+                    },
+                    "storageClass": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "valkey": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "image": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "repository": {
+                      "type": "string"
+                    },
+                    "tag": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "repository"
+                  ]
+                }
+              }
+            },
+            "nginxImage": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "repository": {
+                  "type": "string"
+                },
+                "tag": {
+                  "type": "string"
+                },
+                "digest": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "repository"
+              ]
+            }
+          }
+        }
+      }
     }
   }
 }

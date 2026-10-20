@@ -273,14 +273,18 @@ func (w *Watcher) DeleteDecisions(ctx context.Context, q url.Values) (int64, err
 // ManualDecision builds the alert that carries a manual decision, the way
 // cscli decisions add does.
 func ManualDecision(scope, value, typ, duration, scenario, reason, by string, now time.Time) *Alert {
-	s := func(v string) *string { return &v }
-	zero, f := int32(0), false
-	at := now.UTC().Format(time.RFC3339)
 	msg := fmt.Sprintf("manual '%s' from '%s'", typ, by)
 	if reason != "" {
 		msg += ": " + reason
 	}
-	origin := "cscli"
+	return DecisionAlert(scope, value, typ, duration, scenario, "cscli", msg, now)
+}
+
+// DecisionAlert builds an alert carrying one decision.
+func DecisionAlert(scope, value, typ, duration, scenario, origin, message string, now time.Time) *Alert {
+	s := func(v string) *string { return &v }
+	zero, f := int32(0), false
+	at := now.UTC().Format(time.RFC3339)
 	src := &Source{Scope: s(scope), Value: s(value)}
 	if strings.EqualFold(scope, "ip") {
 		src.IP = value
@@ -288,7 +292,7 @@ func ManualDecision(scope, value, typ, duration, scenario, reason, by string, no
 		src.Range = value
 	}
 	return &Alert{
-		Scenario: s(scenario), ScenarioHash: s(""), ScenarioVersion: s(""), Message: s(msg), EventsCount: &zero,
+		Scenario: s(scenario), ScenarioHash: s(""), ScenarioVersion: s(""), Message: s(message), EventsCount: &zero,
 		StartAt: s(at), StopAt: s(at), Capacity: &zero, Leakspeed: s("0"), Simulated: &f, Source: src, Events: []*Event{},
 		Decisions: []*AlertDecision{{Duration: s(duration), Origin: &origin, Scenario: s(scenario), Scope: s(scope), Type: s(typ), Value: s(value)}},
 	}

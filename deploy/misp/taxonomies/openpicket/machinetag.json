@@ -1,0 +1,39 @@
+{
+  "namespace": "openpicket",
+  "expanded": "OpenPicket",
+  "description": "Approval state of indicators OpenPicket blocks at the network edge. Attributes tagged openpicket:state=\"approved\" with to_ids set become CrowdSec decisions (ip-src: inbound block, ip-dst: both ways) until revoked or their openpicket:ttl ends.",
+  "version": 1,
+  "refs": ["https://github.com/openpicket/openpicket"],
+  "predicates": [
+    { "value": "state", "expanded": "Approval state", "exclusive": true },
+    { "value": "ttl", "expanded": "Block duration after approval", "exclusive": true },
+    { "value": "scope", "expanded": "Where the block applies", "exclusive": true }
+  ],
+  "values": [
+    {
+      "predicate": "state",
+      "entry": [
+        { "value": "proposed", "expanded": "Proposed", "description": "Seen by OpenPicket (or suggested by an analyst); not blocked." },
+        { "value": "approved", "expanded": "Approved", "description": "Blocked at the edge while to_ids is set and the TTL lasts." },
+        { "value": "rejected", "expanded": "Rejected", "description": "Not to be blocked; not proposed again." },
+        { "value": "revoked", "expanded": "Revoked", "description": "Was approved; the block is removed." }
+      ]
+    },
+    {
+      "predicate": "ttl",
+      "entry": [
+        { "value": "7d", "expanded": "7 days" },
+        { "value": "30d", "expanded": "30 days" },
+        { "value": "90d", "expanded": "90 days" },
+        { "value": "180d", "expanded": "180 days" },
+        { "value": "365d", "expanded": "365 days" }
+      ]
+    },
+    {
+      "predicate": "scope",
+      "entry": [
+        { "value": "global", "expanded": "Every OpenPicket node" }
+      ]
+    }
+  ]
+}

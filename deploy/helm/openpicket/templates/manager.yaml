@@ -151,6 +151,33 @@ spec:
             - name: OPENPICKET_SURICONTROLLER_URL
               value: http://{{ $full }}-suricontroller:8080
             {{- end }}
+            {{- if .Values.misp.enabled }}
+            - name: OPENPICKET_MISP_URL
+              value: {{ include "openpicket.mispURL" . | quote }}
+            - name: OPENPICKET_MISP_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openpicket.mispKeySecret" . }}
+                  key: {{ include "openpicket.mispKeyKey" . }}
+            - name: OPENPICKET_MISP_PROPOSE_MIN_ALERTS
+              value: {{ .Values.misp.proposeMinAlerts | quote }}
+            - name: OPENPICKET_MISP_PROPOSE_WINDOW
+              value: {{ .Values.misp.proposeWindow | quote }}
+            - name: OPENPICKET_MISP_DEFAULT_TTL
+              value: {{ .Values.misp.defaultTTL | quote }}
+            - name: OPENPICKET_MISP_SYNC_INTERVAL
+              value: {{ .Values.misp.syncInterval | quote }}
+            - name: OPENPICKET_MISP_RENEW
+              value: {{ .Values.misp.renew | quote }}
+            {{- if .Values.misp.external.url }}
+            - name: OPENPICKET_MISP_INSECURE_SKIP_VERIFY
+              value: {{ .Values.misp.external.insecureSkipVerify | quote }}
+            {{- with .Values.misp.external.caSecret }}
+            - name: OPENPICKET_MISP_CA_FILE
+              value: /secrets/misp-ca/ca.crt
+            {{- end }}
+            {{- end }}
+            {{- end }}
             {{- if .Values.opensearch.enabled }}
             - name: OPENPICKET_OPENSEARCH_URL
               value: {{ required "opensearch.url is required" .Values.opensearch.url | quote }}
@@ -208,6 +235,11 @@ spec:
               mountPath: /secrets/opensearch-ca
               readOnly: true
             {{- end }}
+            {{- if and .Values.misp.enabled .Values.misp.external.url .Values.misp.external.caSecret }}
+            - name: misp-ca
+              mountPath: /secrets/misp-ca
+              readOnly: true
+            {{- end }}
       volumes:
         - name: host-key
           secret:
@@ -223,6 +255,11 @@ spec:
         - name: opensearch-ca
           secret:
             secretName: {{ .Values.opensearch.caSecret }}
+        {{- end }}
+        {{- if and .Values.misp.enabled .Values.misp.external.url .Values.misp.external.caSecret }}
+        - name: misp-ca
+          secret:
+            secretName: {{ .Values.misp.external.caSecret }}
         {{- end }}
       {{- with $m.nodeSelector }}
       nodeSelector:

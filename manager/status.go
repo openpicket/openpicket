@@ -29,6 +29,19 @@ func (m *Manager) API(cfg api.Config) (*api.Server, error) {
 	cfg.Status = m.componentStatus
 	cfg.Metrics = csmetrics.New(m.opts.CrowdSecMetrics)
 	cfg.Notify = m.notify
+	if m.misp != nil {
+		cfg.MISP = m.misp
+		cfg.MISPSettings = api.MISPSettings{ProposeMinAlerts: m.opts.MISP.ProposeMinAlerts, DefaultTTL: m.opts.MISP.DefaultTTL}
+		if cfg.MISPSettings.DefaultTTL == "" {
+			cfg.MISPSettings.DefaultTTL = "30d"
+		}
+		cfg.PokeMISP = func() {
+			m.misp.Poke()
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			_, _ = m.opts.DB.Exec(ctx, `SELECT pg_notify($1, '')`, db.ChannelMISP)
+		}
+	}
 	if m.opts.Loki.URL != "" {
 		q, err := loki.NewQuerier(m.opts.Loki, m.opts.LokiQueryURL)
 		if err != nil {
@@ -151,6 +164,22 @@ func (m *Manager) componentStatus(ctx context.Context) []*apiv1.ComponentStatus 
 			}
 		}
 		rows.Close()
+	}
+	if m.misp != nil {
+		var (
+			last    *time.Time
+			lastErr string
+		)
+		if err := m.opts.DB.QueryRow(ctx, `SELECT last_sync_at, last_error FROM openpicket.misp_sync WHERE id = 1`).Scan(&last, &lastErr); err == nil {
+			switch {
+			case lastErr != "":
+				out = append(out, c("misp", "degraded", lastErr))
+			case last == nil:
+				out = append(out, c("misp", "degraded", "not synced yet"))
+			default:
+				out = append(out, c("misp", "ok", "synced "+last.UTC().Format(time.RFC3339)))
+			}
+		}
 	}
 	if m.relay == nil {
 		out = append(out, c("lapi", "disabled", "no LAPI configured: decisions are not distributed"))

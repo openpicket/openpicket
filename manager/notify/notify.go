@@ -36,11 +36,13 @@ const (
 	NodeOffline     = "node_offline"
 	PolicyError     = "policy_error"
 	SinkDown        = "sink_down"
+	ApprovalPending = "approval_pending"
 )
 
 var defaultSeverity = map[string]string{
 	NewAlert: "info", NewDecision: "info", IPBan: "warning", CompromisedHost: "critical", AlertThreshold: "warning",
 	AlertSpike: "warning", LAPIDown: "critical", NodeOffline: "warning", PolicyError: "warning", SinkDown: "critical",
+	ApprovalPending: "info",
 }
 
 // Rule is a notification rule.
@@ -108,6 +110,10 @@ func (r *Rule) Validate() error {
 	}
 	if r.CooldownSeconds <= 0 {
 		r.CooldownSeconds = 600
+		if r.Type == ApprovalPending {
+			// One notification per proposal.
+			r.CooldownSeconds = 90 * 24 * 3600
+		}
 	}
 	return nil
 }
@@ -417,6 +423,8 @@ func (e *Engine) evaluate(ctx context.Context, tx pgx.Tx, r *Rule) error {
 		out, err = e.nodesOffline(ctx, tx, r)
 	case PolicyError:
 		out, err = e.policyErrors(ctx, tx)
+	case ApprovalPending:
+		out, err = e.approvalsPending(ctx, tx)
 	case SinkDown:
 		if e.cfg.Health != nil {
 			for name, detail := range e.cfg.Health() {
@@ -786,6 +794,24 @@ func (e *Engine) policyErrors(ctx context.Context, tx pgx.Tx) ([]fired, error) {
 			return nil, err
 		}
 		out = append(out, fired{subject: node + "|" + what, title: "Node " + node + " could not apply " + what, body: msg, link: "/nodes/" + node})
+	}
+	return out, rows.Err()
+}
+
+func (e *Engine) approvalsPending(ctx context.Context, tx pgx.Tx) ([]fired, error) {
+	rows, err := tx.Query(ctx, `SELECT uuid, value, type, comment, event_info FROM openpicket.misp_iocs WHERE state = 'proposed' ORDER BY value LIMIT 200`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []fired
+	for rows.Next() {
+		var uuid, value, typ, comment, event string
+		if err := rows.Scan(&uuid, &value, &typ, &comment, &event); err != nil {
+			return nil, err
+		}
+		out = append(out, fired{subject: uuid, title: "MISP proposal " + value + " awaits approval",
+			body: fmt.Sprintf("%s (%s) in %s\n%s", value, typ, orDash(event), comment), link: "/approvals"})
 	}
 	return out, rows.Err()
 }
