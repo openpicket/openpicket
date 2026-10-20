@@ -36,6 +36,7 @@ import (
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
 	"github.com/openpicket/openpicket/manager/sinks/loki"
 	"github.com/openpicket/openpicket/pkg/version"
+	"github.com/openpicket/openpicket/web"
 )
 
 type config struct {
@@ -342,6 +343,7 @@ func serve() error {
 	mux := http.NewServeMux()
 	m.Mount(mux)
 	apiSrv.Mount(mux)
+	mux.Handle("/", web.Handler())
 	srv := &http.Server{Addr: cfg.Listen, Handler: mux, ReadHeaderTimeout: 15 * time.Second, IdleTimeout: 2 * time.Minute, MaxHeaderBytes: 64 << 10}
 	metrics := &http.Server{Addr: cfg.MetricsListen, Handler: m.MetricsHandler(), ReadHeaderTimeout: 15 * time.Second}
 	runDone := make(chan struct{})

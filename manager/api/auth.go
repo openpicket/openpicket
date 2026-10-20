@@ -34,6 +34,13 @@ func (a *authService) GetAuthInfo(ctx context.Context, _ *connect.Request[apiv1.
 			res.LogoutUrl = ext.LogoutURL()
 		}
 	}
+	if res.Principal != nil {
+		f := &apiv1.Features{Logs: a.s.cfg.Logs != nil, Metrics: a.s.cfg.Metrics != nil && a.s.cfg.Metrics.Configured(), Suricata: a.s.cfg.Suricontroller != nil}
+		for _, l := range a.s.cfg.LAPIs {
+			f.LapiInstances = append(f.LapiInstances, l.Name)
+		}
+		res.Features = f
+	}
 	return connect.NewResponse(res), nil
 }
 

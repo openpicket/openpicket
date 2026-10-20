@@ -20,6 +20,7 @@ suricontroller:
 # Regenerates code from proto/ (needs protoc).
 proto:
 	./scripts/gen-proto.sh
+	./scripts/gen-proto-ts.sh
 
 test:
 	$(GO) test -race ./...

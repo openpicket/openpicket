@@ -36,6 +36,19 @@ message GetAuthInfoResponse {
   string logout_url = 4;
   bool read_only = 5;
   string version = 6;
+  // Configured features (authenticated callers only).
+  Features features = 7;
+}
+
+message Features {
+  // Names of the CrowdSec LAPI instances (alerts and decisions).
+  repeated string lapi_instances = 1;
+  // Log explorer (Loki).
+  bool logs = 2;
+  // CrowdSec metrics endpoints.
+  bool metrics = 3;
+  // openpicket-suricontroller is proxied at /suricata/.
+  bool suricata = 4;
 }
 
 message LoginRequest {

@@ -1,0 +1,50 @@
+# Development dependencies of openpicket-manager (scripts/dev-env.sh runs
+# the manager itself on the host). Ports are bound to 127.0.0.1 only.
+name: openpicket-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: dev
+    ports: ["127.0.0.1:15432:5432"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      retries: 30
+
+  loki:
+    image: grafana/loki:3.5.0
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - ./loki.yaml:/etc/loki/local-config.yaml:ro
+    ports: ["127.0.0.1:13100:3100"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3100/ready"]
+      interval: 3s
+      retries: 40
+
+  # LAPI and log processor in one container. The stock entrypoint registers
+  # the manager's watcher (AGENT_USERNAME/PASSWORD) and the relay bouncer
+  # (BOUNCER_KEY_<name>).
+  crowdsec:
+    image: openpicket-crowdsec:dev
+    build:
+      context: ../..
+      dockerfile: deploy/images/crowdsec/Dockerfile
+    environment:
+      OPENPICKET_ACQUIS_TOKEN: dev-token
+      AGENT_USERNAME: openpicket-manager
+      AGENT_PASSWORD: dev-password
+      BOUNCER_KEY_openpicket_relay: dev-bouncer-key
+    volumes:
+      # Lets the manager (from the docker network gateway) delete alerts.
+      - ./crowdsec.yaml.local:/etc/crowdsec/config.yaml.local:ro
+    ports:
+      - "127.0.0.1:18080:8080" # LAPI
+      - "127.0.0.1:18081:8081" # OpenPicket datasource
+      - "127.0.0.1:16060:6060" # metrics
+    healthcheck:
+      test: ["CMD-SHELL", "cscli lapi status >/dev/null 2>&1 && wget -q -O /dev/null --header \"X-OpenPicket-Token: $$OPENPICKET_ACQUIS_TOKEN\" http://127.0.0.1:8081/openpicket"]
+      interval: 3s
+      retries: 60

@@ -149,10 +149,12 @@ type GetAuthInfoResponse struct {
 	Principal     *Principal `protobuf:"bytes,1,opt,name=principal,proto3" json:"principal,omitempty"`
 	PasswordLogin bool       `protobuf:"varint,2,opt,name=password_login,json=passwordLogin,proto3" json:"password_login,omitempty"`
 	// External login page (proxy/IdP), if any.
-	LoginUrl      string `protobuf:"bytes,3,opt,name=login_url,json=loginUrl,proto3" json:"login_url,omitempty"`
-	LogoutUrl     string `protobuf:"bytes,4,opt,name=logout_url,json=logoutUrl,proto3" json:"logout_url,omitempty"`
-	ReadOnly      bool   `protobuf:"varint,5,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
-	Version       string `protobuf:"bytes,6,opt,name=version,proto3" json:"version,omitempty"`
+	LoginUrl  string `protobuf:"bytes,3,opt,name=login_url,json=loginUrl,proto3" json:"login_url,omitempty"`
+	LogoutUrl string `protobuf:"bytes,4,opt,name=logout_url,json=logoutUrl,proto3" json:"logout_url,omitempty"`
+	ReadOnly  bool   `protobuf:"varint,5,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
+	Version   string `protobuf:"bytes,6,opt,name=version,proto3" json:"version,omitempty"`
+	// Configured features (authenticated callers only).
+	Features      *Features `protobuf:"bytes,7,opt,name=features,proto3" json:"features,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -229,6 +231,85 @@ func (x *GetAuthInfoResponse) GetVersion() string {
 	return ""
 }
 
+func (x *GetAuthInfoResponse) GetFeatures() *Features {
+	if x != nil {
+		return x.Features
+	}
+	return nil
+}
+
+type Features struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Names of the CrowdSec LAPI instances (alerts and decisions).
+	LapiInstances []string `protobuf:"bytes,1,rep,name=lapi_instances,json=lapiInstances,proto3" json:"lapi_instances,omitempty"`
+	// Log explorer (Loki).
+	Logs bool `protobuf:"varint,2,opt,name=logs,proto3" json:"logs,omitempty"`
+	// CrowdSec metrics endpoints.
+	Metrics bool `protobuf:"varint,3,opt,name=metrics,proto3" json:"metrics,omitempty"`
+	// openpicket-suricontroller is proxied at /suricata/.
+	Suricata      bool `protobuf:"varint,4,opt,name=suricata,proto3" json:"suricata,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Features) Reset() {
+	*x = Features{}
+	mi := &file_openpicket_api_v1_auth_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Features) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Features) ProtoMessage() {}
+
+func (x *Features) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_auth_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Features.ProtoReflect.Descriptor instead.
+func (*Features) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_auth_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Features) GetLapiInstances() []string {
+	if x != nil {
+		return x.LapiInstances
+	}
+	return nil
+}
+
+func (x *Features) GetLogs() bool {
+	if x != nil {
+		return x.Logs
+	}
+	return false
+}
+
+func (x *Features) GetMetrics() bool {
+	if x != nil {
+		return x.Metrics
+	}
+	return false
+}
+
+func (x *Features) GetSuricata() bool {
+	if x != nil {
+		return x.Suricata
+	}
+	return false
+}
+
 type LoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
@@ -239,7 +320,7 @@ type LoginRequest struct {
 
 func (x *LoginRequest) Reset() {
 	*x = LoginRequest{}
-	mi := &file_openpicket_api_v1_auth_proto_msgTypes[3]
+	mi := &file_openpicket_api_v1_auth_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -251,7 +332,7 @@ func (x *LoginRequest) String() string {
 func (*LoginRequest) ProtoMessage() {}
 
 func (x *LoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_auth_proto_msgTypes[3]
+	mi := &file_openpicket_api_v1_auth_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -264,7 +345,7 @@ func (x *LoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
 func (*LoginRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_auth_proto_rawDescGZIP(), []int{3}
+	return file_openpicket_api_v1_auth_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *LoginRequest) GetUsername() string {
@@ -290,7 +371,7 @@ type LoginResponse struct {
 
 func (x *LoginResponse) Reset() {
 	*x = LoginResponse{}
-	mi := &file_openpicket_api_v1_auth_proto_msgTypes[4]
+	mi := &file_openpicket_api_v1_auth_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -302,7 +383,7 @@ func (x *LoginResponse) String() string {
 func (*LoginResponse) ProtoMessage() {}
 
 func (x *LoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_auth_proto_msgTypes[4]
+	mi := &file_openpicket_api_v1_auth_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -315,7 +396,7 @@ func (x *LoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
 func (*LoginResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_auth_proto_rawDescGZIP(), []int{4}
+	return file_openpicket_api_v1_auth_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *LoginResponse) GetPrincipal() *Principal {
@@ -333,7 +414,7 @@ type LogoutRequest struct {
 
 func (x *LogoutRequest) Reset() {
 	*x = LogoutRequest{}
-	mi := &file_openpicket_api_v1_auth_proto_msgTypes[5]
+	mi := &file_openpicket_api_v1_auth_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -345,7 +426,7 @@ func (x *LogoutRequest) String() string {
 func (*LogoutRequest) ProtoMessage() {}
 
 func (x *LogoutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_auth_proto_msgTypes[5]
+	mi := &file_openpicket_api_v1_auth_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -358,7 +439,7 @@ func (x *LogoutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogoutRequest.ProtoReflect.Descriptor instead.
 func (*LogoutRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_auth_proto_rawDescGZIP(), []int{5}
+	return file_openpicket_api_v1_auth_proto_rawDescGZIP(), []int{6}
 }
 
 type LogoutResponse struct {
@@ -371,7 +452,7 @@ type LogoutResponse struct {
 
 func (x *LogoutResponse) Reset() {
 	*x = LogoutResponse{}
-	mi := &file_openpicket_api_v1_auth_proto_msgTypes[6]
+	mi := &file_openpicket_api_v1_auth_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -383,7 +464,7 @@ func (x *LogoutResponse) String() string {
 func (*LogoutResponse) ProtoMessage() {}
 
 func (x *LogoutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_auth_proto_msgTypes[6]
+	mi := &file_openpicket_api_v1_auth_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -396,7 +477,7 @@ func (x *LogoutResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogoutResponse.ProtoReflect.Descriptor instead.
 func (*LogoutResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_auth_proto_rawDescGZIP(), []int{6}
+	return file_openpicket_api_v1_auth_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *LogoutResponse) GetRedirectUrl() string {
@@ -418,7 +499,7 @@ const file_openpicket_api_v1_auth_proto_rawDesc = "" +
 	"\x04role\x18\x04 \x01(\tR\x04role\x12\x16\n" +
 	"\x06groups\x18\x05 \x03(\tR\x06groups\x12\x1a\n" +
 	"\bprovider\x18\x06 \x01(\tR\bprovider\"\x14\n" +
-	"\x12GetAuthInfoRequest\"\xeb\x01\n" +
+	"\x12GetAuthInfoRequest\"\xa4\x02\n" +
 	"\x13GetAuthInfoResponse\x12:\n" +
 	"\tprincipal\x18\x01 \x01(\v2\x1c.openpicket.api.v1.PrincipalR\tprincipal\x12%\n" +
 	"\x0epassword_login\x18\x02 \x01(\bR\rpasswordLogin\x12\x1b\n" +
@@ -426,7 +507,13 @@ const file_openpicket_api_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"logout_url\x18\x04 \x01(\tR\tlogoutUrl\x12\x1b\n" +
 	"\tread_only\x18\x05 \x01(\bR\breadOnly\x12\x18\n" +
-	"\aversion\x18\x06 \x01(\tR\aversion\"F\n" +
+	"\aversion\x18\x06 \x01(\tR\aversion\x127\n" +
+	"\bfeatures\x18\a \x01(\v2\x1b.openpicket.api.v1.FeaturesR\bfeatures\"{\n" +
+	"\bFeatures\x12%\n" +
+	"\x0elapi_instances\x18\x01 \x03(\tR\rlapiInstances\x12\x12\n" +
+	"\x04logs\x18\x02 \x01(\bR\x04logs\x12\x18\n" +
+	"\ametrics\x18\x03 \x01(\bR\ametrics\x12\x1a\n" +
+	"\bsuricata\x18\x04 \x01(\bR\bsuricata\"F\n" +
 	"\fLoginRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"K\n" +
@@ -452,30 +539,32 @@ func file_openpicket_api_v1_auth_proto_rawDescGZIP() []byte {
 	return file_openpicket_api_v1_auth_proto_rawDescData
 }
 
-var file_openpicket_api_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_openpicket_api_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_openpicket_api_v1_auth_proto_goTypes = []any{
 	(*Principal)(nil),           // 0: openpicket.api.v1.Principal
 	(*GetAuthInfoRequest)(nil),  // 1: openpicket.api.v1.GetAuthInfoRequest
 	(*GetAuthInfoResponse)(nil), // 2: openpicket.api.v1.GetAuthInfoResponse
-	(*LoginRequest)(nil),        // 3: openpicket.api.v1.LoginRequest
-	(*LoginResponse)(nil),       // 4: openpicket.api.v1.LoginResponse
-	(*LogoutRequest)(nil),       // 5: openpicket.api.v1.LogoutRequest
-	(*LogoutResponse)(nil),      // 6: openpicket.api.v1.LogoutResponse
+	(*Features)(nil),            // 3: openpicket.api.v1.Features
+	(*LoginRequest)(nil),        // 4: openpicket.api.v1.LoginRequest
+	(*LoginResponse)(nil),       // 5: openpicket.api.v1.LoginResponse
+	(*LogoutRequest)(nil),       // 6: openpicket.api.v1.LogoutRequest
+	(*LogoutResponse)(nil),      // 7: openpicket.api.v1.LogoutResponse
 }
 var file_openpicket_api_v1_auth_proto_depIdxs = []int32{
 	0, // 0: openpicket.api.v1.GetAuthInfoResponse.principal:type_name -> openpicket.api.v1.Principal
-	0, // 1: openpicket.api.v1.LoginResponse.principal:type_name -> openpicket.api.v1.Principal
-	1, // 2: openpicket.api.v1.AuthService.GetAuthInfo:input_type -> openpicket.api.v1.GetAuthInfoRequest
-	3, // 3: openpicket.api.v1.AuthService.Login:input_type -> openpicket.api.v1.LoginRequest
-	5, // 4: openpicket.api.v1.AuthService.Logout:input_type -> openpicket.api.v1.LogoutRequest
-	2, // 5: openpicket.api.v1.AuthService.GetAuthInfo:output_type -> openpicket.api.v1.GetAuthInfoResponse
-	4, // 6: openpicket.api.v1.AuthService.Login:output_type -> openpicket.api.v1.LoginResponse
-	6, // 7: openpicket.api.v1.AuthService.Logout:output_type -> openpicket.api.v1.LogoutResponse
-	5, // [5:8] is the sub-list for method output_type
-	2, // [2:5] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 1: openpicket.api.v1.GetAuthInfoResponse.features:type_name -> openpicket.api.v1.Features
+	0, // 2: openpicket.api.v1.LoginResponse.principal:type_name -> openpicket.api.v1.Principal
+	1, // 3: openpicket.api.v1.AuthService.GetAuthInfo:input_type -> openpicket.api.v1.GetAuthInfoRequest
+	4, // 4: openpicket.api.v1.AuthService.Login:input_type -> openpicket.api.v1.LoginRequest
+	6, // 5: openpicket.api.v1.AuthService.Logout:input_type -> openpicket.api.v1.LogoutRequest
+	2, // 6: openpicket.api.v1.AuthService.GetAuthInfo:output_type -> openpicket.api.v1.GetAuthInfoResponse
+	5, // 7: openpicket.api.v1.AuthService.Login:output_type -> openpicket.api.v1.LoginResponse
+	7, // 8: openpicket.api.v1.AuthService.Logout:output_type -> openpicket.api.v1.LogoutResponse
+	6, // [6:9] is the sub-list for method output_type
+	3, // [3:6] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_openpicket_api_v1_auth_proto_init() }
@@ -489,7 +578,7 @@ func file_openpicket_api_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_openpicket_api_v1_auth_proto_rawDesc), len(file_openpicket_api_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
