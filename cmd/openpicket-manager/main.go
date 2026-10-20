@@ -35,6 +35,7 @@ import (
 	"github.com/openpicket/openpicket/manager/relay"
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
 	"github.com/openpicket/openpicket/manager/sinks/loki"
+	"github.com/openpicket/openpicket/manager/sinks/opensearch"
 	"github.com/openpicket/openpicket/pkg/version"
 	"github.com/openpicket/openpicket/web"
 )
@@ -50,6 +51,7 @@ type config struct {
 	Loki              loki.Config
 	LokiQueryURL      string
 	PublicURL         string
+	OpenSearch        opensearch.Config
 	Metrics           csmetrics.Config
 	CrowdSec          crowdsec.Config
 	LAPI              lapi.Config
@@ -83,6 +85,13 @@ func loadConfig() (*config, error) {
 	e.String("LOKI_TENANT", &c.Loki.TenantID)
 	e.String("LOKI_QUERY_URL", &c.LokiQueryURL)
 	e.String("PUBLIC_URL", &c.PublicURL)
+	e.String("OPENSEARCH_URL", &c.OpenSearch.URL)
+	e.String("OPENSEARCH_USERNAME", &c.OpenSearch.Username)
+	e.Secret("OPENSEARCH_PASSWORD", &c.OpenSearch.Password)
+	e.String("OPENSEARCH_CA_FILE", &c.OpenSearch.CAFile)
+	e.Bool("OPENSEARCH_INSECURE_SKIP_VERIFY", &c.OpenSearch.InsecureSkipVerify)
+	e.Duration("OPENSEARCH_RETENTION", &c.OpenSearch.Retention)
+	e.Int("OPENSEARCH_REPLICAS", &c.OpenSearch.Replicas)
 	e.String("LOKI_USERNAME", &c.Loki.Username)
 	e.Secret("LOKI_PASSWORD", &c.Loki.Password)
 	e.Duration("LOKI_MAX_AGE", &c.Loki.MaxAge)
@@ -315,7 +324,7 @@ func serve() error {
 	}
 	m, err := manager.New(manager.Options{
 		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
-		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
+		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, OpenSearch: &cfg.OpenSearch, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
 		TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
 	})
 	if err != nil {

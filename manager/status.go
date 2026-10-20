@@ -97,6 +97,26 @@ func (m *Manager) componentStatus(ctx context.Context) []*apiv1.ComponentStatus 
 			out = append(out, c("loki-query", "ok", ""))
 		}
 	}
+	if m.search != nil {
+		switch h, err := m.search.Health(pctx); {
+		case err != nil:
+			out = append(out, c("opensearch", "down", err.Error()))
+		case h == "green" || h == "yellow":
+			out = append(out, c("opensearch", "ok", "cluster "+h))
+		default:
+			out = append(out, c("opensearch", "degraded", "cluster "+h))
+		}
+	}
+	if m.search != nil {
+		switch h, err := m.search.Health(pctx); {
+		case err != nil:
+			out = append(out, c("opensearch", "down", err.Error()))
+		case h == "green" || h == "yellow":
+			out = append(out, c("opensearch", "ok", "cluster "+h))
+		default:
+			out = append(out, c("opensearch", "degraded", "cluster "+h))
+		}
+	}
 	for _, sink := range []string{"loki", "crowdsec"} {
 		if br := m.pipe.Breaker(sink); br != nil && br.Open() {
 			out = append(out, c(sink, "down", "deliveries are failing; batches are retried"))

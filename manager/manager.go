@@ -41,6 +41,7 @@ import (
 	"github.com/openpicket/openpicket/manager/settings"
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
 	"github.com/openpicket/openpicket/manager/sinks/loki"
+	"github.com/openpicket/openpicket/manager/sinks/opensearch"
 	"github.com/openpicket/openpicket/pkg/dpwire"
 	"github.com/openpicket/openpicket/pkg/version"
 )
@@ -72,6 +73,9 @@ type Options struct {
 	AlertRetention time.Duration
 	// AlertPollInterval overrides the alert poll interval (tests).
 	AlertPollInterval time.Duration
+	// OpenSearch, when set, receives every record after the
+	// acknowledgement (best effort) and the LAPI alerts.
+	OpenSearch *opensearch.Config
 	// PublicURL is the external URL of the UI (links in notifications).
 	PublicURL string
 	// CrowdSecMetrics lists CrowdSec Prometheus endpoints shown in the UI.
@@ -119,6 +123,7 @@ type Manager struct {
 	alerts     *alerts.Syncer
 	lokiQuery  *loki.Querier
 	notify     *notify.Engine
+	search     *opensearch.Client
 	lapis      []api.LAPI
 
 	runOnce sync.Once
@@ -175,8 +180,15 @@ func New(opts Options) (*Manager, error) {
 	m.geo = geo.New(opts.DB, opts.Logger)
 	m.policies = policy.New(opts.DB, m.geo, opts.Logger)
 	m.watermarks = pipeline.NewWatermarks(opts.DB, opts.Logger)
+	var async []pipeline.Sink
+	if opts.OpenSearch != nil && opts.OpenSearch.URL != "" {
+		if m.search, err = opensearch.New(*opts.OpenSearch); err != nil {
+			return nil, err
+		}
+		async = append(async, m.search)
+	}
 	m.pipe = pipeline.New(pipeline.Config{
-		AckSinks: ack, Watermarks: m.watermarks, Geo: m.geo, Logger: opts.Logger, Registerer: m.reg, OpenAfter: opts.PipelineOpenAfter,
+		AckSinks: ack, AsyncSinks: async, Watermarks: m.watermarks, Geo: m.geo, Logger: opts.Logger, Registerer: m.reg, OpenAfter: opts.PipelineOpenAfter,
 	})
 
 	m.nodes.OnRevoked = func(id string) { m.gw.Disconnect(id, "") }
@@ -315,6 +327,13 @@ func (m *Manager) Run(ctx context.Context) error {
 			}
 		},
 		func(ctx context.Context) { m.presence.run(ctx, 30*time.Second) },
+		func(ctx context.Context) {
+			if m.search != nil {
+				db.RunLeader(ctx, m.opts.DB, "opensearch", m.opts.ReplicaID, m.log, func(ctx context.Context, _ *db.Leadership) {
+					m.search.RunLeader(ctx, m.opts.DB, m.log.With("component", "opensearch"), 30*time.Second)
+				})
+			}
+		},
 		func(ctx context.Context) {
 			db.RunLeader(ctx, m.opts.DB, "notify", m.opts.ReplicaID, m.log, func(ctx context.Context, l *db.Leadership) { m.notify.Run(ctx, l) })
 		},

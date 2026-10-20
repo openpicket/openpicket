@@ -178,6 +178,24 @@ loki:
   maxAge: 168h
 
 # ---------------------------------------------------------------------------
+# OpenSearch (optional): every record after the acknowledgement (best
+# effort, deduplicated by record id) and the LAPI alerts, for long-term
+# aggregation. Point it at an existing cluster.
+# ---------------------------------------------------------------------------
+opensearch:
+  enabled: false
+  url: ""
+  username: ""
+  password: ""
+  existingSecret: ""
+  passwordKey: password
+  # Secret with the CA certificate (key ca.crt).
+  caSecret: ""
+  insecureSkipVerify: false
+  retention: 720h
+  replicas: 1
+
+# ---------------------------------------------------------------------------
 # Prometheus Operator and Grafana.
 # ---------------------------------------------------------------------------
 monitoring:

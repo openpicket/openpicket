@@ -73,6 +73,10 @@ image-suricontroller:
 image-agent:
 	docker build $(DOCKER_BUILD_FLAGS) -f deploy/images/agent/Dockerfile --build-arg VERSION=$(VERSION) -t openpicket-agent:$(VERSION) .
 
+# OpenSearch sink against a real OpenSearch.
+test-opensearch:
+	./scripts/opensearch-test.sh
+
 helm-lint:
 	helm lint deploy/helm/openpicket
 	helm template t deploy/helm/openpicket --set ingress.enabled=true --set networkPolicy.enabled=true \
