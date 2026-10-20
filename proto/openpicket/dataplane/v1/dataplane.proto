@@ -1,0 +1,360 @@
+// Channel B: the data plane between openpicket-agent and openpicket-manager.
+//
+// Transport: WebSocket -> Noise_IK (prologue "openpicket/dataplane/1") ->
+// yamux -> uvarint length-prefixed protobuf, the same stack as the
+// suricontroller agent protocol (channel A) and the same agent key.
+//
+// The agent opens every stream. Each stream starts with a StreamHeader.
+syntax = "proto3";
+
+package openpicket.dataplane.v1;
+
+import "suricontroller/agent/v1/agent.proto";
+
+option go_package = "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1;dataplanev1";
+
+// ---------------------------------------------------------------------------
+// Handshake (Noise IK payloads)
+// ---------------------------------------------------------------------------
+
+// HandshakeInit is the payload of Noise message 1 (agent -> manager).
+message HandshakeInit {
+  string node_id = 1;
+  string agent_version = 2;
+  // Replay protection; must be within 5 minutes of the manager clock.
+  int64 timestamp_unix_ms = 3;
+}
+
+enum RejectReason {
+  REJECT_REASON_UNSPECIFIED = 0;
+  REJECT_REASON_UNKNOWN_KEY = 1;
+  REJECT_REASON_DISABLED = 2;
+  REJECT_REASON_NODE_ID_MISMATCH = 3;
+  REJECT_REASON_CLOCK_SKEW = 4;
+  REJECT_REASON_REPLAY = 5;
+  REJECT_REASON_PROTOCOL = 6;
+  // The manager could not check the key (database unavailable).
+  REJECT_REASON_UNAVAILABLE = 7;
+}
+
+// HandshakeResponse is the payload of Noise message 2 (manager -> agent).
+message HandshakeResponse {
+  bool accepted = 1;
+  RejectReason reason = 2;
+  string message = 3;
+  int64 server_time_unix_ms = 4;
+}
+
+enum StreamType {
+  STREAM_TYPE_UNSPECIFIED = 0;
+  STREAM_TYPE_CONTROL = 1;
+  STREAM_TYPE_LOGS = 2;
+  STREAM_TYPE_DECISIONS = 3;
+  STREAM_TYPE_POLICY = 4;
+}
+
+message StreamHeader {
+  StreamType type = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Control stream
+// ---------------------------------------------------------------------------
+
+// ControlUp is sent by the agent on the control stream. The first message
+// must be a Hello.
+message ControlUp {
+  oneof body {
+    Hello hello = 1;
+    Status status = 2;
+  }
+}
+
+// ControlDown is sent by the manager on the control stream. The first
+// message is a HelloAck.
+message ControlDown {
+  oneof body {
+    HelloAck hello_ack = 1;
+    // Replaces the log collection policy (Suricata log types and eve event
+    // types). nflog records are collected whenever nflog is enabled on the
+    // node.
+    suricontroller.agent.v1.LogCollectionPolicy log_policy = 2;
+  }
+}
+
+// LocalNets is what the node considers "inside" (direction judgement).
+message LocalNets {
+  // Suricata HOME_NET of the running instances (effective configuration).
+  repeated string home_net = 1;
+  // Addresses of the host interfaces, including the WAN address.
+  repeated string interface_addrs = 2;
+  // openpicket.local_nets from agent.yaml.
+  repeated string extra = 3;
+}
+
+message Hello {
+  string node_id = 1;
+  string agent_version = 2;
+  // New on every agent process start; scopes LogBatch.seq.
+  string boot_id = 3;
+  LocalNets local_nets = 4;
+  suricontroller.agent.v1.PlatformInfo platform = 5;
+  suricontroller.agent.v1.EngineInfo engine = 6;
+  repeated string wan_interfaces = 7;
+  repeated suricontroller.agent.v1.LogSource log_sources = 8;
+  repeated suricontroller.agent.v1.Warning warnings = 9;
+  // Feature flags of this agent build, e.g. "nflog", "enforcer", "policy".
+  repeated string capabilities = 10;
+}
+
+message HelloAck {
+  int64 server_time_unix_ms = 1;
+  string manager_version = 2;
+  uint32 status_interval_seconds = 3;
+  suricontroller.agent.v1.LogCollectionPolicy log_policy = 4;
+}
+
+message LogStats {
+  uint64 queue_bytes = 1;
+  uint64 queue_capacity_bytes = 2;
+  uint64 dropped_records = 3;
+  uint64 sent_records = 4;
+  uint64 inflight_batches = 5;
+  uint64 inflight_bytes = 6;
+}
+
+message EnforcerStatus {
+  bool enabled = 1;
+  uint64 decisions_version = 2;
+  uint32 ban_in_v4 = 3;
+  uint32 ban_in_v6 = 4;
+  uint32 ban_both_v4 = 5;
+  uint32 ban_both_v6 = 6;
+  // Decisions refused by local policy (allowlist, local_nets, limits).
+  uint64 rejected = 7;
+  string last_error = 8;
+}
+
+message PolicyStatus {
+  bool enabled = 1;
+  uint64 version = 2;
+  string last_error = 3;
+  // nft counter packets per "policy/rule" ("policy/default" for the
+  // default action).
+  map<string, uint64> packets = 4;
+}
+
+message NflogStatus {
+  bool enabled = 1;
+  // Records per prefix (DNAT-MISS, POLICY-DROP, BAN-EGRESS).
+  map<string, uint64> records = 2;
+  string last_error = 3;
+}
+
+message Status {
+  int64 time_unix_ms = 1;
+  // Suricata instances, interfaces and warnings as reported to suricontroller.
+  suricontroller.agent.v1.StatusReport suricata = 2;
+  LocalNets local_nets = 3;
+  LogStats logs = 4;
+  EnforcerStatus enforcer = 5;
+  PolicyStatus policy = 6;
+  NflogStatus nflog = 7;
+}
+
+// ---------------------------------------------------------------------------
+// Logs stream
+// ---------------------------------------------------------------------------
+
+// Record is one log line.
+message Record {
+  // The original line. For eve alert/anomaly and nflog records the agent
+  // appends an "openpicket" object (rid, direction, remote_ip, local_ip),
+  // so the line is identical on every retransmission.
+  bytes line = 1;
+  // Stable record id: hash(node, path, inode, offset) for file lines,
+  // boot_id + counter for in-memory sources.
+  string rid = 2;
+  // Event time (eve/nflog "timestamp"), or the time the agent read a text
+  // line. Fixed before the record is buffered.
+  int64 time_unix_nano = 3;
+}
+
+message RecordList {
+  repeated Record records = 1;
+}
+
+// LogBatch is sent by the agent. The manager acknowledges batches
+// cumulatively with LogAck on the same stream. While a session is alive the
+// agent never retransmits; unacknowledged batches are resent, oldest first,
+// on the next session.
+message LogBatch {
+  string boot_id = 1;
+  // Strictly increasing within boot_id.
+  uint64 seq = 2;
+  // eve | suricata | fast | stats | agent | nflog
+  string type = 3;
+  // ids | ips | ""
+  string instance = 4;
+  // zstd(RecordList)
+  bytes zstd_records = 5;
+  uint32 record_count = 6;
+  uint64 dropped_since_last = 7;
+}
+
+message LogAck {
+  string boot_id = 1;
+  // Every batch with seq <= this is acknowledged.
+  uint64 seq = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Decisions stream
+// ---------------------------------------------------------------------------
+
+enum Direction {
+  DIRECTION_UNSPECIFIED = 0;
+  // Block connections the remote starts.
+  DIRECTION_INBOUND = 1;
+  // Block all traffic with the remote, both ways.
+  DIRECTION_BOTH = 2;
+}
+
+enum Scope {
+  SCOPE_UNSPECIFIED = 0;
+  SCOPE_IP = 1;
+  SCOPE_RANGE = 2;
+}
+
+// Decision is the edge view of one blocked value: the manager merges the
+// LAPI decisions of the same value (longest TTL, BOTH wins).
+message Decision {
+  // "203.0.113.7" or "203.0.113.0/24"
+  string value = 1;
+  Scope scope = 2;
+  Direction direction = 3;
+  // Remaining time, computed by the manager when sending.
+  int64 ttl_ms = 4;
+  string origin = 5;
+  string scenario = 6;
+}
+
+message DecisionsUp {
+  oneof body {
+    // First message: the version the agent already applied (0: none).
+    DecisionSubscribe subscribe = 1;
+    DecisionAck ack = 2;
+  }
+}
+
+message DecisionSubscribe {
+  uint64 have_version = 1;
+}
+
+message DecisionsDown {
+  oneof body {
+    DecisionSnapshot snapshot = 1;
+    DecisionDelta delta = 2;
+  }
+}
+
+// DecisionSnapshot replaces the whole set.
+message DecisionSnapshot {
+  uint64 version = 1;
+  repeated Decision decisions = 2;
+}
+
+// DecisionDelta applies on top of from_version.
+message DecisionDelta {
+  uint64 from_version = 1;
+  uint64 to_version = 2;
+  // Added or changed (upsert by value).
+  repeated Decision upserts = 3;
+  // Values no longer blocked.
+  repeated string deletes = 4;
+}
+
+message DecisionAck {
+  uint64 version = 1;
+  uint32 set_size = 2;
+  string error = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Policy stream (port policies before DNAT)
+// ---------------------------------------------------------------------------
+
+enum PolicyMode {
+  POLICY_MODE_UNSPECIFIED = 0;
+  POLICY_MODE_ENFORCE = 1;
+  // Count and log only.
+  POLICY_MODE_OBSERVE = 2;
+}
+
+enum L4Proto {
+  L4_PROTO_UNSPECIFIED = 0;
+  L4_PROTO_TCP = 1;
+  L4_PROTO_UDP = 2;
+}
+
+enum PolicyAction {
+  POLICY_ACTION_UNSPECIFIED = 0;
+  POLICY_ACTION_ACCEPT = 1;
+  POLICY_ACTION_DROP = 2;
+  POLICY_ACTION_REJECT = 3;
+}
+
+message PortRange {
+  uint32 from = 1;
+  uint32 to = 2;
+}
+
+// NamedSet is a list of CIDRs (countries and ASNs are resolved by the
+// manager). id matches [a-z0-9_]{1,32}.
+message NamedSet {
+  string id = 1;
+  repeated string cidrs = 2;
+}
+
+message PolicyRule {
+  string set_id = 1;
+  PolicyAction action = 2;
+}
+
+// PortPolicy matches new inbound connections on the WAN to the given
+// public (pre-DNAT) ports. Rules apply in order; default_action applies when
+// none matches.
+message PortPolicy {
+  // [a-z0-9_]{1,32}
+  string id = 1;
+  PolicyMode mode = 2;
+  L4Proto proto = 3;
+  repeated PortRange ports = 4;
+  repeated PolicyRule rules = 5;
+  PolicyAction default_action = 6;
+  bool log_drops = 7;
+}
+
+// PolicyBundle is data only: the agent renders nftables from a fixed
+// template and validates the bundle before applying it.
+message PolicyBundle {
+  uint64 version = 1;
+  repeated PortPolicy policies = 2;
+  repeated NamedSet sets = 3;
+}
+
+message PolicyUp {
+  oneof body {
+    PolicySubscribe subscribe = 1;
+    PolicyAck ack = 2;
+  }
+}
+
+message PolicySubscribe {
+  uint64 have_version = 1;
+}
+
+message PolicyAck {
+  uint64 version = 1;
+  string error = 2;
+}
