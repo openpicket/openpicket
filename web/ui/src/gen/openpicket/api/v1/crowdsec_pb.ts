@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file openpicket/api/v1/crowdsec.proto.
  */
 export const file_openpicket_api_v1_crowdsec: GenFile = /*@__PURE__*/
-  fileDesc("CiBvcGVucGlja2V0L2FwaS92MS9jcm93ZHNlYy5wcm90bxIRb3BlbnBpY2tldC5hcGkudjEimwEKBlNvdXJjZRINCgVzY29wZRgBIAEoCRINCgV2YWx1ZRgCIAEoCRIKCgJpcBgDIAEoCRINCgVyYW5nZRgEIAEoCRIPCgdjb3VudHJ5GAUgASgJEhEKCWFzX251bWJlchgGIAEoCRIPCgdhc19uYW1lGAcgASgJEhAKCGxhdGl0dWRlGAggASgCEhEKCWxvbmdpdHVkZRgJIAEoAiIoCglNZXRhVmFsdWUSCwoDa2V5GAEgASgJEg4KBnZhbHVlcxgCIAMoCSKkAQoNQWxlcnREZWNpc2lvbhIKCgJpZBgBIAEoAxIMCgR0eXBlGAIgASgJEg0KBXNjb3BlGAMgASgJEg0KBXZhbHVlGAQgASgJEg4KBm9yaWdpbhgFIAEoCRIQCghzY2VuYXJpbxgGIAEoCRIpCgV1bnRpbBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDgoGYWN0aXZlGAggASgIIuMDCgVBbGVydBIQCghpbnN0YW5jZRgBIAEoCRIKCgJpZBgCIAEoAxIMCgR1dWlkGAMgASgJEhAKCHNjZW5hcmlvGAQgASgJEg8KB21lc3NhZ2UYBSABKAkSKQoGc291cmNlGAYgASgLMhkub3BlbnBpY2tldC5hcGkudjEuU291cmNlEhQKDGV2ZW50c19jb3VudBgHIAEoBRIRCglzaW11bGF0ZWQYCCABKAgSEwoLcmVtZWRpYXRpb24YCSABKAgSEgoKbWFjaGluZV9pZBgKIAEoCRIsCghzdGFydF9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKwoHc3RvcF9hdBgMIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKY3JlYXRlZF9hdBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoEbWV0YRgOIAMoCzIcLm9wZW5waWNrZXQuYXBpLnYxLk1ldGFWYWx1ZRIzCglkZWNpc2lvbnMYDyADKAsyIC5vcGVucGlja2V0LmFwaS52MS5BbGVydERlY2lzaW9uEg8KB25vZGVfaWQYECABKAkSEQoJZGlyZWN0aW9uGBEgASgJIucBChNTZWFyY2hBbGVydHNSZXF1ZXN0Eg0KBXF1ZXJ5GAEgASgJEigKBGZyb20YAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiYKAnRvGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVsaW1pdBgEIAEoBRIOCgZvZmZzZXQYBSABKAUSEAoIaW5zdGFuY2UYBiABKAkSGQoRaW5jbHVkZV9zaW11bGF0ZWQYByABKAgSEAoIb3JkZXJfYnkYCCABKAkSEQoJYXNjZW5kaW5nGAkgASgIIk8KFFNlYXJjaEFsZXJ0c1Jlc3BvbnNlEigKBmFsZXJ0cxgBIAMoCzIYLm9wZW5waWNrZXQuYXBpLnYxLkFsZXJ0Eg0KBXRvdGFsGAIgASgDIi8KD0dldEFsZXJ0UmVxdWVzdBIQCghpbnN0YW5jZRgBIAEoCRIKCgJpZBgCIAEoAyJQChBHZXRBbGVydFJlc3BvbnNlEicKBWFsZXJ0GAEgASgLMhgub3BlbnBpY2tldC5hcGkudjEuQWxlcnQSEwoLZXZlbnRzX2pzb24YAiABKAki0gEKDUZhY2V0c1JlcXVlc3QSDQoFcXVlcnkYASABKAkSKAoEZnJvbRgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASJgoCdG8YAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGluc3RhbmNlGAQgASgJEg4KBmZpZWxkcxgFIAMoCRIUCgx2YWx1ZV9wcmVmaXgYBiABKAkSDQoFbGltaXQYByABKAUSGQoRaW5jbHVkZV9zaW11bGF0ZWQYCCABKAgiKgoKRmFjZXRWYWx1ZRINCgV2YWx1ZRgBIAEoCRINCgVjb3VudBgCIAEoAyJFCgVGYWNldBINCgVmaWVsZBgBIAEoCRItCgZ2YWx1ZXMYAiADKAsyHS5vcGVucGlja2V0LmFwaS52MS5GYWNldFZhbHVlIjoKDkZhY2V0c1Jlc3BvbnNlEigKBmZhY2V0cxgBIAMoCzIYLm9wZW5waWNrZXQuYXBpLnYxLkZhY2V0IjQKE0RlbGV0ZUFsZXJ0c1JlcXVlc3QSEAoIaW5zdGFuY2UYASABKAkSCwoDaWRzGAIgAygDIlkKFERlbGV0ZUFsZXJ0c1Jlc3BvbnNlEg8KB2RlbGV0ZWQYASABKAMSMAoGZXJyb3JzGAIgAygLMiAub3BlbnBpY2tldC5hcGkudjEuSW5zdGFuY2VFcnJvciIwCg1JbnN0YW5jZUVycm9yEhAKCGluc3RhbmNlGAEgASgJEg0KBWVycm9yGAIgASgJIv0BCghEZWNpc2lvbhIQCghpbnN0YW5jZRgBIAEoCRIKCgJpZBgCIAEoAxIMCgR0eXBlGAMgASgJEg0KBXNjb3BlGAQgASgJEg0KBXZhbHVlGAUgASgJEg4KBm9yaWdpbhgGIAEoCRIQCghzY2VuYXJpbxgHIAEoCRIpCgV1bnRpbBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDgoGYWN0aXZlGAkgASgIEhYKDmVkZ2VfZGlyZWN0aW9uGAogASgJEhAKCGFsZXJ0X2lkGAsgASgDEg8KB2NvdW50cnkYDCABKAkSDwoHYXNfbmFtZRgNIAEoCSKKAQoWU2VhcmNoRGVjaXNpb25zUmVxdWVzdBINCgVxdWVyeRgBIAEoCRIXCg9pbmNsdWRlX2V4cGlyZWQYAiABKAgSFwoPaGlkZV9kdXBsaWNhdGVzGAMgASgIEg0KBWxpbWl0GAQgASgFEg4KBm9mZnNldBgFIAEoBRIQCghpbnN0YW5jZRgGIAEoCSJYChdTZWFyY2hEZWNpc2lvbnNSZXNwb25zZRIuCglkZWNpc2lvbnMYASADKAsyGy5vcGVucGlja2V0LmFwaS52MS5EZWNpc2lvbhINCgV0b3RhbBgCIAEoAyKGAQoSQWRkRGVjaXNpb25SZXF1ZXN0Eg0KBXNjb3BlGAEgASgJEg0KBXZhbHVlGAIgASgJEhAKCGR1cmF0aW9uGAMgASgJEg4KBnJlYXNvbhgEIAEoCRIMCgR0eXBlGAUgASgJEhAKCHNjZW5hcmlvGAYgASgJEhAKCGluc3RhbmNlGAcgASgJIkcKE0FkZERlY2lzaW9uUmVzcG9uc2USMAoGZXJyb3JzGAEgAygLMiAub3BlbnBpY2tldC5hcGkudjEuSW5zdGFuY2VFcnJvciI3ChZEZWxldGVEZWNpc2lvbnNSZXF1ZXN0EhAKCGluc3RhbmNlGAEgASgJEgsKA2lkcxgCIAMoAyJcChdEZWxldGVEZWNpc2lvbnNSZXNwb25zZRIPCgdkZWxldGVkGAEgASgDEjAKBmVycm9ycxgCIAMoCzIgLm9wZW5waWNrZXQuYXBpLnYxLkluc3RhbmNlRXJyb3IiRwoQQ2xlYW51cElQUmVxdWVzdBIKCgJpcBgBIAEoCRIVCg1kZWxldGVfYWxlcnRzGAIgASgIEhAKCGluc3RhbmNlGAMgASgJIngKEUNsZWFudXBJUFJlc3BvbnNlEhkKEWRlY2lzaW9uc19kZWxldGVkGAEgASgDEhYKDmFsZXJ0c19kZWxldGVkGAIgASgDEjAKBmVycm9ycxgDIAMoCzIgLm9wZW5waWNrZXQuYXBpLnYxLkluc3RhbmNlRXJyb3IiJgoVR2V0UHJvcGFnYXRpb25SZXF1ZXN0Eg0KBXZhbHVlGAEgASgJIsIBCg9Ob2RlUHJvcGFnYXRpb24SDwoHbm9kZV9pZBgBIAEoCRIVCg1hY2tlZF92ZXJzaW9uGAIgASgEEg8KB2FwcGxpZWQYAyABKAgSEQoJY29ubmVjdGVkGAQgASgIEiwKCGFja2VkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVlcnJvchgGIAEoCRIPCgdyZWZ1c2VkGAcgASgJEhUKDW1heWJlX3JlZnVzZWQYCCABKAgi7wEKFkdldFByb3BhZ2F0aW9uUmVzcG9uc2USDwoHYXRfZWRnZRgBIAEoCBIRCglkaXJlY3Rpb24YAiABKAkSDwoHdmVyc2lvbhgDIAEoBBIpCgV1bnRpbBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoFbm9kZXMYBSADKAsyIi5vcGVucGlja2V0LmFwaS52MS5Ob2RlUHJvcGFnYXRpb24SLgoJZGVjaXNpb25zGAYgAygLMhsub3BlbnBpY2tldC5hcGkudjEuRGVjaXNpb24SEgoKZWRnZV92YWx1ZRgHIAEoCSKhAQoRR2V0U3VtbWFyeVJlcXVlc3QSKAoEZnJvbRgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASJgoCdG8YAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg0KBXF1ZXJ5GAMgASgJEhAKCGluc3RhbmNlGAQgASgJEhkKEWluY2x1ZGVfc2ltdWxhdGVkGAUgASgIIloKClRpbWVCdWNrZXQSKQoFc3RhcnQYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg4KBmFsZXJ0cxgCIAEoAxIRCglkZWNpc2lvbnMYAyABKAMiKgoITWFwUG9pbnQSDwoHY291bnRyeRgBIAEoCRINCgVjb3VudBgCIAEoAyL4AwoSR2V0U3VtbWFyeVJlc3BvbnNlEg4KBmFsZXJ0cxgBIAEoAxIYChBhY3RpdmVfZGVjaXNpb25zGAIgASgDEhgKEHNpbXVsYXRlZF9hbGVydHMYAyABKAMSLQoGc2VyaWVzGAQgAygLMh0ub3BlbnBpY2tldC5hcGkudjEuVGltZUJ1Y2tldBI0Cg10b3BfY291bnRyaWVzGAUgAygLMh0ub3BlbnBpY2tldC5hcGkudjEuRmFjZXRWYWx1ZRI0Cg10b3Bfc2NlbmFyaW9zGAYgAygLMh0ub3BlbnBpY2tldC5hcGkudjEuRmFjZXRWYWx1ZRItCgZ0b3BfYXMYByADKAsyHS5vcGVucGlja2V0LmFwaS52MS5GYWNldFZhbHVlEjAKCXRvcF9ub2RlcxgIIAMoCzIdLm9wZW5waWNrZXQuYXBpLnYxLkZhY2V0VmFsdWUSMgoLdG9wX3NvdXJjZXMYCSADKAsyHS5vcGVucGlja2V0LmFwaS52MS5GYWNldFZhbHVlEigKA21hcBgKIAMoCzIbLm9wZW5waWNrZXQuYXBpLnYxLk1hcFBvaW50EhQKDG5vZGVzX29ubGluZRgLIAEoAxITCgtub2Rlc190b3RhbBgMIAEoAxIZChFjb21wcm9taXNlZF9ob3N0cxgNIAEoAzL0AgoMQWxlcnRTZXJ2aWNlEl8KDFNlYXJjaEFsZXJ0cxImLm9wZW5waWNrZXQuYXBpLnYxLlNlYXJjaEFsZXJ0c1JlcXVlc3QaJy5vcGVucGlja2V0LmFwaS52MS5TZWFyY2hBbGVydHNSZXNwb25zZRJTCghHZXRBbGVydBIiLm9wZW5waWNrZXQuYXBpLnYxLkdldEFsZXJ0UmVxdWVzdBojLm9wZW5waWNrZXQuYXBpLnYxLkdldEFsZXJ0UmVzcG9uc2USTQoGRmFjZXRzEiAub3BlbnBpY2tldC5hcGkudjEuRmFjZXRzUmVxdWVzdBohLm9wZW5waWNrZXQuYXBpLnYxLkZhY2V0c1Jlc3BvbnNlEl8KDERlbGV0ZUFsZXJ0cxImLm9wZW5waWNrZXQuYXBpLnYxLkRlbGV0ZUFsZXJ0c1JlcXVlc3QaJy5vcGVucGlja2V0LmFwaS52MS5EZWxldGVBbGVydHNSZXNwb25zZTKCBAoPRGVjaXNpb25TZXJ2aWNlEmgKD1NlYXJjaERlY2lzaW9ucxIpLm9wZW5waWNrZXQuYXBpLnYxLlNlYXJjaERlY2lzaW9uc1JlcXVlc3QaKi5vcGVucGlja2V0LmFwaS52MS5TZWFyY2hEZWNpc2lvbnNSZXNwb25zZRJcCgtBZGREZWNpc2lvbhIlLm9wZW5waWNrZXQuYXBpLnYxLkFkZERlY2lzaW9uUmVxdWVzdBomLm9wZW5waWNrZXQuYXBpLnYxLkFkZERlY2lzaW9uUmVzcG9uc2USaAoPRGVsZXRlRGVjaXNpb25zEikub3BlbnBpY2tldC5hcGkudjEuRGVsZXRlRGVjaXNpb25zUmVxdWVzdBoqLm9wZW5waWNrZXQuYXBpLnYxLkRlbGV0ZURlY2lzaW9uc1Jlc3BvbnNlElYKCUNsZWFudXBJUBIjLm9wZW5waWNrZXQuYXBpLnYxLkNsZWFudXBJUFJlcXVlc3QaJC5vcGVucGlja2V0LmFwaS52MS5DbGVhbnVwSVBSZXNwb25zZRJlCg5HZXRQcm9wYWdhdGlvbhIoLm9wZW5waWNrZXQuYXBpLnYxLkdldFByb3BhZ2F0aW9uUmVxdWVzdBopLm9wZW5waWNrZXQuYXBpLnYxLkdldFByb3BhZ2F0aW9uUmVzcG9uc2UybQoQRGFzaGJvYXJkU2VydmljZRJZCgpHZXRTdW1tYXJ5EiQub3BlbnBpY2tldC5hcGkudjEuR2V0U3VtbWFyeVJlcXVlc3QaJS5vcGVucGlja2V0LmFwaS52MS5HZXRTdW1tYXJ5UmVzcG9uc2VCPlo8Z2l0aHViLmNvbS9vcGVucGlja2V0L29wZW5waWNrZXQvZ2VuL29wZW5waWNrZXQvYXBpL3YxO2FwaXYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("CiBvcGVucGlja2V0L2FwaS92MS9jcm93ZHNlYy5wcm90bxIRb3BlbnBpY2tldC5hcGkudjEimwEKBlNvdXJjZRINCgVzY29wZRgBIAEoCRINCgV2YWx1ZRgCIAEoCRIKCgJpcBgDIAEoCRINCgVyYW5nZRgEIAEoCRIPCgdjb3VudHJ5GAUgASgJEhEKCWFzX251bWJlchgGIAEoCRIPCgdhc19uYW1lGAcgASgJEhAKCGxhdGl0dWRlGAggASgCEhEKCWxvbmdpdHVkZRgJIAEoAiIoCglNZXRhVmFsdWUSCwoDa2V5GAEgASgJEg4KBnZhbHVlcxgCIAMoCSKkAQoNQWxlcnREZWNpc2lvbhIKCgJpZBgBIAEoAxIMCgR0eXBlGAIgASgJEg0KBXNjb3BlGAMgASgJEg0KBXZhbHVlGAQgASgJEg4KBm9yaWdpbhgFIAEoCRIQCghzY2VuYXJpbxgGIAEoCRIpCgV1bnRpbBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDgoGYWN0aXZlGAggASgIIuMDCgVBbGVydBIQCghpbnN0YW5jZRgBIAEoCRIKCgJpZBgCIAEoAxIMCgR1dWlkGAMgASgJEhAKCHNjZW5hcmlvGAQgASgJEg8KB21lc3NhZ2UYBSABKAkSKQoGc291cmNlGAYgASgLMhkub3BlbnBpY2tldC5hcGkudjEuU291cmNlEhQKDGV2ZW50c19jb3VudBgHIAEoBRIRCglzaW11bGF0ZWQYCCABKAgSEwoLcmVtZWRpYXRpb24YCSABKAgSEgoKbWFjaGluZV9pZBgKIAEoCRIsCghzdGFydF9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKwoHc3RvcF9hdBgMIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKY3JlYXRlZF9hdBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoEbWV0YRgOIAMoCzIcLm9wZW5waWNrZXQuYXBpLnYxLk1ldGFWYWx1ZRIzCglkZWNpc2lvbnMYDyADKAsyIC5vcGVucGlja2V0LmFwaS52MS5BbGVydERlY2lzaW9uEg8KB25vZGVfaWQYECABKAkSEQoJZGlyZWN0aW9uGBEgASgJIucBChNTZWFyY2hBbGVydHNSZXF1ZXN0Eg0KBXF1ZXJ5GAEgASgJEigKBGZyb20YAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiYKAnRvGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVsaW1pdBgEIAEoBRIOCgZvZmZzZXQYBSABKAUSEAoIaW5zdGFuY2UYBiABKAkSGQoRaW5jbHVkZV9zaW11bGF0ZWQYByABKAgSEAoIb3JkZXJfYnkYCCABKAkSEQoJYXNjZW5kaW5nGAkgASgIIk8KFFNlYXJjaEFsZXJ0c1Jlc3BvbnNlEigKBmFsZXJ0cxgBIAMoCzIYLm9wZW5waWNrZXQuYXBpLnYxLkFsZXJ0Eg0KBXRvdGFsGAIgASgDIi8KD0dldEFsZXJ0UmVxdWVzdBIQCghpbnN0YW5jZRgBIAEoCRIKCgJpZBgCIAEoAyJQChBHZXRBbGVydFJlc3BvbnNlEicKBWFsZXJ0GAEgASgLMhgub3BlbnBpY2tldC5hcGkudjEuQWxlcnQSEwoLZXZlbnRzX2pzb24YAiABKAki0gEKDUZhY2V0c1JlcXVlc3QSDQoFcXVlcnkYASABKAkSKAoEZnJvbRgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASJgoCdG8YAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGluc3RhbmNlGAQgASgJEg4KBmZpZWxkcxgFIAMoCRIUCgx2YWx1ZV9wcmVmaXgYBiABKAkSDQoFbGltaXQYByABKAUSGQoRaW5jbHVkZV9zaW11bGF0ZWQYCCABKAgiKgoKRmFjZXRWYWx1ZRINCgV2YWx1ZRgBIAEoCRINCgVjb3VudBgCIAEoAyJFCgVGYWNldBINCgVmaWVsZBgBIAEoCRItCgZ2YWx1ZXMYAiADKAsyHS5vcGVucGlja2V0LmFwaS52MS5GYWNldFZhbHVlIjoKDkZhY2V0c1Jlc3BvbnNlEigKBmZhY2V0cxgBIAMoCzIYLm9wZW5waWNrZXQuYXBpLnYxLkZhY2V0IjQKE0RlbGV0ZUFsZXJ0c1JlcXVlc3QSEAoIaW5zdGFuY2UYASABKAkSCwoDaWRzGAIgAygDIlkKFERlbGV0ZUFsZXJ0c1Jlc3BvbnNlEg8KB2RlbGV0ZWQYASABKAMSMAoGZXJyb3JzGAIgAygLMiAub3BlbnBpY2tldC5hcGkudjEuSW5zdGFuY2VFcnJvciIwCg1JbnN0YW5jZUVycm9yEhAKCGluc3RhbmNlGAEgASgJEg0KBWVycm9yGAIgASgJIv0BCghEZWNpc2lvbhIQCghpbnN0YW5jZRgBIAEoCRIKCgJpZBgCIAEoAxIMCgR0eXBlGAMgASgJEg0KBXNjb3BlGAQgASgJEg0KBXZhbHVlGAUgASgJEg4KBm9yaWdpbhgGIAEoCRIQCghzY2VuYXJpbxgHIAEoCRIpCgV1bnRpbBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDgoGYWN0aXZlGAkgASgIEhYKDmVkZ2VfZGlyZWN0aW9uGAogASgJEhAKCGFsZXJ0X2lkGAsgASgDEg8KB2NvdW50cnkYDCABKAkSDwoHYXNfbmFtZRgNIAEoCSKKAQoWU2VhcmNoRGVjaXNpb25zUmVxdWVzdBINCgVxdWVyeRgBIAEoCRIXCg9pbmNsdWRlX2V4cGlyZWQYAiABKAgSFwoPaGlkZV9kdXBsaWNhdGVzGAMgASgIEg0KBWxpbWl0GAQgASgFEg4KBm9mZnNldBgFIAEoBRIQCghpbnN0YW5jZRgGIAEoCSJYChdTZWFyY2hEZWNpc2lvbnNSZXNwb25zZRIuCglkZWNpc2lvbnMYASADKAsyGy5vcGVucGlja2V0LmFwaS52MS5EZWNpc2lvbhINCgV0b3RhbBgCIAEoAyKGAQoSQWRkRGVjaXNpb25SZXF1ZXN0Eg0KBXNjb3BlGAEgASgJEg0KBXZhbHVlGAIgASgJEhAKCGR1cmF0aW9uGAMgASgJEg4KBnJlYXNvbhgEIAEoCRIMCgR0eXBlGAUgASgJEhAKCHNjZW5hcmlvGAYgASgJEhAKCGluc3RhbmNlGAcgASgJIkcKE0FkZERlY2lzaW9uUmVzcG9uc2USMAoGZXJyb3JzGAEgAygLMiAub3BlbnBpY2tldC5hcGkudjEuSW5zdGFuY2VFcnJvciI3ChZEZWxldGVEZWNpc2lvbnNSZXF1ZXN0EhAKCGluc3RhbmNlGAEgASgJEgsKA2lkcxgCIAMoAyJcChdEZWxldGVEZWNpc2lvbnNSZXNwb25zZRIPCgdkZWxldGVkGAEgASgDEjAKBmVycm9ycxgCIAMoCzIgLm9wZW5waWNrZXQuYXBpLnYxLkluc3RhbmNlRXJyb3IiRwoQQ2xlYW51cElQUmVxdWVzdBIKCgJpcBgBIAEoCRIVCg1kZWxldGVfYWxlcnRzGAIgASgIEhAKCGluc3RhbmNlGAMgASgJIngKEUNsZWFudXBJUFJlc3BvbnNlEhkKEWRlY2lzaW9uc19kZWxldGVkGAEgASgDEhYKDmFsZXJ0c19kZWxldGVkGAIgASgDEjAKBmVycm9ycxgDIAMoCzIgLm9wZW5waWNrZXQuYXBpLnYxLkluc3RhbmNlRXJyb3IiJgoVR2V0UHJvcGFnYXRpb25SZXF1ZXN0Eg0KBXZhbHVlGAEgASgJItQCCg9Ob2RlUHJvcGFnYXRpb24SDwoHbm9kZV9pZBgBIAEoCRIVCg1hY2tlZF92ZXJzaW9uGAIgASgEEg8KB2FwcGxpZWQYAyABKAgSEQoJY29ubmVjdGVkGAQgASgIEiwKCGFja2VkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVlcnJvchgGIAEoCRINCgVzdGF0ZRgJIAEoCRIRCglkaXJlY3Rpb24YCiABKAkSKQoFdW50aWwYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKCHJlZnVzYWxzGAwgAygLMh4ub3BlbnBpY2tldC5hcGkudjEuTm9kZVJlZnVzYWwSLQoJc3RhdHVzX2F0GA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEoECAcQCEoECAgQCSIsCgtOb2RlUmVmdXNhbBINCgV2YWx1ZRgBIAEoCRIOCgZyZWFzb24YAiABKAkiaQoJRWRnZUJsb2NrEg0KBXZhbHVlGAEgASgJEhEKCWRpcmVjdGlvbhgCIAEoCRIPCgd2ZXJzaW9uGAMgASgEEikKBXVudGlsGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKNAgoWR2V0UHJvcGFnYXRpb25SZXNwb25zZRIPCgdhdF9lZGdlGAEgASgIEhEKCWRpcmVjdGlvbhgCIAEoCRIPCgd2ZXJzaW9uGAMgASgEEikKBXVudGlsGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIxCgVub2RlcxgFIAMoCzIiLm9wZW5waWNrZXQuYXBpLnYxLk5vZGVQcm9wYWdhdGlvbhIuCglkZWNpc2lvbnMYBiADKAsyGy5vcGVucGlja2V0LmFwaS52MS5EZWNpc2lvbhIqCgRlZGdlGAggAygLMhwub3BlbnBpY2tldC5hcGkudjEuRWRnZUJsb2NrSgQIBxAIIqEBChFHZXRTdW1tYXJ5UmVxdWVzdBIoCgRmcm9tGAEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBImCgJ0bxgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDQoFcXVlcnkYAyABKAkSEAoIaW5zdGFuY2UYBCABKAkSGQoRaW5jbHVkZV9zaW11bGF0ZWQYBSABKAgiWgoKVGltZUJ1Y2tldBIpCgVzdGFydBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDgoGYWxlcnRzGAIgASgDEhEKCWRlY2lzaW9ucxgDIAEoAyIqCghNYXBQb2ludBIPCgdjb3VudHJ5GAEgASgJEg0KBWNvdW50GAIgASgDIvgDChJHZXRTdW1tYXJ5UmVzcG9uc2USDgoGYWxlcnRzGAEgASgDEhgKEGFjdGl2ZV9kZWNpc2lvbnMYAiABKAMSGAoQc2ltdWxhdGVkX2FsZXJ0cxgDIAEoAxItCgZzZXJpZXMYBCADKAsyHS5vcGVucGlja2V0LmFwaS52MS5UaW1lQnVja2V0EjQKDXRvcF9jb3VudHJpZXMYBSADKAsyHS5vcGVucGlja2V0LmFwaS52MS5GYWNldFZhbHVlEjQKDXRvcF9zY2VuYXJpb3MYBiADKAsyHS5vcGVucGlja2V0LmFwaS52MS5GYWNldFZhbHVlEi0KBnRvcF9hcxgHIAMoCzIdLm9wZW5waWNrZXQuYXBpLnYxLkZhY2V0VmFsdWUSMAoJdG9wX25vZGVzGAggAygLMh0ub3BlbnBpY2tldC5hcGkudjEuRmFjZXRWYWx1ZRIyCgt0b3Bfc291cmNlcxgJIAMoCzIdLm9wZW5waWNrZXQuYXBpLnYxLkZhY2V0VmFsdWUSKAoDbWFwGAogAygLMhsub3BlbnBpY2tldC5hcGkudjEuTWFwUG9pbnQSFAoMbm9kZXNfb25saW5lGAsgASgDEhMKC25vZGVzX3RvdGFsGAwgASgDEhkKEWNvbXByb21pc2VkX2hvc3RzGA0gASgDMvQCCgxBbGVydFNlcnZpY2USXwoMU2VhcmNoQWxlcnRzEiYub3BlbnBpY2tldC5hcGkudjEuU2VhcmNoQWxlcnRzUmVxdWVzdBonLm9wZW5waWNrZXQuYXBpLnYxLlNlYXJjaEFsZXJ0c1Jlc3BvbnNlElMKCEdldEFsZXJ0EiIub3BlbnBpY2tldC5hcGkudjEuR2V0QWxlcnRSZXF1ZXN0GiMub3BlbnBpY2tldC5hcGkudjEuR2V0QWxlcnRSZXNwb25zZRJNCgZGYWNldHMSIC5vcGVucGlja2V0LmFwaS52MS5GYWNldHNSZXF1ZXN0GiEub3BlbnBpY2tldC5hcGkudjEuRmFjZXRzUmVzcG9uc2USXwoMRGVsZXRlQWxlcnRzEiYub3BlbnBpY2tldC5hcGkudjEuRGVsZXRlQWxlcnRzUmVxdWVzdBonLm9wZW5waWNrZXQuYXBpLnYxLkRlbGV0ZUFsZXJ0c1Jlc3BvbnNlMoIECg9EZWNpc2lvblNlcnZpY2USaAoPU2VhcmNoRGVjaXNpb25zEikub3BlbnBpY2tldC5hcGkudjEuU2VhcmNoRGVjaXNpb25zUmVxdWVzdBoqLm9wZW5waWNrZXQuYXBpLnYxLlNlYXJjaERlY2lzaW9uc1Jlc3BvbnNlElwKC0FkZERlY2lzaW9uEiUub3BlbnBpY2tldC5hcGkudjEuQWRkRGVjaXNpb25SZXF1ZXN0GiYub3BlbnBpY2tldC5hcGkudjEuQWRkRGVjaXNpb25SZXNwb25zZRJoCg9EZWxldGVEZWNpc2lvbnMSKS5vcGVucGlja2V0LmFwaS52MS5EZWxldGVEZWNpc2lvbnNSZXF1ZXN0Gioub3BlbnBpY2tldC5hcGkudjEuRGVsZXRlRGVjaXNpb25zUmVzcG9uc2USVgoJQ2xlYW51cElQEiMub3BlbnBpY2tldC5hcGkudjEuQ2xlYW51cElQUmVxdWVzdBokLm9wZW5waWNrZXQuYXBpLnYxLkNsZWFudXBJUFJlc3BvbnNlEmUKDkdldFByb3BhZ2F0aW9uEigub3BlbnBpY2tldC5hcGkudjEuR2V0UHJvcGFnYXRpb25SZXF1ZXN0Gikub3BlbnBpY2tldC5hcGkudjEuR2V0UHJvcGFnYXRpb25SZXNwb25zZTJtChBEYXNoYm9hcmRTZXJ2aWNlElkKCkdldFN1bW1hcnkSJC5vcGVucGlja2V0LmFwaS52MS5HZXRTdW1tYXJ5UmVxdWVzdBolLm9wZW5waWNrZXQuYXBpLnYxLkdldFN1bW1hcnlSZXNwb25zZUI+WjxnaXRodWIuY29tL29wZW5waWNrZXQvb3BlbnBpY2tldC9nZW4vb3BlbnBpY2tldC9hcGkvdjE7YXBpdjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message openpicket.api.v1.Source
@@ -899,6 +899,9 @@ export const GetPropagationRequestSchema: GenMessage<GetPropagationRequest> = /*
   messageDesc(file_openpicket_api_v1_crowdsec, 24);
 
 /**
+ * How the edge decisions blocking a value stand on one node, from its
+ * status report in the current session.
+ *
  * @generated from message openpicket.api.v1.NodePropagation
  */
 export type NodePropagation = Message<"openpicket.api.v1.NodePropagation"> & {
@@ -908,12 +911,14 @@ export type NodePropagation = Message<"openpicket.api.v1.NodePropagation"> & {
   nodeId: string;
 
   /**
+   * Last acknowledgement (any session).
+   *
    * @generated from field: uint64 acked_version = 2;
    */
   ackedVersion: bigint;
 
   /**
-   * Received and in force on the node.
+   * In force on the node (state "applied" or "maybe").
    *
    * @generated from field: bool applied = 3;
    */
@@ -930,25 +935,51 @@ export type NodePropagation = Message<"openpicket.api.v1.NodePropagation"> & {
   ackedAt?: Timestamp | undefined;
 
   /**
+   * Why applying failed (state "error").
+   *
    * @generated from field: string error = 6;
    */
   error: string;
 
   /**
-   * Received but not in force: the node's reason (its allowlist, local
-   * networks, element limit, or the enforcer turned off).
+   * applied: a decision covering the value is in force.
+   * maybe: in force unless the node left it out without listing it (its
+   *   element limit; the report lists at most 100).
+   * refused: received, and the node applies none of them (refusals).
+   * pending: not received yet.
+   * error: applying failed (error).
+   * unknown: offline, or no recent status report in this session.
    *
-   * @generated from field: string refused = 7;
+   * @generated from field: string state = 9;
    */
-  refused: string;
+  state: string;
 
   /**
-   * The node does not report every decision it refuses (over its element
-   * limit): this one may be among them.
+   * What the node enforces for the value: the strongest direction and the
+   * latest expiry of the decisions in force.
    *
-   * @generated from field: bool maybe_refused = 8;
+   * @generated from field: string direction = 10;
    */
-  maybeRefused: boolean;
+  direction: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp until = 11;
+   */
+  until?: Timestamp | undefined;
+
+  /**
+   * Decisions covering the value that the node received and does not apply.
+   *
+   * @generated from field: repeated openpicket.api.v1.NodeRefusal refusals = 12;
+   */
+  refusals: NodeRefusal[];
+
+  /**
+   * When the status report used was received (unset: none).
+   *
+   * @generated from field: google.protobuf.Timestamp status_at = 13;
+   */
+  statusAt?: Timestamp | undefined;
 };
 
 /**
@@ -959,15 +990,77 @@ export const NodePropagationSchema: GenMessage<NodePropagation> = /*@__PURE__*/
   messageDesc(file_openpicket_api_v1_crowdsec, 25);
 
 /**
+ * @generated from message openpicket.api.v1.NodeRefusal
+ */
+export type NodeRefusal = Message<"openpicket.api.v1.NodeRefusal"> & {
+  /**
+   * @generated from field: string value = 1;
+   */
+  value: string;
+
+  /**
+   * @generated from field: string reason = 2;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message openpicket.api.v1.NodeRefusal.
+ * Use `create(NodeRefusalSchema)` to create a new message.
+ */
+export const NodeRefusalSchema: GenMessage<NodeRefusal> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_crowdsec, 26);
+
+/**
+ * An active edge decision blocking a value: the value itself or a range
+ * containing it.
+ *
+ * @generated from message openpicket.api.v1.EdgeBlock
+ */
+export type EdgeBlock = Message<"openpicket.api.v1.EdgeBlock"> & {
+  /**
+   * @generated from field: string value = 1;
+   */
+  value: string;
+
+  /**
+   * @generated from field: string direction = 2;
+   */
+  direction: string;
+
+  /**
+   * @generated from field: uint64 version = 3;
+   */
+  version: bigint;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp until = 4;
+   */
+  until?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message openpicket.api.v1.EdgeBlock.
+ * Use `create(EdgeBlockSchema)` to create a new message.
+ */
+export const EdgeBlockSchema: GenMessage<EdgeBlock> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_crowdsec, 27);
+
+/**
  * @generated from message openpicket.api.v1.GetPropagationResponse
  */
 export type GetPropagationResponse = Message<"openpicket.api.v1.GetPropagationResponse"> & {
   /**
+   * At least one active edge decision blocks the value.
+   *
    * @generated from field: bool at_edge = 1;
    */
   atEdge: boolean;
 
   /**
+   * Over all of them: the strongest direction, the latest version and
+   * expiry.
+   *
    * @generated from field: string direction = 2;
    */
   direction: string;
@@ -993,12 +1086,9 @@ export type GetPropagationResponse = Message<"openpicket.api.v1.GetPropagationRe
   decisions: Decision[];
 
   /**
-   * The edge decision blocking the value: the value itself or, for an
-   * address, the range containing it that blocks the longest.
-   *
-   * @generated from field: string edge_value = 7;
+   * @generated from field: repeated openpicket.api.v1.EdgeBlock edge = 8;
    */
-  edgeValue: string;
+  edge: EdgeBlock[];
 };
 
 /**
@@ -1006,7 +1096,7 @@ export type GetPropagationResponse = Message<"openpicket.api.v1.GetPropagationRe
  * Use `create(GetPropagationResponseSchema)` to create a new message.
  */
 export const GetPropagationResponseSchema: GenMessage<GetPropagationResponse> = /*@__PURE__*/
-  messageDesc(file_openpicket_api_v1_crowdsec, 26);
+  messageDesc(file_openpicket_api_v1_crowdsec, 28);
 
 /**
  * @generated from message openpicket.api.v1.GetSummaryRequest
@@ -1043,7 +1133,7 @@ export type GetSummaryRequest = Message<"openpicket.api.v1.GetSummaryRequest"> &
  * Use `create(GetSummaryRequestSchema)` to create a new message.
  */
 export const GetSummaryRequestSchema: GenMessage<GetSummaryRequest> = /*@__PURE__*/
-  messageDesc(file_openpicket_api_v1_crowdsec, 27);
+  messageDesc(file_openpicket_api_v1_crowdsec, 29);
 
 /**
  * @generated from message openpicket.api.v1.TimeBucket
@@ -1070,7 +1160,7 @@ export type TimeBucket = Message<"openpicket.api.v1.TimeBucket"> & {
  * Use `create(TimeBucketSchema)` to create a new message.
  */
 export const TimeBucketSchema: GenMessage<TimeBucket> = /*@__PURE__*/
-  messageDesc(file_openpicket_api_v1_crowdsec, 28);
+  messageDesc(file_openpicket_api_v1_crowdsec, 30);
 
 /**
  * @generated from message openpicket.api.v1.MapPoint
@@ -1092,7 +1182,7 @@ export type MapPoint = Message<"openpicket.api.v1.MapPoint"> & {
  * Use `create(MapPointSchema)` to create a new message.
  */
 export const MapPointSchema: GenMessage<MapPoint> = /*@__PURE__*/
-  messageDesc(file_openpicket_api_v1_crowdsec, 29);
+  messageDesc(file_openpicket_api_v1_crowdsec, 31);
 
 /**
  * @generated from message openpicket.api.v1.GetSummaryResponse
@@ -1169,7 +1259,7 @@ export type GetSummaryResponse = Message<"openpicket.api.v1.GetSummaryResponse">
  * Use `create(GetSummaryResponseSchema)` to create a new message.
  */
 export const GetSummaryResponseSchema: GenMessage<GetSummaryResponse> = /*@__PURE__*/
-  messageDesc(file_openpicket_api_v1_crowdsec, 30);
+  messageDesc(file_openpicket_api_v1_crowdsec, 32);
 
 /**
  * Alerts and decisions of the CrowdSec LAPIs (cached in PostgreSQL by the

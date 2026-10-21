@@ -51,7 +51,7 @@ func (m *Manager) API(cfg api.Config) (*api.Server, error) {
 		m.lokiQuery = q
 	}
 	if m.alerts != nil {
-		cfg.Alerts = &alerts.Querier{DB: m.opts.DB}
+		cfg.Alerts = &alerts.Querier{DB: m.opts.DB, StatusMaxAge: 3 * m.opts.StatusInterval}
 		cfg.AlertStore = &alerts.Store{DB: m.opts.DB}
 		cfg.LAPIs = m.lapis
 		cfg.Poke = m.pokeAlerts

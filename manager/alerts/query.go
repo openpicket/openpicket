@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/netip"
 	"slices"
 	"strconv"
 	"strings"
@@ -13,11 +12,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	apiv1 "github.com/openpicket/openpicket/gen/openpicket/api/v1"
-	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/manager/search"
 )
 
@@ -89,6 +86,9 @@ var DecisionSchema = &search.Schema{
 type Querier struct {
 	DB  *pgxpool.Pool
 	Now func() time.Time
+	// StatusMaxAge: an older node status report no longer tells what the
+	// node enforces (default 90s, three report intervals).
+	StatusMaxAge time.Duration
 }
 
 func (q *Querier) now() time.Time {
@@ -513,107 +513,4 @@ func (q *Querier) Summary(ctx context.Context, f Filter) (*apiv1.GetSummaryRespo
 		return nil, err
 	}
 	return res, nil
-}
-
-// Propagation reports how the edge decision of a value reached the nodes
-// and whether each node has it in force.
-func (q *Querier) Propagation(ctx context.Context, value string) (*apiv1.GetPropagationResponse, error) {
-	res := &apiv1.GetPropagationResponse{}
-	var (
-		version int64
-		until   time.Time
-	)
-	// The value itself, or a range containing it: the one blocking the
-	// longest is what holds the value in the kernel.
-	err := q.DB.QueryRow(ctx, `SELECT value, direction, version, until FROM openpicket.edge_decisions
-		WHERE value = ANY($1) AND NOT deleted ORDER BY until DESC, direction = 'both' DESC, value LIMIT 1`, covering(value)).
-		Scan(&res.EdgeValue, &res.Direction, &version, &until)
-	switch {
-	case errors.Is(err, pgx.ErrNoRows):
-	case err != nil:
-		return nil, err
-	default:
-		res.AtEdge, res.Version, res.Until = true, uint64(version), timestamppb.New(until)
-	}
-	rows, err := q.DB.Query(ctx, `SELECT n.id, COALESCE(st.version, 0), COALESCE(st.error, ''), st.acked_at, s.heartbeat_at, s.status FROM openpicket.nodes n
-		LEFT JOIN openpicket.node_decision_state st ON st.node_id = n.id LEFT JOIN openpicket.node_sessions s ON s.node_id = n.id ORDER BY n.id`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var (
-			np        apiv1.NodePropagation
-			v         int64
-			acked, hb *time.Time
-			status    []byte
-		)
-		if err := rows.Scan(&np.NodeId, &v, &np.Error, &acked, &hb, &status); err != nil {
-			return nil, err
-		}
-		np.AckedVersion, np.AckedAt = uint64(v), ts(acked)
-		np.Connected = hb != nil && q.now().Sub(*hb) < 90*time.Second
-		received := version > 0 && v >= version && np.Error == ""
-		if received {
-			np.Refused, np.MaybeRefused = refusal(status, res.EdgeValue)
-		}
-		np.Applied = received && np.Refused == ""
-		res.Nodes = append(res.Nodes, &np)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	query := `value="` + strings.ReplaceAll(value, `"`, ``) + `"`
-	if res.EdgeValue != "" && res.EdgeValue != value {
-		query += ` OR value="` + res.EdgeValue + `"`
-	}
-	ds, _, err := q.Decisions(ctx, DecisionFilter{Query: query, IncludeExpired: true}, 50, 0)
-	if err != nil {
-		return nil, err
-	}
-	res.Decisions = ds
-	return res, nil
-}
-
-// covering returns the edge values that block value: itself and every
-// range containing it, in their canonical forms (relay.Normalize).
-func covering(value string) []string {
-	out := []string{value}
-	var p netip.Prefix
-	if a, err := netip.ParseAddr(value); err == nil {
-		a = a.Unmap()
-		out[0] = a.String()
-		p = netip.PrefixFrom(a, a.BitLen())
-	} else if pp, err := netip.ParsePrefix(value); err == nil {
-		p = pp.Masked()
-		if p.Addr().Is4In6() {
-			p = netip.PrefixFrom(p.Addr().Unmap(), max(p.Bits()-96, 0))
-		}
-		out[0] = p.String()
-	} else {
-		return out
-	}
-	for bits := p.Bits(); bits >= 0; bits-- {
-		r, _ := p.Addr().Prefix(bits)
-		out = append(out, r.String())
-	}
-	return out
-}
-
-// refusal reads a node's status report for why it does not apply value.
-func refusal(status []byte, value string) (string, bool) {
-	st := &dataplanev1.Status{}
-	if len(status) == 0 || proto.Unmarshal(status, st) != nil {
-		return "", false
-	}
-	enf := st.GetEnforcer()
-	if !enf.GetEnabled() {
-		return "ban enforcer disabled on this node", false
-	}
-	for _, r := range enf.GetRefused() {
-		if r.GetValue() == value {
-			return r.GetReason(), false
-		}
-	}
-	return "", enf.GetRejected() > uint64(len(enf.GetRefused()))
 }

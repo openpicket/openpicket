@@ -1821,21 +1821,37 @@ func (x *GetPropagationRequest) GetValue() string {
 	return ""
 }
 
+// How the edge decisions blocking a value stand on one node, from its
+// status report in the current session.
 type NodePropagation struct {
-	state        protoimpl.MessageState `protogen:"open.v1"`
-	NodeId       string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	AckedVersion uint64                 `protobuf:"varint,2,opt,name=acked_version,json=ackedVersion,proto3" json:"acked_version,omitempty"`
-	// Received and in force on the node.
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	NodeId string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	// Last acknowledgement (any session).
+	AckedVersion uint64 `protobuf:"varint,2,opt,name=acked_version,json=ackedVersion,proto3" json:"acked_version,omitempty"`
+	// In force on the node (state "applied" or "maybe").
 	Applied   bool                   `protobuf:"varint,3,opt,name=applied,proto3" json:"applied,omitempty"`
 	Connected bool                   `protobuf:"varint,4,opt,name=connected,proto3" json:"connected,omitempty"`
 	AckedAt   *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=acked_at,json=ackedAt,proto3" json:"acked_at,omitempty"`
-	Error     string                 `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
-	// Received but not in force: the node's reason (its allowlist, local
-	// networks, element limit, or the enforcer turned off).
-	Refused string `protobuf:"bytes,7,opt,name=refused,proto3" json:"refused,omitempty"`
-	// The node does not report every decision it refuses (over its element
-	// limit): this one may be among them.
-	MaybeRefused  bool `protobuf:"varint,8,opt,name=maybe_refused,json=maybeRefused,proto3" json:"maybe_refused,omitempty"`
+	// Why applying failed (state "error").
+	Error string `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
+	// applied: a decision covering the value is in force.
+	// maybe: in force unless the node left it out without listing it (its
+	//
+	//	element limit; the report lists at most 100).
+	//
+	// refused: received, and the node applies none of them (refusals).
+	// pending: not received yet.
+	// error: applying failed (error).
+	// unknown: offline, or no recent status report in this session.
+	State string `protobuf:"bytes,9,opt,name=state,proto3" json:"state,omitempty"`
+	// What the node enforces for the value: the strongest direction and the
+	// latest expiry of the decisions in force.
+	Direction string                 `protobuf:"bytes,10,opt,name=direction,proto3" json:"direction,omitempty"`
+	Until     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=until,proto3" json:"until,omitempty"`
+	// Decisions covering the value that the node received and does not apply.
+	Refusals []*NodeRefusal `protobuf:"bytes,12,rep,name=refusals,proto3" json:"refusals,omitempty"`
+	// When the status report used was received (unset: none).
+	StatusAt      *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=status_at,json=statusAt,proto3" json:"status_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1912,38 +1928,182 @@ func (x *NodePropagation) GetError() string {
 	return ""
 }
 
-func (x *NodePropagation) GetRefused() string {
+func (x *NodePropagation) GetState() string {
 	if x != nil {
-		return x.Refused
+		return x.State
 	}
 	return ""
 }
 
-func (x *NodePropagation) GetMaybeRefused() bool {
+func (x *NodePropagation) GetDirection() string {
 	if x != nil {
-		return x.MaybeRefused
+		return x.Direction
 	}
-	return false
+	return ""
+}
+
+func (x *NodePropagation) GetUntil() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Until
+	}
+	return nil
+}
+
+func (x *NodePropagation) GetRefusals() []*NodeRefusal {
+	if x != nil {
+		return x.Refusals
+	}
+	return nil
+}
+
+func (x *NodePropagation) GetStatusAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StatusAt
+	}
+	return nil
+}
+
+type NodeRefusal struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NodeRefusal) Reset() {
+	*x = NodeRefusal{}
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NodeRefusal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NodeRefusal) ProtoMessage() {}
+
+func (x *NodeRefusal) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NodeRefusal.ProtoReflect.Descriptor instead.
+func (*NodeRefusal) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *NodeRefusal) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *NodeRefusal) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// An active edge decision blocking a value: the value itself or a range
+// containing it.
+type EdgeBlock struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Direction     string                 `protobuf:"bytes,2,opt,name=direction,proto3" json:"direction,omitempty"`
+	Version       uint64                 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	Until         *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=until,proto3" json:"until,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EdgeBlock) Reset() {
+	*x = EdgeBlock{}
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EdgeBlock) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EdgeBlock) ProtoMessage() {}
+
+func (x *EdgeBlock) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EdgeBlock.ProtoReflect.Descriptor instead.
+func (*EdgeBlock) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *EdgeBlock) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *EdgeBlock) GetDirection() string {
+	if x != nil {
+		return x.Direction
+	}
+	return ""
+}
+
+func (x *EdgeBlock) GetVersion() uint64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *EdgeBlock) GetUntil() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Until
+	}
+	return nil
 }
 
 type GetPropagationResponse struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	AtEdge    bool                   `protobuf:"varint,1,opt,name=at_edge,json=atEdge,proto3" json:"at_edge,omitempty"`
-	Direction string                 `protobuf:"bytes,2,opt,name=direction,proto3" json:"direction,omitempty"`
-	Version   uint64                 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
-	Until     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=until,proto3" json:"until,omitempty"`
-	Nodes     []*NodePropagation     `protobuf:"bytes,5,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	Decisions []*Decision            `protobuf:"bytes,6,rep,name=decisions,proto3" json:"decisions,omitempty"`
-	// The edge decision blocking the value: the value itself or, for an
-	// address, the range containing it that blocks the longest.
-	EdgeValue     string `protobuf:"bytes,7,opt,name=edge_value,json=edgeValue,proto3" json:"edge_value,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// At least one active edge decision blocks the value.
+	AtEdge bool `protobuf:"varint,1,opt,name=at_edge,json=atEdge,proto3" json:"at_edge,omitempty"`
+	// Over all of them: the strongest direction, the latest version and
+	// expiry.
+	Direction     string                 `protobuf:"bytes,2,opt,name=direction,proto3" json:"direction,omitempty"`
+	Version       uint64                 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	Until         *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=until,proto3" json:"until,omitempty"`
+	Nodes         []*NodePropagation     `protobuf:"bytes,5,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	Decisions     []*Decision            `protobuf:"bytes,6,rep,name=decisions,proto3" json:"decisions,omitempty"`
+	Edge          []*EdgeBlock           `protobuf:"bytes,8,rep,name=edge,proto3" json:"edge,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetPropagationResponse) Reset() {
 	*x = GetPropagationResponse{}
-	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[26]
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1955,7 +2115,7 @@ func (x *GetPropagationResponse) String() string {
 func (*GetPropagationResponse) ProtoMessage() {}
 
 func (x *GetPropagationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[26]
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1968,7 +2128,7 @@ func (x *GetPropagationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPropagationResponse.ProtoReflect.Descriptor instead.
 func (*GetPropagationResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{26}
+	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetPropagationResponse) GetAtEdge() bool {
@@ -2013,11 +2173,11 @@ func (x *GetPropagationResponse) GetDecisions() []*Decision {
 	return nil
 }
 
-func (x *GetPropagationResponse) GetEdgeValue() string {
+func (x *GetPropagationResponse) GetEdge() []*EdgeBlock {
 	if x != nil {
-		return x.EdgeValue
+		return x.Edge
 	}
-	return ""
+	return nil
 }
 
 type GetSummaryRequest struct {
@@ -2033,7 +2193,7 @@ type GetSummaryRequest struct {
 
 func (x *GetSummaryRequest) Reset() {
 	*x = GetSummaryRequest{}
-	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[27]
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2045,7 +2205,7 @@ func (x *GetSummaryRequest) String() string {
 func (*GetSummaryRequest) ProtoMessage() {}
 
 func (x *GetSummaryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[27]
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2058,7 +2218,7 @@ func (x *GetSummaryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSummaryRequest.ProtoReflect.Descriptor instead.
 func (*GetSummaryRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{27}
+	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GetSummaryRequest) GetFrom() *timestamppb.Timestamp {
@@ -2107,7 +2267,7 @@ type TimeBucket struct {
 
 func (x *TimeBucket) Reset() {
 	*x = TimeBucket{}
-	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[28]
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2119,7 +2279,7 @@ func (x *TimeBucket) String() string {
 func (*TimeBucket) ProtoMessage() {}
 
 func (x *TimeBucket) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[28]
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2132,7 +2292,7 @@ func (x *TimeBucket) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TimeBucket.ProtoReflect.Descriptor instead.
 func (*TimeBucket) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{28}
+	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *TimeBucket) GetStart() *timestamppb.Timestamp {
@@ -2166,7 +2326,7 @@ type MapPoint struct {
 
 func (x *MapPoint) Reset() {
 	*x = MapPoint{}
-	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[29]
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2178,7 +2338,7 @@ func (x *MapPoint) String() string {
 func (*MapPoint) ProtoMessage() {}
 
 func (x *MapPoint) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[29]
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2191,7 +2351,7 @@ func (x *MapPoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapPoint.ProtoReflect.Descriptor instead.
 func (*MapPoint) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{29}
+	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *MapPoint) GetCountry() string {
@@ -2229,7 +2389,7 @@ type GetSummaryResponse struct {
 
 func (x *GetSummaryResponse) Reset() {
 	*x = GetSummaryResponse{}
-	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[30]
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2241,7 +2401,7 @@ func (x *GetSummaryResponse) String() string {
 func (*GetSummaryResponse) ProtoMessage() {}
 
 func (x *GetSummaryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[30]
+	mi := &file_openpicket_api_v1_crowdsec_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2254,7 +2414,7 @@ func (x *GetSummaryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSummaryResponse.ProtoReflect.Descriptor instead.
 func (*GetSummaryResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{30}
+	return file_openpicket_api_v1_crowdsec_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetSummaryResponse) GetAlerts() int64 {
@@ -2493,25 +2653,36 @@ const file_openpicket_api_v1_crowdsec_proto_rawDesc = "" +
 	"\x0ealerts_deleted\x18\x02 \x01(\x03R\ralertsDeleted\x128\n" +
 	"\x06errors\x18\x03 \x03(\v2 .openpicket.api.v1.InstanceErrorR\x06errors\"-\n" +
 	"\x15GetPropagationRequest\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\tR\x05value\"\x93\x02\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\"\xbb\x03\n" +
 	"\x0fNodePropagation\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12#\n" +
 	"\racked_version\x18\x02 \x01(\x04R\fackedVersion\x12\x18\n" +
 	"\aapplied\x18\x03 \x01(\bR\aapplied\x12\x1c\n" +
 	"\tconnected\x18\x04 \x01(\bR\tconnected\x125\n" +
 	"\backed_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aackedAt\x12\x14\n" +
-	"\x05error\x18\x06 \x01(\tR\x05error\x12\x18\n" +
-	"\arefused\x18\a \x01(\tR\arefused\x12#\n" +
-	"\rmaybe_refused\x18\b \x01(\bR\fmaybeRefused\"\xaf\x02\n" +
+	"\x05error\x18\x06 \x01(\tR\x05error\x12\x14\n" +
+	"\x05state\x18\t \x01(\tR\x05state\x12\x1c\n" +
+	"\tdirection\x18\n" +
+	" \x01(\tR\tdirection\x120\n" +
+	"\x05until\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x05until\x12:\n" +
+	"\brefusals\x18\f \x03(\v2\x1e.openpicket.api.v1.NodeRefusalR\brefusals\x127\n" +
+	"\tstatus_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\bstatusAtJ\x04\b\a\x10\bJ\x04\b\b\x10\t\";\n" +
+	"\vNodeRefusal\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x8b\x01\n" +
+	"\tEdgeBlock\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\x12\x1c\n" +
+	"\tdirection\x18\x02 \x01(\tR\tdirection\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\x04R\aversion\x120\n" +
+	"\x05until\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x05until\"\xc8\x02\n" +
 	"\x16GetPropagationResponse\x12\x17\n" +
 	"\aat_edge\x18\x01 \x01(\bR\x06atEdge\x12\x1c\n" +
 	"\tdirection\x18\x02 \x01(\tR\tdirection\x12\x18\n" +
 	"\aversion\x18\x03 \x01(\x04R\aversion\x120\n" +
 	"\x05until\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x05until\x128\n" +
 	"\x05nodes\x18\x05 \x03(\v2\".openpicket.api.v1.NodePropagationR\x05nodes\x129\n" +
-	"\tdecisions\x18\x06 \x03(\v2\x1b.openpicket.api.v1.DecisionR\tdecisions\x12\x1d\n" +
-	"\n" +
-	"edge_value\x18\a \x01(\tR\tedgeValue\"\xce\x01\n" +
+	"\tdecisions\x18\x06 \x03(\v2\x1b.openpicket.api.v1.DecisionR\tdecisions\x120\n" +
+	"\x04edge\x18\b \x03(\v2\x1c.openpicket.api.v1.EdgeBlockR\x04edgeJ\x04\b\a\x10\b\"\xce\x01\n" +
 	"\x11GetSummaryRequest\x12.\n" +
 	"\x04from\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12*\n" +
 	"\x02to\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\x12\x14\n" +
@@ -2570,7 +2741,7 @@ func file_openpicket_api_v1_crowdsec_proto_rawDescGZIP() []byte {
 	return file_openpicket_api_v1_crowdsec_proto_rawDescData
 }
 
-var file_openpicket_api_v1_crowdsec_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_openpicket_api_v1_crowdsec_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_openpicket_api_v1_crowdsec_proto_goTypes = []any{
 	(*Source)(nil),                  // 0: openpicket.api.v1.Source
 	(*MetaValue)(nil),               // 1: openpicket.api.v1.MetaValue
@@ -2598,74 +2769,81 @@ var file_openpicket_api_v1_crowdsec_proto_goTypes = []any{
 	(*CleanupIPResponse)(nil),       // 23: openpicket.api.v1.CleanupIPResponse
 	(*GetPropagationRequest)(nil),   // 24: openpicket.api.v1.GetPropagationRequest
 	(*NodePropagation)(nil),         // 25: openpicket.api.v1.NodePropagation
-	(*GetPropagationResponse)(nil),  // 26: openpicket.api.v1.GetPropagationResponse
-	(*GetSummaryRequest)(nil),       // 27: openpicket.api.v1.GetSummaryRequest
-	(*TimeBucket)(nil),              // 28: openpicket.api.v1.TimeBucket
-	(*MapPoint)(nil),                // 29: openpicket.api.v1.MapPoint
-	(*GetSummaryResponse)(nil),      // 30: openpicket.api.v1.GetSummaryResponse
-	(*timestamppb.Timestamp)(nil),   // 31: google.protobuf.Timestamp
+	(*NodeRefusal)(nil),             // 26: openpicket.api.v1.NodeRefusal
+	(*EdgeBlock)(nil),               // 27: openpicket.api.v1.EdgeBlock
+	(*GetPropagationResponse)(nil),  // 28: openpicket.api.v1.GetPropagationResponse
+	(*GetSummaryRequest)(nil),       // 29: openpicket.api.v1.GetSummaryRequest
+	(*TimeBucket)(nil),              // 30: openpicket.api.v1.TimeBucket
+	(*MapPoint)(nil),                // 31: openpicket.api.v1.MapPoint
+	(*GetSummaryResponse)(nil),      // 32: openpicket.api.v1.GetSummaryResponse
+	(*timestamppb.Timestamp)(nil),   // 33: google.protobuf.Timestamp
 }
 var file_openpicket_api_v1_crowdsec_proto_depIdxs = []int32{
-	31, // 0: openpicket.api.v1.AlertDecision.until:type_name -> google.protobuf.Timestamp
+	33, // 0: openpicket.api.v1.AlertDecision.until:type_name -> google.protobuf.Timestamp
 	0,  // 1: openpicket.api.v1.Alert.source:type_name -> openpicket.api.v1.Source
-	31, // 2: openpicket.api.v1.Alert.start_at:type_name -> google.protobuf.Timestamp
-	31, // 3: openpicket.api.v1.Alert.stop_at:type_name -> google.protobuf.Timestamp
-	31, // 4: openpicket.api.v1.Alert.created_at:type_name -> google.protobuf.Timestamp
+	33, // 2: openpicket.api.v1.Alert.start_at:type_name -> google.protobuf.Timestamp
+	33, // 3: openpicket.api.v1.Alert.stop_at:type_name -> google.protobuf.Timestamp
+	33, // 4: openpicket.api.v1.Alert.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 5: openpicket.api.v1.Alert.meta:type_name -> openpicket.api.v1.MetaValue
 	2,  // 6: openpicket.api.v1.Alert.decisions:type_name -> openpicket.api.v1.AlertDecision
-	31, // 7: openpicket.api.v1.SearchAlertsRequest.from:type_name -> google.protobuf.Timestamp
-	31, // 8: openpicket.api.v1.SearchAlertsRequest.to:type_name -> google.protobuf.Timestamp
+	33, // 7: openpicket.api.v1.SearchAlertsRequest.from:type_name -> google.protobuf.Timestamp
+	33, // 8: openpicket.api.v1.SearchAlertsRequest.to:type_name -> google.protobuf.Timestamp
 	3,  // 9: openpicket.api.v1.SearchAlertsResponse.alerts:type_name -> openpicket.api.v1.Alert
 	3,  // 10: openpicket.api.v1.GetAlertResponse.alert:type_name -> openpicket.api.v1.Alert
-	31, // 11: openpicket.api.v1.FacetsRequest.from:type_name -> google.protobuf.Timestamp
-	31, // 12: openpicket.api.v1.FacetsRequest.to:type_name -> google.protobuf.Timestamp
+	33, // 11: openpicket.api.v1.FacetsRequest.from:type_name -> google.protobuf.Timestamp
+	33, // 12: openpicket.api.v1.FacetsRequest.to:type_name -> google.protobuf.Timestamp
 	9,  // 13: openpicket.api.v1.Facet.values:type_name -> openpicket.api.v1.FacetValue
 	10, // 14: openpicket.api.v1.FacetsResponse.facets:type_name -> openpicket.api.v1.Facet
 	14, // 15: openpicket.api.v1.DeleteAlertsResponse.errors:type_name -> openpicket.api.v1.InstanceError
-	31, // 16: openpicket.api.v1.Decision.until:type_name -> google.protobuf.Timestamp
+	33, // 16: openpicket.api.v1.Decision.until:type_name -> google.protobuf.Timestamp
 	15, // 17: openpicket.api.v1.SearchDecisionsResponse.decisions:type_name -> openpicket.api.v1.Decision
 	14, // 18: openpicket.api.v1.AddDecisionResponse.errors:type_name -> openpicket.api.v1.InstanceError
 	14, // 19: openpicket.api.v1.DeleteDecisionsResponse.errors:type_name -> openpicket.api.v1.InstanceError
 	14, // 20: openpicket.api.v1.CleanupIPResponse.errors:type_name -> openpicket.api.v1.InstanceError
-	31, // 21: openpicket.api.v1.NodePropagation.acked_at:type_name -> google.protobuf.Timestamp
-	31, // 22: openpicket.api.v1.GetPropagationResponse.until:type_name -> google.protobuf.Timestamp
-	25, // 23: openpicket.api.v1.GetPropagationResponse.nodes:type_name -> openpicket.api.v1.NodePropagation
-	15, // 24: openpicket.api.v1.GetPropagationResponse.decisions:type_name -> openpicket.api.v1.Decision
-	31, // 25: openpicket.api.v1.GetSummaryRequest.from:type_name -> google.protobuf.Timestamp
-	31, // 26: openpicket.api.v1.GetSummaryRequest.to:type_name -> google.protobuf.Timestamp
-	31, // 27: openpicket.api.v1.TimeBucket.start:type_name -> google.protobuf.Timestamp
-	28, // 28: openpicket.api.v1.GetSummaryResponse.series:type_name -> openpicket.api.v1.TimeBucket
-	9,  // 29: openpicket.api.v1.GetSummaryResponse.top_countries:type_name -> openpicket.api.v1.FacetValue
-	9,  // 30: openpicket.api.v1.GetSummaryResponse.top_scenarios:type_name -> openpicket.api.v1.FacetValue
-	9,  // 31: openpicket.api.v1.GetSummaryResponse.top_as:type_name -> openpicket.api.v1.FacetValue
-	9,  // 32: openpicket.api.v1.GetSummaryResponse.top_nodes:type_name -> openpicket.api.v1.FacetValue
-	9,  // 33: openpicket.api.v1.GetSummaryResponse.top_sources:type_name -> openpicket.api.v1.FacetValue
-	29, // 34: openpicket.api.v1.GetSummaryResponse.map:type_name -> openpicket.api.v1.MapPoint
-	4,  // 35: openpicket.api.v1.AlertService.SearchAlerts:input_type -> openpicket.api.v1.SearchAlertsRequest
-	6,  // 36: openpicket.api.v1.AlertService.GetAlert:input_type -> openpicket.api.v1.GetAlertRequest
-	8,  // 37: openpicket.api.v1.AlertService.Facets:input_type -> openpicket.api.v1.FacetsRequest
-	12, // 38: openpicket.api.v1.AlertService.DeleteAlerts:input_type -> openpicket.api.v1.DeleteAlertsRequest
-	16, // 39: openpicket.api.v1.DecisionService.SearchDecisions:input_type -> openpicket.api.v1.SearchDecisionsRequest
-	18, // 40: openpicket.api.v1.DecisionService.AddDecision:input_type -> openpicket.api.v1.AddDecisionRequest
-	20, // 41: openpicket.api.v1.DecisionService.DeleteDecisions:input_type -> openpicket.api.v1.DeleteDecisionsRequest
-	22, // 42: openpicket.api.v1.DecisionService.CleanupIP:input_type -> openpicket.api.v1.CleanupIPRequest
-	24, // 43: openpicket.api.v1.DecisionService.GetPropagation:input_type -> openpicket.api.v1.GetPropagationRequest
-	27, // 44: openpicket.api.v1.DashboardService.GetSummary:input_type -> openpicket.api.v1.GetSummaryRequest
-	5,  // 45: openpicket.api.v1.AlertService.SearchAlerts:output_type -> openpicket.api.v1.SearchAlertsResponse
-	7,  // 46: openpicket.api.v1.AlertService.GetAlert:output_type -> openpicket.api.v1.GetAlertResponse
-	11, // 47: openpicket.api.v1.AlertService.Facets:output_type -> openpicket.api.v1.FacetsResponse
-	13, // 48: openpicket.api.v1.AlertService.DeleteAlerts:output_type -> openpicket.api.v1.DeleteAlertsResponse
-	17, // 49: openpicket.api.v1.DecisionService.SearchDecisions:output_type -> openpicket.api.v1.SearchDecisionsResponse
-	19, // 50: openpicket.api.v1.DecisionService.AddDecision:output_type -> openpicket.api.v1.AddDecisionResponse
-	21, // 51: openpicket.api.v1.DecisionService.DeleteDecisions:output_type -> openpicket.api.v1.DeleteDecisionsResponse
-	23, // 52: openpicket.api.v1.DecisionService.CleanupIP:output_type -> openpicket.api.v1.CleanupIPResponse
-	26, // 53: openpicket.api.v1.DecisionService.GetPropagation:output_type -> openpicket.api.v1.GetPropagationResponse
-	30, // 54: openpicket.api.v1.DashboardService.GetSummary:output_type -> openpicket.api.v1.GetSummaryResponse
-	45, // [45:55] is the sub-list for method output_type
-	35, // [35:45] is the sub-list for method input_type
-	35, // [35:35] is the sub-list for extension type_name
-	35, // [35:35] is the sub-list for extension extendee
-	0,  // [0:35] is the sub-list for field type_name
+	33, // 21: openpicket.api.v1.NodePropagation.acked_at:type_name -> google.protobuf.Timestamp
+	33, // 22: openpicket.api.v1.NodePropagation.until:type_name -> google.protobuf.Timestamp
+	26, // 23: openpicket.api.v1.NodePropagation.refusals:type_name -> openpicket.api.v1.NodeRefusal
+	33, // 24: openpicket.api.v1.NodePropagation.status_at:type_name -> google.protobuf.Timestamp
+	33, // 25: openpicket.api.v1.EdgeBlock.until:type_name -> google.protobuf.Timestamp
+	33, // 26: openpicket.api.v1.GetPropagationResponse.until:type_name -> google.protobuf.Timestamp
+	25, // 27: openpicket.api.v1.GetPropagationResponse.nodes:type_name -> openpicket.api.v1.NodePropagation
+	15, // 28: openpicket.api.v1.GetPropagationResponse.decisions:type_name -> openpicket.api.v1.Decision
+	27, // 29: openpicket.api.v1.GetPropagationResponse.edge:type_name -> openpicket.api.v1.EdgeBlock
+	33, // 30: openpicket.api.v1.GetSummaryRequest.from:type_name -> google.protobuf.Timestamp
+	33, // 31: openpicket.api.v1.GetSummaryRequest.to:type_name -> google.protobuf.Timestamp
+	33, // 32: openpicket.api.v1.TimeBucket.start:type_name -> google.protobuf.Timestamp
+	30, // 33: openpicket.api.v1.GetSummaryResponse.series:type_name -> openpicket.api.v1.TimeBucket
+	9,  // 34: openpicket.api.v1.GetSummaryResponse.top_countries:type_name -> openpicket.api.v1.FacetValue
+	9,  // 35: openpicket.api.v1.GetSummaryResponse.top_scenarios:type_name -> openpicket.api.v1.FacetValue
+	9,  // 36: openpicket.api.v1.GetSummaryResponse.top_as:type_name -> openpicket.api.v1.FacetValue
+	9,  // 37: openpicket.api.v1.GetSummaryResponse.top_nodes:type_name -> openpicket.api.v1.FacetValue
+	9,  // 38: openpicket.api.v1.GetSummaryResponse.top_sources:type_name -> openpicket.api.v1.FacetValue
+	31, // 39: openpicket.api.v1.GetSummaryResponse.map:type_name -> openpicket.api.v1.MapPoint
+	4,  // 40: openpicket.api.v1.AlertService.SearchAlerts:input_type -> openpicket.api.v1.SearchAlertsRequest
+	6,  // 41: openpicket.api.v1.AlertService.GetAlert:input_type -> openpicket.api.v1.GetAlertRequest
+	8,  // 42: openpicket.api.v1.AlertService.Facets:input_type -> openpicket.api.v1.FacetsRequest
+	12, // 43: openpicket.api.v1.AlertService.DeleteAlerts:input_type -> openpicket.api.v1.DeleteAlertsRequest
+	16, // 44: openpicket.api.v1.DecisionService.SearchDecisions:input_type -> openpicket.api.v1.SearchDecisionsRequest
+	18, // 45: openpicket.api.v1.DecisionService.AddDecision:input_type -> openpicket.api.v1.AddDecisionRequest
+	20, // 46: openpicket.api.v1.DecisionService.DeleteDecisions:input_type -> openpicket.api.v1.DeleteDecisionsRequest
+	22, // 47: openpicket.api.v1.DecisionService.CleanupIP:input_type -> openpicket.api.v1.CleanupIPRequest
+	24, // 48: openpicket.api.v1.DecisionService.GetPropagation:input_type -> openpicket.api.v1.GetPropagationRequest
+	29, // 49: openpicket.api.v1.DashboardService.GetSummary:input_type -> openpicket.api.v1.GetSummaryRequest
+	5,  // 50: openpicket.api.v1.AlertService.SearchAlerts:output_type -> openpicket.api.v1.SearchAlertsResponse
+	7,  // 51: openpicket.api.v1.AlertService.GetAlert:output_type -> openpicket.api.v1.GetAlertResponse
+	11, // 52: openpicket.api.v1.AlertService.Facets:output_type -> openpicket.api.v1.FacetsResponse
+	13, // 53: openpicket.api.v1.AlertService.DeleteAlerts:output_type -> openpicket.api.v1.DeleteAlertsResponse
+	17, // 54: openpicket.api.v1.DecisionService.SearchDecisions:output_type -> openpicket.api.v1.SearchDecisionsResponse
+	19, // 55: openpicket.api.v1.DecisionService.AddDecision:output_type -> openpicket.api.v1.AddDecisionResponse
+	21, // 56: openpicket.api.v1.DecisionService.DeleteDecisions:output_type -> openpicket.api.v1.DeleteDecisionsResponse
+	23, // 57: openpicket.api.v1.DecisionService.CleanupIP:output_type -> openpicket.api.v1.CleanupIPResponse
+	28, // 58: openpicket.api.v1.DecisionService.GetPropagation:output_type -> openpicket.api.v1.GetPropagationResponse
+	32, // 59: openpicket.api.v1.DashboardService.GetSummary:output_type -> openpicket.api.v1.GetSummaryResponse
+	50, // [50:60] is the sub-list for method output_type
+	40, // [40:50] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_openpicket_api_v1_crowdsec_proto_init() }
@@ -2679,7 +2857,7 @@ func file_openpicket_api_v1_crowdsec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_openpicket_api_v1_crowdsec_proto_rawDesc), len(file_openpicket_api_v1_crowdsec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   31,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

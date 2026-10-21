@@ -233,32 +233,63 @@ message GetPropagationRequest {
   string value = 1;
 }
 
+// How the edge decisions blocking a value stand on one node, from its
+// status report in the current session.
 message NodePropagation {
   string node_id = 1;
+  // Last acknowledgement (any session).
   uint64 acked_version = 2;
-  // Received and in force on the node.
+  // In force on the node (state "applied" or "maybe").
   bool applied = 3;
   bool connected = 4;
   google.protobuf.Timestamp acked_at = 5;
+  // Why applying failed (state "error").
   string error = 6;
-  // Received but not in force: the node's reason (its allowlist, local
-  // networks, element limit, or the enforcer turned off).
-  string refused = 7;
-  // The node does not report every decision it refuses (over its element
-  // limit): this one may be among them.
-  bool maybe_refused = 8;
+  reserved 7, 8;
+  // applied: a decision covering the value is in force.
+  // maybe: in force unless the node left it out without listing it (its
+  //   element limit; the report lists at most 100).
+  // refused: received, and the node applies none of them (refusals).
+  // pending: not received yet.
+  // error: applying failed (error).
+  // unknown: offline, or no recent status report in this session.
+  string state = 9;
+  // What the node enforces for the value: the strongest direction and the
+  // latest expiry of the decisions in force.
+  string direction = 10;
+  google.protobuf.Timestamp until = 11;
+  // Decisions covering the value that the node received and does not apply.
+  repeated NodeRefusal refusals = 12;
+  // When the status report used was received (unset: none).
+  google.protobuf.Timestamp status_at = 13;
+}
+
+message NodeRefusal {
+  string value = 1;
+  string reason = 2;
+}
+
+// An active edge decision blocking a value: the value itself or a range
+// containing it.
+message EdgeBlock {
+  string value = 1;
+  string direction = 2;
+  uint64 version = 3;
+  google.protobuf.Timestamp until = 4;
 }
 
 message GetPropagationResponse {
+  // At least one active edge decision blocks the value.
   bool at_edge = 1;
+  // Over all of them: the strongest direction, the latest version and
+  // expiry.
   string direction = 2;
   uint64 version = 3;
   google.protobuf.Timestamp until = 4;
   repeated NodePropagation nodes = 5;
   repeated Decision decisions = 6;
-  // The edge decision blocking the value: the value itself or, for an
-  // address, the range containing it that blocks the longest.
-  string edge_value = 7;
+  reserved 7;
+  repeated EdgeBlock edge = 8;
 }
 
 message GetSummaryRequest {
