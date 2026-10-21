@@ -531,6 +531,11 @@ func TestDecisions(t *testing.T) {
 	if list.Msg.Total != 1 {
 		t.Fatalf("after delete: %v", list.Msg)
 	}
+	// It stays in the list with expired decisions, like in the LAPI.
+	all, _ := viewer.dec.SearchDecisions(ctx, connect.NewRequest(&apiv1.SearchDecisionsRequest{IncludeExpired: true}))
+	if all.Msg.Total != 2 || all.Msg.Decisions[1].Active {
+		t.Fatalf("with expired: %v", all.Msg)
+	}
 	cl, err := op.dec.CleanupIP(ctx, connect.NewRequest(&apiv1.CleanupIPRequest{Ip: "198.51.100.4", DeleteAlerts: true}))
 	if err != nil || cl.Msg.DecisionsDeleted != 1 || cl.Msg.AlertsDeleted != 1 {
 		t.Fatalf("cleanup: %v %v", cl, err)

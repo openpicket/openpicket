@@ -268,7 +268,7 @@ func (d *decisionService) DeleteDecisions(ctx context.Context, req *connect.Requ
 		res.Deleted += n
 		done = append(done, id)
 	}
-	if err := d.s.cfg.AlertStore.ForgetDecisions(ctx, ls[0].Name, done); err != nil {
+	if err := d.s.cfg.AlertStore.ExpireDecisions(ctx, ls[0].Name, done); err != nil {
 		d.s.log.Warn("forget decisions", "err", err)
 	}
 	d.s.changed(ls[0].Name)

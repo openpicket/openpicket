@@ -240,7 +240,8 @@ func (s *Syncer) syncInstance(ctx context.Context, l Fencer, inst Instance, acti
 			for id := range withActive {
 				ids = append(ids, id)
 			}
-			if _, err := tx.Exec(ctx, `DELETE FROM openpicket.alert_decisions WHERE instance = $1 AND until > $2 AND NOT (alert_id = ANY($3))`,
+			// LAPI soft-deletes (until = now): keep them as expired.
+			if _, err := tx.Exec(ctx, `UPDATE openpicket.alert_decisions SET until = $2 WHERE instance = $1 AND until > $2 AND NOT (alert_id = ANY($3))`,
 				inst.Name, now, ids); err != nil {
 				return err
 			}
@@ -392,15 +393,17 @@ func (s *Store) ForgetAlerts(ctx context.Context, instance string, ids []int64) 
 	return err
 }
 
-// ForgetDecisions removes decisions from the copy.
-func (s *Store) ForgetDecisions(ctx context.Context, instance string, ids []int64) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM openpicket.alert_decisions WHERE instance = $1 AND id = ANY($2)`, instance, ids)
+// ExpireDecisions marks decisions deleted through the API as expired, as
+// LAPI does (until = now), so the list with expired decisions keeps them.
+func (s *Store) ExpireDecisions(ctx context.Context, instance string, ids []int64) error {
+	_, err := s.DB.Exec(ctx, `UPDATE openpicket.alert_decisions SET until = now() WHERE instance = $1 AND id = ANY($2) AND until > now()`, instance, ids)
 	return err
 }
 
-// ForgetValue removes the decisions (and optionally alerts) of a value.
+// ForgetValue expires the decisions of a value and optionally deletes its
+// alerts (with their decisions).
 func (s *Store) ForgetValue(ctx context.Context, instance, value string, alerts bool) error {
-	if _, err := s.DB.Exec(ctx, `DELETE FROM openpicket.alert_decisions WHERE ($1 = '' OR instance = $1) AND value = $2`, instance, value); err != nil {
+	if _, err := s.DB.Exec(ctx, `UPDATE openpicket.alert_decisions SET until = now() WHERE ($1 = '' OR instance = $1) AND value = $2 AND until > now()`, instance, value); err != nil {
 		return err
 	}
 	if alerts {

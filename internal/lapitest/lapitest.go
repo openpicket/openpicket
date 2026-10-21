@@ -188,10 +188,16 @@ func (l *LAPI) serve(w http.ResponseWriter, r *http.Request) {
 		id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/v1/decisions/"), 10, 64)
 		ip := q.Get("ip")
 		n := 0
+		// Like LAPI, a deleted decision stays on its alert as expired.
 		for _, a := range l.alerts {
-			before := len(a.Decisions)
-			a.Decisions = slices.DeleteFunc(a.Decisions, func(d *lapi.AlertDecision) bool { return d.ID == id || (ip != "" && *d.Value == ip) })
-			n += before - len(a.Decisions)
+			for _, d := range a.Decisions {
+				until, _ := time.Parse(time.RFC3339, d.Until)
+				if (d.ID == id || (ip != "" && *d.Value == ip)) && until.After(now) {
+					d.Until = now.UTC().Format(time.RFC3339)
+					d.Duration = s("0s")
+					n++
+				}
+			}
 		}
 		_ = json.NewEncoder(w).Encode(map[string]string{"nbDeleted": strconv.Itoa(n)})
 	default:

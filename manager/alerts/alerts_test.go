@@ -71,8 +71,8 @@ func TestSyncAndQuery(t *testing.T) {
 	if n := count(t, pool, `SELECT count(*) FROM openpicket.alerts`); n != 550 {
 		t.Fatalf("incremental: %d alerts", n)
 	}
-	// Decisions deleted in the LAPI (cscli) leave with the active pass;
-	// deleted alerts with the full pass.
+	// Decisions deleted in the LAPI (cscli) expire with the active pass;
+	// deleted alerts leave with the full pass.
 	// Alert 291 (i=290) carries an active ban (alerts older than 4h have
 	// expired ones).
 	active := fake.Alerts()[290]
@@ -85,8 +85,11 @@ func TestSyncAndQuery(t *testing.T) {
 	if err := syncer.SyncOnce(ctx, fence{pool}, true, false); err != nil {
 		t.Fatal(err)
 	}
-	if n := count(t, pool, `SELECT count(*) FROM openpicket.alert_decisions`); n != 29 {
-		t.Fatalf("active pass: %d decisions", n)
+	if n := count(t, pool, `SELECT count(*) FROM openpicket.alert_decisions WHERE until > now()`); n != 22 {
+		t.Fatalf("active pass: %d active decisions", n)
+	}
+	if n := count(t, pool, `SELECT count(*) FROM openpicket.alert_decisions`); n != 30 {
+		t.Fatalf("active pass: the deleted decision must stay as expired (%d decisions)", n)
 	}
 	if err := syncer.SyncOnce(ctx, fence{pool}, true, true); err != nil {
 		t.Fatal(err)
