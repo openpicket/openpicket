@@ -3,6 +3,7 @@ package enforcer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/netip"
 	"os"
 	"os/exec"
@@ -212,6 +213,31 @@ func TestCapKeepsManualFirst(t *testing.T) {
 	}
 	if _, ok := e.applied["198.51.100.3"]; !ok {
 		t.Fatal("longest crowdsec decision should be kept")
+	}
+}
+
+// TestStatusReportsLocalReasonsFirst: the report is capped, and the
+// element limit can refuse thousands of decisions; the few local reasons
+// must still be in it.
+func TestStatusReportsLocalReasonsFirst(t *testing.T) {
+	c := &clock{t: time.Unix(1_800_000_000, 0)}
+	e := newEnforcer(t, &recExec{}, c)
+	e.cfg.MaxElements = 1
+	_ = e.Restore(context.Background())
+	ds := []*dataplanev1.Decision{ip("192.168.1.50", time.Hour, false)}
+	for i := range maxRefusedReported + 10 {
+		ds = append(ds, ip(fmt.Sprintf("198.51.%d.%d", i/250, i%250+1), time.Hour, false))
+	}
+	_, _ = e.ApplySnapshot(context.Background(), &dataplanev1.DecisionSnapshot{Version: 1, Decisions: ds})
+	st := e.Status()
+	if st.Rejected != uint64(maxRefusedReported+10) || len(st.Refused) != maxRefusedReported {
+		t.Fatalf("rejected=%d listed=%d", st.Rejected, len(st.Refused))
+	}
+	if r := st.Refused[0]; r.Value != "192.168.1.50" || !strings.Contains(r.Reason, "local network") {
+		t.Fatalf("first = %v", r)
+	}
+	if r := st.Refused[1]; !strings.HasPrefix(r.Reason, reasonLimit) {
+		t.Fatalf("second = %v", r)
 	}
 }
 

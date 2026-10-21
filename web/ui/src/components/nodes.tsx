@@ -151,3 +151,20 @@ export function ListValue(props: { values: string[] | undefined }) {
     </Group>
   );
 }
+
+const REFUSAL_PATTERNS: [RegExp, string][] = [
+  [/^overlaps the allowlist \((.+)\)$/, "overlaps the node's allowlist ({v})"],
+  [/^overlaps a local network \((.+)\)$/, "overlaps a local network of the node ({v})"],
+  [/^over the element limit \((\d+)\)$/, "over the node's element limit ({v})"],
+  [/^range (.+) is too wide$/, "range {v} is too wide"],
+  [/^invalid (?:range|address) (.+)$/, "invalid value {v}"],
+];
+
+/** A node's reason for not applying a decision, translated. */
+export function refusalReason(reason: string): string {
+  for (const [re, msg] of REFUSAL_PATTERNS) {
+    const m = re.exec(reason);
+    if (m) return t(msg, { v: m[1] });
+  }
+  return t(reason);
+}

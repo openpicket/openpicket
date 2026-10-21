@@ -236,10 +236,17 @@ message GetPropagationRequest {
 message NodePropagation {
   string node_id = 1;
   uint64 acked_version = 2;
+  // Received and in force on the node.
   bool applied = 3;
   bool connected = 4;
   google.protobuf.Timestamp acked_at = 5;
   string error = 6;
+  // Received but not in force: the node's reason (its allowlist, local
+  // networks, element limit, or the enforcer turned off).
+  string refused = 7;
+  // The node does not report every decision it refuses (over its element
+  // limit): this one may be among them.
+  bool maybe_refused = 8;
 }
 
 message GetPropagationResponse {
@@ -249,6 +256,9 @@ message GetPropagationResponse {
   google.protobuf.Timestamp until = 4;
   repeated NodePropagation nodes = 5;
   repeated Decision decisions = 6;
+  // The edge decision blocking the value: the value itself or, for an
+  // address, the range containing it that blocks the longest.
+  string edge_value = 7;
 }
 
 message GetSummaryRequest {

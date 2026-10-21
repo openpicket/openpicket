@@ -1822,13 +1822,20 @@ func (x *GetPropagationRequest) GetValue() string {
 }
 
 type NodePropagation struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	AckedVersion  uint64                 `protobuf:"varint,2,opt,name=acked_version,json=ackedVersion,proto3" json:"acked_version,omitempty"`
-	Applied       bool                   `protobuf:"varint,3,opt,name=applied,proto3" json:"applied,omitempty"`
-	Connected     bool                   `protobuf:"varint,4,opt,name=connected,proto3" json:"connected,omitempty"`
-	AckedAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=acked_at,json=ackedAt,proto3" json:"acked_at,omitempty"`
-	Error         string                 `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	NodeId       string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	AckedVersion uint64                 `protobuf:"varint,2,opt,name=acked_version,json=ackedVersion,proto3" json:"acked_version,omitempty"`
+	// Received and in force on the node.
+	Applied   bool                   `protobuf:"varint,3,opt,name=applied,proto3" json:"applied,omitempty"`
+	Connected bool                   `protobuf:"varint,4,opt,name=connected,proto3" json:"connected,omitempty"`
+	AckedAt   *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=acked_at,json=ackedAt,proto3" json:"acked_at,omitempty"`
+	Error     string                 `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
+	// Received but not in force: the node's reason (its allowlist, local
+	// networks, element limit, or the enforcer turned off).
+	Refused string `protobuf:"bytes,7,opt,name=refused,proto3" json:"refused,omitempty"`
+	// The node does not report every decision it refuses (over its element
+	// limit): this one may be among them.
+	MaybeRefused  bool `protobuf:"varint,8,opt,name=maybe_refused,json=maybeRefused,proto3" json:"maybe_refused,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1905,14 +1912,31 @@ func (x *NodePropagation) GetError() string {
 	return ""
 }
 
+func (x *NodePropagation) GetRefused() string {
+	if x != nil {
+		return x.Refused
+	}
+	return ""
+}
+
+func (x *NodePropagation) GetMaybeRefused() bool {
+	if x != nil {
+		return x.MaybeRefused
+	}
+	return false
+}
+
 type GetPropagationResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AtEdge        bool                   `protobuf:"varint,1,opt,name=at_edge,json=atEdge,proto3" json:"at_edge,omitempty"`
-	Direction     string                 `protobuf:"bytes,2,opt,name=direction,proto3" json:"direction,omitempty"`
-	Version       uint64                 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
-	Until         *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=until,proto3" json:"until,omitempty"`
-	Nodes         []*NodePropagation     `protobuf:"bytes,5,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	Decisions     []*Decision            `protobuf:"bytes,6,rep,name=decisions,proto3" json:"decisions,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	AtEdge    bool                   `protobuf:"varint,1,opt,name=at_edge,json=atEdge,proto3" json:"at_edge,omitempty"`
+	Direction string                 `protobuf:"bytes,2,opt,name=direction,proto3" json:"direction,omitempty"`
+	Version   uint64                 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	Until     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=until,proto3" json:"until,omitempty"`
+	Nodes     []*NodePropagation     `protobuf:"bytes,5,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	Decisions []*Decision            `protobuf:"bytes,6,rep,name=decisions,proto3" json:"decisions,omitempty"`
+	// The edge decision blocking the value: the value itself or, for an
+	// address, the range containing it that blocks the longest.
+	EdgeValue     string `protobuf:"bytes,7,opt,name=edge_value,json=edgeValue,proto3" json:"edge_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1987,6 +2011,13 @@ func (x *GetPropagationResponse) GetDecisions() []*Decision {
 		return x.Decisions
 	}
 	return nil
+}
+
+func (x *GetPropagationResponse) GetEdgeValue() string {
+	if x != nil {
+		return x.EdgeValue
+	}
+	return ""
 }
 
 type GetSummaryRequest struct {
@@ -2462,21 +2493,25 @@ const file_openpicket_api_v1_crowdsec_proto_rawDesc = "" +
 	"\x0ealerts_deleted\x18\x02 \x01(\x03R\ralertsDeleted\x128\n" +
 	"\x06errors\x18\x03 \x03(\v2 .openpicket.api.v1.InstanceErrorR\x06errors\"-\n" +
 	"\x15GetPropagationRequest\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\tR\x05value\"\xd4\x01\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\"\x93\x02\n" +
 	"\x0fNodePropagation\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12#\n" +
 	"\racked_version\x18\x02 \x01(\x04R\fackedVersion\x12\x18\n" +
 	"\aapplied\x18\x03 \x01(\bR\aapplied\x12\x1c\n" +
 	"\tconnected\x18\x04 \x01(\bR\tconnected\x125\n" +
 	"\backed_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aackedAt\x12\x14\n" +
-	"\x05error\x18\x06 \x01(\tR\x05error\"\x90\x02\n" +
+	"\x05error\x18\x06 \x01(\tR\x05error\x12\x18\n" +
+	"\arefused\x18\a \x01(\tR\arefused\x12#\n" +
+	"\rmaybe_refused\x18\b \x01(\bR\fmaybeRefused\"\xaf\x02\n" +
 	"\x16GetPropagationResponse\x12\x17\n" +
 	"\aat_edge\x18\x01 \x01(\bR\x06atEdge\x12\x1c\n" +
 	"\tdirection\x18\x02 \x01(\tR\tdirection\x12\x18\n" +
 	"\aversion\x18\x03 \x01(\x04R\aversion\x120\n" +
 	"\x05until\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x05until\x128\n" +
 	"\x05nodes\x18\x05 \x03(\v2\".openpicket.api.v1.NodePropagationR\x05nodes\x129\n" +
-	"\tdecisions\x18\x06 \x03(\v2\x1b.openpicket.api.v1.DecisionR\tdecisions\"\xce\x01\n" +
+	"\tdecisions\x18\x06 \x03(\v2\x1b.openpicket.api.v1.DecisionR\tdecisions\x12\x1d\n" +
+	"\n" +
+	"edge_value\x18\a \x01(\tR\tedgeValue\"\xce\x01\n" +
 	"\x11GetSummaryRequest\x12.\n" +
 	"\x04from\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12*\n" +
 	"\x02to\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\x12\x14\n" +

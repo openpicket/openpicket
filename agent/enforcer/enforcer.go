@@ -17,6 +17,7 @@
 package enforcer
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -27,6 +28,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -52,6 +54,8 @@ const untrustedRestoreCap = time.Hour
 
 // maxRefusedReported bounds the refused decisions in status reports.
 const maxRefusedReported = 100
+
+const reasonLimit = "over the element limit"
 
 // Entry is one decision, or one applied element.
 type Entry struct {
@@ -196,22 +200,35 @@ func (e *Enforcer) Status() *dataplanev1.EnforcerStatus {
 			st.BanInV6++
 		}
 	}
-	values := make([]string, 0, len(e.refused)+len(e.invalid))
-	for v := range e.refused {
-		values = append(values, v)
+	refused := make([]*dataplanev1.RefusedDecision, 0, len(e.refused)+len(e.invalid))
+	for v, r := range e.refused {
+		refused = append(refused, &dataplanev1.RefusedDecision{Value: v, Reason: r})
 	}
-	for v := range e.invalid {
-		values = append(values, v)
+	for v, r := range e.invalid {
+		refused = append(refused, &dataplanev1.RefusedDecision{Value: v, Reason: r})
 	}
-	sort.Strings(values)
-	for _, v := range values[:min(len(values), maxRefusedReported)] {
-		reason := e.refused[v]
-		if reason == "" {
-			reason = e.invalid[v]
+	// The local reasons first: they are few and explain why a ban the
+	// manager sent is not in force here; the element limit can refuse
+	// thousands.
+	slices.SortFunc(refused, func(a, b *dataplanev1.RefusedDecision) int {
+		if c := cmp.Compare(refusalRank(a.Reason), refusalRank(b.Reason)); c != 0 {
+			return c
 		}
-		st.Refused = append(st.Refused, &dataplanev1.RefusedDecision{Value: v, Reason: reason})
-	}
+		return strings.Compare(a.Value, b.Value)
+	})
+	st.Refused = refused[:min(len(refused), maxRefusedReported)]
 	return st
+}
+
+func refusalRank(reason string) int {
+	switch {
+	case strings.HasPrefix(reason, reasonLimit):
+		return 2
+	case strings.HasPrefix(reason, "overlaps "):
+		return 0
+	default:
+		return 1
+	}
 }
 
 var originRank = map[string]int{"cscli": 0, "manual": 0, "misp": 1, "crowdsec": 2, "ai": 3}
@@ -470,7 +487,7 @@ func (e *Enforcer) compute(decisions map[string]Entry, now time.Time) (map[strin
 			return keep[i].Value < keep[j].Value
 		})
 		for _, en := range keep[e.cfg.MaxElements:] {
-			refused[en.Value] = fmt.Sprintf("over the element limit (%d)", e.cfg.MaxElements)
+			refused[en.Value] = fmt.Sprintf("%s (%d)", reasonLimit, e.cfg.MaxElements)
 		}
 		e.log.Warn("decisions capped", "max_elements", e.cfg.MaxElements, "dropped", len(keep)-e.cfg.MaxElements)
 		keep = keep[:e.cfg.MaxElements]

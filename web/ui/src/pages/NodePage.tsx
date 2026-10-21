@@ -27,7 +27,7 @@ import { api } from "../api/client";
 import { useAccess, useNode } from "../api/hooks";
 import { queryClient } from "../api/queryClient";
 import { CopyText, ErrorAlert, KeyValue, LoadingBlock, PageHeader, TimeAgo } from "../components/common";
-import { LabelBadges, LabelsEditor, ListValue, SyncBadge, labelsToRows, rowsToLabels, type LabelRow } from "../components/nodes";
+import { LabelBadges, LabelsEditor, ListValue, SyncBadge, labelsToRows, refusalReason, rowsToLabels, type LabelRow } from "../components/nodes";
 import { BundlePreview } from "../components/policyEditor";
 import type { Node, SyncState } from "../gen/openpicket/api/v1/nodes_pb";
 import { formatBytes, formatDateTime, formatNumber, toNumber } from "../lib/format";
@@ -197,7 +197,7 @@ function StatusPanel(props: { node: Node }) {
                   [t("Inbound bans (IPv6)"), formatNumber(enf?.banInV6)],
                   [t("Two-way bans (IPv4)"), formatNumber(enf?.banBothV4)],
                   [t("Two-way bans (IPv6)"), formatNumber(enf?.banBothV6)],
-                  [t("Rejected decisions"), formatNumber(enf?.rejected)],
+                  [t("Decisions not applied"), formatNumber(enf?.rejected)],
                 ] as [string, string][]
               ).map(([k, v]) => (
                 <Table.Tr key={k}>
@@ -207,6 +207,32 @@ function StatusPanel(props: { node: Node }) {
               ))}
             </Table.Tbody>
           </Table>
+          {enf && enf.refused.length > 0 && (
+            <Stack gap={4} mt="sm">
+              <Text size="sm" fw={500}>
+                {t("Not applied on this node")}
+              </Text>
+              <Table.ScrollContainer minWidth={360} mah={240}>
+                <Table fz="xs" verticalSpacing={2}>
+                  <Table.Tbody>
+                    {enf.refused.map((r) => (
+                      <Table.Tr key={r.value}>
+                        <Table.Td ff="monospace">
+                          {r.value.includes("/") ? r.value : <Link to={`/ip/${encodeURIComponent(r.value)}`}>{r.value}</Link>}
+                        </Table.Td>
+                        <Table.Td c="dimmed">{refusalReason(r.reason)}</Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+              {toNumber(enf.rejected) > enf.refused.length && (
+                <Text size="xs" c="dimmed">
+                  {t("{n} of {total} shown (local reasons first)", { n: enf.refused.length, total: formatNumber(enf.rejected) })}
+                </Text>
+              )}
+            </Stack>
+          )}
           {enf?.lastError && (
             <Alert color="red" mt="xs" title={t("Last error")}>
               {enf.lastError}
