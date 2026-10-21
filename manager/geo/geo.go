@@ -41,6 +41,8 @@ type Store struct {
 	db  *pgxpool.Pool
 	log *slog.Logger
 	cur atomic.Pointer[geoip.DB]
+	// loaded is set once the databases were read from PostgreSQL.
+	loaded atomic.Bool
 	// OnChange runs after the databases were reloaded.
 	OnChange func()
 }
@@ -55,6 +57,10 @@ func New(pool *pgxpool.Pool, log *slog.Logger) *Store {
 	s.cur.Store(empty)
 	return s
 }
+
+// Loaded reports whether the databases were read from PostgreSQL (false
+// while the first load fails: missing data is then this replica's problem).
+func (s *Store) Loaded() bool { return s.loaded.Load() }
 
 // Current returns the loaded databases (never nil).
 func (s *Store) Current() *geoip.DB { return s.cur.Load() }
@@ -86,6 +92,7 @@ func (s *Store) Load(ctx context.Context) error {
 		return fmt.Errorf("geo: open stored database: %w", err)
 	}
 	s.cur.Store(d)
+	s.loaded.Store(true)
 	if s.OnChange != nil {
 		s.OnChange()
 	}

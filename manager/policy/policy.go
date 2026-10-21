@@ -4,6 +4,7 @@ package policy
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/jc-lab/suricontroller/pkg/wire"
 
@@ -39,6 +41,8 @@ type Service struct {
 	mu      sync.Mutex
 	changed chan struct{}
 	cache   *snapshot
+	// loadMu serializes compilations (many nodes reconnect at once).
+	loadMu sync.Mutex
 }
 
 // snapshot is everything bundles are compiled from, at one version.
@@ -46,6 +50,8 @@ type snapshot struct {
 	version  uint64
 	policies []portpolicy.Policy
 	lists    map[string]portpolicy.List
+	// results of compiling every policy (with last good versions).
+	results map[string]portpolicy.Result
 }
 
 // New creates the service. Call Notified on openpicket_policy.
@@ -79,10 +85,15 @@ func (s *Service) Version(ctx context.Context) (uint64, error) {
 }
 
 func (s *Service) load(ctx context.Context) (*snapshot, error) {
+	s.loadMu.Lock()
+	defer s.loadMu.Unlock()
 	s.mu.Lock()
 	c := s.cache
 	s.mu.Unlock()
-	var out *snapshot
+	var (
+		out  *snapshot
+		prev map[string]stored
+	)
 	err := pgx.BeginTxFunc(ctx, s.db, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
 		var v int64
 		if err := tx.QueryRow(ctx, `SELECT version FROM openpicket.policy_meta WHERE id = 1`).Scan(&v); err != nil {
@@ -129,11 +140,20 @@ func (s *Service) load(ctx context.Context) (*snapshot, error) {
 			snap.lists[l.Name] = l
 		}
 		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		if prev, err = loadStored(ctx, tx); err != nil {
+			return err
+		}
 		out = snap
-		return rows.Err()
+		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+	if out.results == nil {
+		s.compileAll(ctx, out, prev)
 	}
 	s.mu.Lock()
 	s.cache = out
@@ -234,6 +254,11 @@ func (s *Service) DeletePolicy(ctx context.Context, id, by string) (uint64, erro
 		if tag.RowsAffected() == 0 {
 			return ErrNotFound
 		}
+		// An explicit deletion removes the policy from the nodes, last good
+		// version included.
+		if _, err := tx.Exec(ctx, `DELETE FROM openpicket.policy_compiled WHERE policy_id = $1`, id); err != nil {
+			return err
+		}
 		if version, err = geo.BumpPolicyVersion(ctx, tx); err != nil {
 			return err
 		}
@@ -318,7 +343,7 @@ func (s *Service) Bundle(ctx context.Context, nodeID string, labels map[string]s
 	if err != nil {
 		return nil, nil, err
 	}
-	b, skipped := portpolicy.Compile(snap.version, snap.policies, snap.lists, s.geo.Current(), nodeID, labels)
+	b, skipped := portpolicy.Assemble(snap.version, snap.policies, snap.results, nodeID, labels)
 	return b, skipped, nil
 }
 
@@ -330,14 +355,17 @@ func (s *Service) Serve(ctx context.Context, node func() *registry.Node, ms *wir
 	if err := ms.Recv(up); err != nil {
 		return err
 	}
-	sub := up.GetSubscribe()
-	if sub == nil {
+	if up.GetSubscribe() == nil {
 		return errors.New("policy: first message must be a subscribe")
 	}
-	have := sub.HaveVersion
-	// What was sent: the generation and the node labels it was compiled
-	// for (a label change alone needs a new bundle).
-	var sentLabels string
+	// What was sent: the generation and the content (a label change, or a
+	// policy falling back to or recovering from its last good version,
+	// changes the bundle without a new generation). The first bundle is
+	// always sent.
+	var (
+		sent        string
+		sentVersion uint64
+	)
 	acks := make(chan *dataplanev1.PolicyAck, 1)
 	errc := make(chan error, 1)
 	go func() {
@@ -368,7 +396,7 @@ func (s *Service) Serve(ctx context.Context, node func() *registry.Node, ms *wir
 				return ctx.Err()
 			}
 			s.log.Warn("compile policy bundle", "node", n.ID, "err", err)
-		case b.Version != have || labelKey(n.Labels) != sentLabels:
+		case b.Version != sentVersion || bundleKey(b) != sent:
 			if len(skipped) > 0 {
 				s.log.Warn("policies left out of the bundle", "node", n.ID, "skipped", skipped)
 			}
@@ -379,7 +407,7 @@ func (s *Service) Serve(ctx context.Context, node func() *registry.Node, ms *wir
 			case a := <-acks:
 				s.record(ctx, n.ID, a, skipped)
 				// Do not resend a refused bundle until something changes.
-				have, sentLabels = b.Version, labelKey(n.Labels)
+				sent, sentVersion = bundleKey(b), b.Version
 			case err := <-errc:
 				return err
 			case <-ctx.Done():
@@ -415,18 +443,9 @@ func (s *Service) record(ctx context.Context, nodeID string, a *dataplanev1.Poli
 	}
 }
 
-func labelKey(l map[string]string) string {
-	keys := make([]string, 0, len(l))
-	for k := range l {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	var b []byte
-	for _, k := range keys {
-		b = append(b, k...)
-		b = append(b, '=')
-		b = append(b, l[k]...)
-		b = append(b, 0)
-	}
-	return string(b)
+// bundleKey identifies the content of a bundle.
+func bundleKey(b *dataplanev1.PolicyBundle) string {
+	raw, _ := proto.MarshalOptions{Deterministic: true}.Marshal(b)
+	sum := sha256.Sum256(raw)
+	return string(sum[:])
 }

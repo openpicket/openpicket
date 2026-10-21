@@ -412,7 +412,7 @@ export function BundlePreview(props: { preview: PreviewBundleResponse }) {
           <List size="sm">
             {p.skipped.map((s) => (
               <List.Item key={s.policyId}>
-                <Code>{s.policyId}</Code>: {s.reason}
+                <Code>{s.policyId}</Code> ({s.stale ? t("last good version deployed") : t("not deployed")}): {s.reason}
               </List.Item>
             ))}
           </List>

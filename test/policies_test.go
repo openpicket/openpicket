@@ -25,6 +25,8 @@ import (
 	"github.com/openpicket/openpicket/manager"
 	"github.com/openpicket/openpicket/manager/api"
 	"github.com/openpicket/openpicket/manager/auth"
+	"github.com/openpicket/openpicket/manager/geo"
+	mpolicy "github.com/openpicket/openpicket/manager/policy"
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
 	"github.com/openpicket/openpicket/manager/sinks/loki"
 	"github.com/openpicket/openpicket/pkg/geoip/geoiptest"
@@ -48,6 +50,12 @@ func (s *scriptExec) Run(_ context.Context, _ string, args []string, stdin []byt
 	return nil, nil
 }
 func (s *scriptExec) LookPath(n string) (string, error) { return n, nil }
+
+func (s *scriptExec) count() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.scripts)
+}
 
 func (s *scriptExec) last() string {
 	s.mu.Lock()
@@ -195,5 +203,52 @@ func TestPortPoliciesReachTheEdge(t *testing.T) {
 	m.MetricsHandler().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
 	if !strings.Contains(rec.Body.String(), `openpicket_node_connected{node="edge-01",site="seoul"} 1`) {
 		t.Fatalf("node metrics missing:\n%s", rec.Body.String())
+	}
+
+	// The country database disappears: the policies needing it keep their
+	// last good version on the node instead of opening their ports.
+	before := ex.count()
+	if err := m.Geo().Delete(ctx, "country"); err != nil {
+		t.Fatal(err)
+	}
+	s = waitScript("bundle after the database was deleted", func(string) bool { return ex.count() > before })
+	for _, want := range []string{"jump p_https_block_cn", "1.0.0.0/24, 3.0.0.0/8", "jump p_smtp_submission", "elements = { 2.0.0.0/16 }"} {
+		if !strings.Contains(s, want) {
+			t.Fatalf("protection lost without the country database (%q):\n%s", want, s)
+		}
+	}
+	compileError := func(id string) string {
+		var msg string
+		if err := pool.QueryRow(ctx, `SELECT last_error FROM openpicket.policy_compiled WHERE policy_id = $1`, id).Scan(&msg); err != nil {
+			t.Fatal(err)
+		}
+		return msg
+	}
+	if msg := compileError("https_block_cn"); !strings.Contains(msg, "country") {
+		t.Fatalf("compile error: %q", msg)
+	}
+	var skipped string
+	if err := pool.QueryRow(ctx, `SELECT skipped::text FROM openpicket.node_policy_state WHERE node_id = 'edge-01'`).Scan(&skipped); err != nil ||
+		!strings.Contains(skipped, `"Stale": true`) {
+		t.Fatalf("node state skipped: %s %v", skipped, err)
+	}
+	// Back with the database: the error clears.
+	if _, err := m.Geo().Upload(ctx, geoiptest.Country(t, map[string]string{"1.0.0.0/24": "CN", "3.0.0.0/8": "CN", "2.0.0.0/16": "KR"}), "admin"); err != nil {
+		t.Fatal(err)
+	}
+	for deadline := time.Now().Add(10 * time.Second); compileError("https_block_cn") != ""; time.Sleep(20 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("compile error not cleared")
+		}
+	}
+	// A replica whose GeoIP failed to load builds bundles from the last
+	// good versions and records no error (the failure is its own).
+	unloaded := mpolicy.New(pool, geo.New(pool, slog.New(slog.DiscardHandler)), slog.New(slog.DiscardHandler))
+	b, sk, err := unloaded.Bundle(ctx, "edge-01", map[string]string{"site": "seoul"})
+	if err != nil || len(b.Policies) != 2 || len(sk) != 2 || !sk[0].Stale || !strings.Contains(sk[0].Reason, "not loaded on this replica") {
+		t.Fatalf("unloaded replica: %v %+v %v", b, sk, err)
+	}
+	if msg := compileError("https_block_cn"); msg != "" {
+		t.Fatalf("a replica-local failure was recorded: %q", msg)
 	}
 }

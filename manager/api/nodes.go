@@ -93,10 +93,16 @@ func (n *nodeService) scan(row pgx.Row) (*apiv1.Node, error) {
 	out.Policy = &apiv1.SyncState{Current: uint64(policyCurrent)}
 	if polVersion != nil {
 		out.Policy.Version, out.Policy.Error, out.Policy.AckedAt = uint64(*polVersion), *polErr, ts(polAcked)
-		var sk []struct{ ID string }
+		var sk []struct {
+			ID    string
+			Stale bool
+		}
 		_ = json.Unmarshal(skipped, &sk)
 		for _, s := range sk {
 			out.Policy.Skipped = append(out.Policy.Skipped, s.ID)
+			if s.Stale {
+				out.Policy.Stale = append(out.Policy.Stale, s.ID)
+			}
 		}
 	}
 	return &out, nil

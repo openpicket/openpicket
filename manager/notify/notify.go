@@ -795,7 +795,31 @@ func (e *Engine) policyErrors(ctx context.Context, tx pgx.Tx) ([]fired, error) {
 		}
 		out = append(out, fired{subject: node + "|" + what, title: "Node " + node + " could not apply " + what, body: msg, link: "/nodes/" + node})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	// Policies that stopped compiling (e.g. a GeoIP database is missing).
+	prows, err := tx.Query(ctx, `SELECT policy_id, last_error, compiled IS NOT NULL FROM openpicket.policy_compiled WHERE last_error <> ''`)
+	if err != nil {
+		return nil, err
+	}
+	defer prows.Close()
+	for prows.Next() {
+		var (
+			id, msg string
+			stale   bool
+		)
+		if err := prows.Scan(&id, &msg, &stale); err != nil {
+			return nil, err
+		}
+		effect := "It is not deployed: it never compiled."
+		if stale {
+			effect = "Its last good version stays on the nodes until it compiles again."
+		}
+		out = append(out, fired{subject: "policy|" + id, title: "Port policy " + id + " does not compile", body: msg + "\n" + effect, link: "/policies"})
+	}
+	return out, prows.Err()
 }
 
 func (e *Engine) approvalsPending(ctx context.Context, tx pgx.Tx) ([]fired, error) {

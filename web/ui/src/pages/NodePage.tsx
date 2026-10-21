@@ -260,7 +260,10 @@ function SyncRows(props: { state?: SyncState; size?: boolean }) {
         [t("Acknowledged"), <TimeAgo ts={s?.ackedAt} />],
         ...(props.size ? ([[t("Blocked values"), formatNumber(s?.setSize)]] as [string, ReactNode][]) : []),
         ...(s?.error ? ([[t("Error"), <Text size="sm" c="red">{s.error}</Text>]] as [string, ReactNode][]) : []),
-        ...(s?.skipped.length ? ([[t("Skipped policies"), <ListValue values={s.skipped} />]] as [string, ReactNode][]) : []),
+        ...(s && s.skipped.some((id) => !s.stale.includes(id))
+          ? ([[t("Skipped policies"), <ListValue values={s.skipped.filter((id) => !s.stale.includes(id))} />]] as [string, ReactNode][])
+          : []),
+        ...(s?.stale.length ? ([[t("Last good version deployed"), <ListValue values={s.stale} />]] as [string, ReactNode][]) : []),
       ]}
     />
   );

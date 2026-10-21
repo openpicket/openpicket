@@ -307,11 +307,16 @@ type Policy struct {
 	DefaultAction string `protobuf:"bytes,9,opt,name=default_action,json=defaultAction,proto3" json:"default_action,omitempty"`
 	LogDrops      bool   `protobuf:"varint,10,opt,name=log_drops,json=logDrops,proto3" json:"log_drops,omitempty"`
 	// Read only.
-	Position      int32                  `protobuf:"varint,11,opt,name=position,proto3" json:"position,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	UpdatedBy     string                 `protobuf:"bytes,13,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Position  int32                  `protobuf:"varint,11,opt,name=position,proto3" json:"position,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	UpdatedBy string                 `protobuf:"bytes,13,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
+	// Read only: why the policy does not compile now ("" when it does),
+	// since when, and whether its last good version stays deployed.
+	CompileError      string                 `protobuf:"bytes,14,opt,name=compile_error,json=compileError,proto3" json:"compile_error,omitempty"`
+	CompileErrorSince *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=compile_error_since,json=compileErrorSince,proto3" json:"compile_error_since,omitempty"`
+	Stale             bool                   `protobuf:"varint,16,opt,name=stale,proto3" json:"stale,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Policy) Reset() {
@@ -433,6 +438,27 @@ func (x *Policy) GetUpdatedBy() string {
 		return x.UpdatedBy
 	}
 	return ""
+}
+
+func (x *Policy) GetCompileError() string {
+	if x != nil {
+		return x.CompileError
+	}
+	return ""
+}
+
+func (x *Policy) GetCompileErrorSince() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompileErrorSince
+	}
+	return nil
+}
+
+func (x *Policy) GetStale() bool {
+	if x != nil {
+		return x.Stale
+	}
+	return false
 }
 
 type ListPoliciesRequest struct {
@@ -1373,9 +1399,12 @@ func (x *PreviewBundleRequest) GetNodeId() string {
 }
 
 type SkippedPolicy struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
-	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PolicyId string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	Reason   string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The last version that compiled is deployed instead (otherwise the
+	// policy is left out: it never compiled).
+	Stale         bool `protobuf:"varint,3,opt,name=stale,proto3" json:"stale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1422,6 +1451,13 @@ func (x *SkippedPolicy) GetReason() string {
 		return x.Reason
 	}
 	return ""
+}
+
+func (x *SkippedPolicy) GetStale() bool {
+	if x != nil {
+		return x.Stale
+	}
+	return false
 }
 
 type PreviewBundleResponse struct {
@@ -1945,7 +1981,7 @@ const file_openpicket_api_v1_policies_proto_rawDesc = "" +
 	"\x06labels\x18\x02 \x03(\v2*.openpicket.api.v1.PolicyScope.LabelsEntryR\x06labels\x1aY\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x124\n" +
-	"\x05value\x18\x02 \x01(\v2\x1e.openpicket.api.v1.LabelValuesR\x05value:\x028\x01\"\xd7\x03\n" +
+	"\x05value\x18\x02 \x01(\v2\x1e.openpicket.api.v1.LabelValuesR\x05value:\x028\x01\"\xde\x04\n" +
 	"\x06Policy\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x18\n" +
@@ -1962,7 +1998,10 @@ const file_openpicket_api_v1_policies_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_by\x18\r \x01(\tR\tupdatedBy\"\x15\n" +
+	"updated_by\x18\r \x01(\tR\tupdatedBy\x12#\n" +
+	"\rcompile_error\x18\x0e \x01(\tR\fcompileError\x12J\n" +
+	"\x13compile_error_since\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\x11compileErrorSince\x12\x14\n" +
+	"\x05stale\x18\x10 \x01(\bR\x05stale\"\x15\n" +
 	"\x13ListPoliciesRequest\"g\n" +
 	"\x14ListPoliciesResponse\x125\n" +
 	"\bpolicies\x18\x01 \x03(\v2\x19.openpicket.api.v1.PolicyR\bpolicies\x12\x18\n" +
@@ -2017,10 +2056,11 @@ const file_openpicket_api_v1_policies_proto_rawDesc = "" +
 	"\x15PolicyHistoryResponse\x129\n" +
 	"\achanges\x18\x01 \x03(\v2\x1f.openpicket.api.v1.PolicyChangeR\achanges\"/\n" +
 	"\x14PreviewBundleRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\"D\n" +
+	"\anode_id\x18\x01 \x01(\tR\x06nodeId\"Z\n" +
 	"\rSkippedPolicy\x12\x1b\n" +
 	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\"\xc6\x01\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x14\n" +
+	"\x05stale\x18\x03 \x01(\bR\x05stale\"\xc6\x01\n" +
 	"\x15PreviewBundleResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12\x1a\n" +
 	"\bpolicies\x18\x02 \x03(\tR\bpolicies\x12:\n" +
@@ -2130,48 +2170,49 @@ var file_openpicket_api_v1_policies_proto_depIdxs = []int32{
 	0,  // 3: openpicket.api.v1.Policy.ports:type_name -> openpicket.api.v1.PortRange
 	2,  // 4: openpicket.api.v1.Policy.rules:type_name -> openpicket.api.v1.PolicyRule
 	36, // 5: openpicket.api.v1.Policy.updated_at:type_name -> google.protobuf.Timestamp
-	5,  // 6: openpicket.api.v1.ListPoliciesResponse.policies:type_name -> openpicket.api.v1.Policy
-	5,  // 7: openpicket.api.v1.PutPolicyRequest.policy:type_name -> openpicket.api.v1.Policy
-	36, // 8: openpicket.api.v1.AddressList.updated_at:type_name -> google.protobuf.Timestamp
-	14, // 9: openpicket.api.v1.ListAddressListsResponse.lists:type_name -> openpicket.api.v1.AddressList
-	14, // 10: openpicket.api.v1.PutAddressListRequest.list:type_name -> openpicket.api.v1.AddressList
-	36, // 11: openpicket.api.v1.PolicyChange.changed_at:type_name -> google.protobuf.Timestamp
-	22, // 12: openpicket.api.v1.PolicyHistoryResponse.changes:type_name -> openpicket.api.v1.PolicyChange
-	25, // 13: openpicket.api.v1.PreviewBundleResponse.skipped:type_name -> openpicket.api.v1.SkippedPolicy
-	36, // 14: openpicket.api.v1.GeoDatabase.build_time:type_name -> google.protobuf.Timestamp
-	36, // 15: openpicket.api.v1.GeoDatabase.uploaded_at:type_name -> google.protobuf.Timestamp
-	27, // 16: openpicket.api.v1.ListDatabasesResponse.databases:type_name -> openpicket.api.v1.GeoDatabase
-	33, // 17: openpicket.api.v1.GeoLookupResponse.results:type_name -> openpicket.api.v1.GeoResult
-	3,  // 18: openpicket.api.v1.PolicyScope.LabelsEntry.value:type_name -> openpicket.api.v1.LabelValues
-	6,  // 19: openpicket.api.v1.PolicyService.ListPolicies:input_type -> openpicket.api.v1.ListPoliciesRequest
-	8,  // 20: openpicket.api.v1.PolicyService.PutPolicy:input_type -> openpicket.api.v1.PutPolicyRequest
-	10, // 21: openpicket.api.v1.PolicyService.DeletePolicy:input_type -> openpicket.api.v1.DeletePolicyRequest
-	12, // 22: openpicket.api.v1.PolicyService.ReorderPolicies:input_type -> openpicket.api.v1.ReorderPoliciesRequest
-	15, // 23: openpicket.api.v1.PolicyService.ListAddressLists:input_type -> openpicket.api.v1.ListAddressListsRequest
-	17, // 24: openpicket.api.v1.PolicyService.PutAddressList:input_type -> openpicket.api.v1.PutAddressListRequest
-	19, // 25: openpicket.api.v1.PolicyService.DeleteAddressList:input_type -> openpicket.api.v1.DeleteAddressListRequest
-	21, // 26: openpicket.api.v1.PolicyService.PolicyHistory:input_type -> openpicket.api.v1.PolicyHistoryRequest
-	24, // 27: openpicket.api.v1.PolicyService.PreviewBundle:input_type -> openpicket.api.v1.PreviewBundleRequest
-	28, // 28: openpicket.api.v1.GeoService.ListDatabases:input_type -> openpicket.api.v1.ListDatabasesRequest
-	30, // 29: openpicket.api.v1.GeoService.DeleteDatabase:input_type -> openpicket.api.v1.DeleteDatabaseRequest
-	32, // 30: openpicket.api.v1.GeoService.Lookup:input_type -> openpicket.api.v1.GeoLookupRequest
-	7,  // 31: openpicket.api.v1.PolicyService.ListPolicies:output_type -> openpicket.api.v1.ListPoliciesResponse
-	9,  // 32: openpicket.api.v1.PolicyService.PutPolicy:output_type -> openpicket.api.v1.PutPolicyResponse
-	11, // 33: openpicket.api.v1.PolicyService.DeletePolicy:output_type -> openpicket.api.v1.DeletePolicyResponse
-	13, // 34: openpicket.api.v1.PolicyService.ReorderPolicies:output_type -> openpicket.api.v1.ReorderPoliciesResponse
-	16, // 35: openpicket.api.v1.PolicyService.ListAddressLists:output_type -> openpicket.api.v1.ListAddressListsResponse
-	18, // 36: openpicket.api.v1.PolicyService.PutAddressList:output_type -> openpicket.api.v1.PutAddressListResponse
-	20, // 37: openpicket.api.v1.PolicyService.DeleteAddressList:output_type -> openpicket.api.v1.DeleteAddressListResponse
-	23, // 38: openpicket.api.v1.PolicyService.PolicyHistory:output_type -> openpicket.api.v1.PolicyHistoryResponse
-	26, // 39: openpicket.api.v1.PolicyService.PreviewBundle:output_type -> openpicket.api.v1.PreviewBundleResponse
-	29, // 40: openpicket.api.v1.GeoService.ListDatabases:output_type -> openpicket.api.v1.ListDatabasesResponse
-	31, // 41: openpicket.api.v1.GeoService.DeleteDatabase:output_type -> openpicket.api.v1.DeleteDatabaseResponse
-	34, // 42: openpicket.api.v1.GeoService.Lookup:output_type -> openpicket.api.v1.GeoLookupResponse
-	31, // [31:43] is the sub-list for method output_type
-	19, // [19:31] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	36, // 6: openpicket.api.v1.Policy.compile_error_since:type_name -> google.protobuf.Timestamp
+	5,  // 7: openpicket.api.v1.ListPoliciesResponse.policies:type_name -> openpicket.api.v1.Policy
+	5,  // 8: openpicket.api.v1.PutPolicyRequest.policy:type_name -> openpicket.api.v1.Policy
+	36, // 9: openpicket.api.v1.AddressList.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 10: openpicket.api.v1.ListAddressListsResponse.lists:type_name -> openpicket.api.v1.AddressList
+	14, // 11: openpicket.api.v1.PutAddressListRequest.list:type_name -> openpicket.api.v1.AddressList
+	36, // 12: openpicket.api.v1.PolicyChange.changed_at:type_name -> google.protobuf.Timestamp
+	22, // 13: openpicket.api.v1.PolicyHistoryResponse.changes:type_name -> openpicket.api.v1.PolicyChange
+	25, // 14: openpicket.api.v1.PreviewBundleResponse.skipped:type_name -> openpicket.api.v1.SkippedPolicy
+	36, // 15: openpicket.api.v1.GeoDatabase.build_time:type_name -> google.protobuf.Timestamp
+	36, // 16: openpicket.api.v1.GeoDatabase.uploaded_at:type_name -> google.protobuf.Timestamp
+	27, // 17: openpicket.api.v1.ListDatabasesResponse.databases:type_name -> openpicket.api.v1.GeoDatabase
+	33, // 18: openpicket.api.v1.GeoLookupResponse.results:type_name -> openpicket.api.v1.GeoResult
+	3,  // 19: openpicket.api.v1.PolicyScope.LabelsEntry.value:type_name -> openpicket.api.v1.LabelValues
+	6,  // 20: openpicket.api.v1.PolicyService.ListPolicies:input_type -> openpicket.api.v1.ListPoliciesRequest
+	8,  // 21: openpicket.api.v1.PolicyService.PutPolicy:input_type -> openpicket.api.v1.PutPolicyRequest
+	10, // 22: openpicket.api.v1.PolicyService.DeletePolicy:input_type -> openpicket.api.v1.DeletePolicyRequest
+	12, // 23: openpicket.api.v1.PolicyService.ReorderPolicies:input_type -> openpicket.api.v1.ReorderPoliciesRequest
+	15, // 24: openpicket.api.v1.PolicyService.ListAddressLists:input_type -> openpicket.api.v1.ListAddressListsRequest
+	17, // 25: openpicket.api.v1.PolicyService.PutAddressList:input_type -> openpicket.api.v1.PutAddressListRequest
+	19, // 26: openpicket.api.v1.PolicyService.DeleteAddressList:input_type -> openpicket.api.v1.DeleteAddressListRequest
+	21, // 27: openpicket.api.v1.PolicyService.PolicyHistory:input_type -> openpicket.api.v1.PolicyHistoryRequest
+	24, // 28: openpicket.api.v1.PolicyService.PreviewBundle:input_type -> openpicket.api.v1.PreviewBundleRequest
+	28, // 29: openpicket.api.v1.GeoService.ListDatabases:input_type -> openpicket.api.v1.ListDatabasesRequest
+	30, // 30: openpicket.api.v1.GeoService.DeleteDatabase:input_type -> openpicket.api.v1.DeleteDatabaseRequest
+	32, // 31: openpicket.api.v1.GeoService.Lookup:input_type -> openpicket.api.v1.GeoLookupRequest
+	7,  // 32: openpicket.api.v1.PolicyService.ListPolicies:output_type -> openpicket.api.v1.ListPoliciesResponse
+	9,  // 33: openpicket.api.v1.PolicyService.PutPolicy:output_type -> openpicket.api.v1.PutPolicyResponse
+	11, // 34: openpicket.api.v1.PolicyService.DeletePolicy:output_type -> openpicket.api.v1.DeletePolicyResponse
+	13, // 35: openpicket.api.v1.PolicyService.ReorderPolicies:output_type -> openpicket.api.v1.ReorderPoliciesResponse
+	16, // 36: openpicket.api.v1.PolicyService.ListAddressLists:output_type -> openpicket.api.v1.ListAddressListsResponse
+	18, // 37: openpicket.api.v1.PolicyService.PutAddressList:output_type -> openpicket.api.v1.PutAddressListResponse
+	20, // 38: openpicket.api.v1.PolicyService.DeleteAddressList:output_type -> openpicket.api.v1.DeleteAddressListResponse
+	23, // 39: openpicket.api.v1.PolicyService.PolicyHistory:output_type -> openpicket.api.v1.PolicyHistoryResponse
+	26, // 40: openpicket.api.v1.PolicyService.PreviewBundle:output_type -> openpicket.api.v1.PreviewBundleResponse
+	29, // 41: openpicket.api.v1.GeoService.ListDatabases:output_type -> openpicket.api.v1.ListDatabasesResponse
+	31, // 42: openpicket.api.v1.GeoService.DeleteDatabase:output_type -> openpicket.api.v1.DeleteDatabaseResponse
+	34, // 43: openpicket.api.v1.GeoService.Lookup:output_type -> openpicket.api.v1.GeoLookupResponse
+	32, // [32:44] is the sub-list for method output_type
+	20, // [20:32] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_openpicket_api_v1_policies_proto_init() }

@@ -75,6 +75,11 @@ message Policy {
   int32 position = 11;
   google.protobuf.Timestamp updated_at = 12;
   string updated_by = 13;
+  // Read only: why the policy does not compile now ("" when it does),
+  // since when, and whether its last good version stays deployed.
+  string compile_error = 14;
+  google.protobuf.Timestamp compile_error_since = 15;
+  bool stale = 16;
 }
 
 message ListPoliciesRequest {}
@@ -164,6 +169,9 @@ message PreviewBundleRequest {
 message SkippedPolicy {
   string policy_id = 1;
   string reason = 2;
+  // The last version that compiled is deployed instead (otherwise the
+  // policy is left out: it never compiled).
+  bool stale = 3;
 }
 
 message PreviewBundleResponse {

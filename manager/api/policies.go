@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -63,10 +64,20 @@ func (p *policyService) ListPolicies(ctx context.Context, _ *connect.Request[api
 	if err != nil {
 		return nil, toConnectError(err)
 	}
+	status, err := p.s.cfg.Policies.CompileStatuses(ctx)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
 	res := &apiv1.ListPoliciesResponse{Version: version}
 	for _, r := range recs {
 		m := toPolicyMsg(r.Policy)
 		m.Position, m.UpdatedAt, m.UpdatedBy = int32(r.Position), timestamppb.New(r.UpdatedAt), r.UpdatedBy
+		if st, ok := status[r.Policy.ID]; ok && st.Error != "" {
+			m.CompileError, m.Stale = st.Error, st.Stale
+			if !st.ErrorSince.IsZero() {
+				m.CompileErrorSince = timestamppb.New(st.ErrorSince)
+			}
+		}
 		res.Policies = append(res.Policies, m)
 	}
 	return connect.NewResponse(res), nil
@@ -165,7 +176,7 @@ func (p *policyService) PreviewBundle(ctx context.Context, req *connect.Request[
 		res.Elements += uint32(len(s.GetCidrs()))
 	}
 	for _, s := range skipped {
-		res.Skipped = append(res.Skipped, &apiv1.SkippedPolicy{PolicyId: s.ID, Reason: s.Reason})
+		res.Skipped = append(res.Skipped, &apiv1.SkippedPolicy{PolicyId: s.ID, Reason: s.Reason, Stale: s.Stale})
 	}
 	raw, _ := protojson.MarshalOptions{UseProtoNames: true, Indent: "  "}.Marshal(b)
 	res.BundleJson = string(raw)
@@ -193,6 +204,16 @@ func toGeoMsg(i geo.Info) *apiv1.GeoDatabase {
 }
 
 func (g *geoService) DeleteDatabase(ctx context.Context, req *connect.Request[apiv1.DeleteDatabaseRequest]) (*connect.Response[apiv1.DeleteDatabaseResponse], error) {
+	// Deleting a database policies need would freeze them at their last
+	// good version: disable or change those policies first.
+	users, err := g.s.cfg.Policies.GeoDependents(ctx, req.Msg.GetKind())
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	if len(users) > 0 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition,
+			fmt.Errorf("enabled port policies use the %s database: %s; disable or change them first", req.Msg.GetKind(), strings.Join(users, ", ")))
+	}
 	if err := g.s.cfg.Geo.Delete(ctx, req.Msg.GetKind()); err != nil {
 		return nil, toConnectError(fmt.Errorf("%w: %v", errNotFound, err))
 	}

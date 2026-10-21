@@ -193,6 +193,9 @@ func New(opts Options) (*Manager, error) {
 	ack = append(ack, m.cs)
 	m.geo = geo.New(opts.DB, opts.Logger)
 	m.policies = policy.New(opts.DB, m.geo, opts.Logger)
+	// Policies compile against the GeoIP data this replica loaded: a
+	// reload (first successful load after a failure, new upload) recompiles.
+	m.geo.OnChange = func() { m.policies.Notified("") }
 	m.watermarks = pipeline.NewWatermarks(opts.DB, opts.Logger)
 	var async []pipeline.Sink
 	if opts.OpenSearch != nil && opts.OpenSearch.URL != "" {

@@ -208,8 +208,10 @@ type SyncState struct {
 	Error   string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
 	AckedAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=acked_at,json=ackedAt,proto3" json:"acked_at,omitempty"`
 	SetSize uint32                 `protobuf:"varint,5,opt,name=set_size,json=setSize,proto3" json:"set_size,omitempty"`
-	// Policies left out of the node's bundle (missing GeoIP data).
+	// Policies that did not compile for the node's bundle (missing GeoIP
+	// data): left out, or kept at their last good version (stale).
 	Skipped       []string `protobuf:"bytes,6,rep,name=skipped,proto3" json:"skipped,omitempty"`
+	Stale         []string `protobuf:"bytes,7,rep,name=stale,proto3" json:"stale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -282,6 +284,13 @@ func (x *SyncState) GetSetSize() uint32 {
 func (x *SyncState) GetSkipped() []string {
 	if x != nil {
 		return x.Skipped
+	}
+	return nil
+}
+
+func (x *SyncState) GetStale() []string {
+	if x != nil {
+		return x.Stale
 	}
 	return nil
 }
@@ -997,14 +1006,15 @@ const file_openpicket_api_v1_nodes_proto_rawDesc = "" +
 	"\bwarnings\x18\v \x03(\v2 .openpicket.api.v1.SimpleWarningR\bwarnings\"=\n" +
 	"\rSimpleWarning\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xc1\x01\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xd7\x01\n" +
 	"\tSyncState\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12\x18\n" +
 	"\acurrent\x18\x02 \x01(\x04R\acurrent\x12\x14\n" +
 	"\x05error\x18\x03 \x01(\tR\x05error\x125\n" +
 	"\backed_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\aackedAt\x12\x19\n" +
 	"\bset_size\x18\x05 \x01(\rR\asetSize\x12\x18\n" +
-	"\askipped\x18\x06 \x03(\tR\askipped\"\xc9\x04\n" +
+	"\askipped\x18\x06 \x03(\tR\askipped\x12\x14\n" +
+	"\x05stale\x18\a \x03(\tR\x05stale\"\xc9\x04\n" +
 	"\x04Node\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x18\n" +

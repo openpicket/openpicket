@@ -45,8 +45,10 @@ message SyncState {
   string error = 3;
   google.protobuf.Timestamp acked_at = 4;
   uint32 set_size = 5;
-  // Policies left out of the node's bundle (missing GeoIP data).
+  // Policies that did not compile for the node's bundle (missing GeoIP
+  // data): left out, or kept at their last good version (stale).
   repeated string skipped = 6;
+  repeated string stale = 7;
 }
 
 message Node {

@@ -407,8 +407,32 @@ func TestPoliciesAndGeo(t *testing.T) {
 	}
 	// RU has no networks in the test database (an empty set); the AS
 	// policy is skipped without an ASN database.
-	if len(pv.Msg.Policies) != 2 || pv.Msg.Policies[0] != "block_ru" || len(pv.Msg.Skipped) != 1 || pv.Msg.Skipped[0].PolicyId != "smtp_google" || pv.Msg.Elements != 1 {
+	if len(pv.Msg.Policies) != 2 || pv.Msg.Policies[0] != "block_ru" || len(pv.Msg.Skipped) != 1 || pv.Msg.Skipped[0].PolicyId != "smtp_google" ||
+		pv.Msg.Skipped[0].Stale || pv.Msg.Elements != 1 {
 		t.Fatalf("preview: %v", pv.Msg)
+	}
+	// The policy list shows why a policy does not compile.
+	lp, _ := op.pol.ListPolicies(ctx, connect.NewRequest(&apiv1.ListPoliciesRequest{}))
+	for _, p := range lp.Msg.Policies {
+		if (p.Id == "smtp_google") != (p.CompileError != "") || p.Stale {
+			t.Fatalf("compile status of %s: %q stale=%v", p.Id, p.CompileError, p.Stale)
+		}
+	}
+	// The country database cannot be deleted while enabled policies use it.
+	_, err = admin.geo.DeleteDatabase(ctx, connect.NewRequest(&apiv1.DeleteDatabaseRequest{Kind: "country"}))
+	if code(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "block_cn") || !strings.Contains(err.Error(), "block_ru") {
+		t.Fatalf("delete used database: %v", err)
+	}
+	for _, p := range lp.Msg.Policies {
+		if p.Id == "block_cn" || p.Id == "block_ru" {
+			p.Enabled = false
+			if _, err := op.pol.PutPolicy(ctx, connect.NewRequest(&apiv1.PutPolicyRequest{Policy: p})); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if _, err := admin.geo.DeleteDatabase(ctx, connect.NewRequest(&apiv1.DeleteDatabaseRequest{Kind: "country"})); err != nil {
+		t.Fatalf("delete unused database: %v", err)
 	}
 }
 

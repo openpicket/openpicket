@@ -222,54 +222,94 @@ var actions = map[string]dataplanev1.PolicyAction{
 	ActionReject: dataplanev1.PolicyAction_POLICY_ACTION_REJECT,
 }
 
-// Skipped is a policy left out of a bundle.
+// Skipped is a policy that could not be compiled for a bundle.
 type Skipped struct {
 	ID     string
 	Reason string
+	// Stale: the last version that compiled is deployed instead; otherwise
+	// the policy is left out (it never compiled).
+	Stale bool `json:",omitempty"`
 }
 
-// Compile builds the bundle of one node: the enabled policies in scope, in
-// order, with every rule's sources resolved to CIDRs. Policies whose
-// sources cannot be resolved (no GeoIP database) are left out and
-// reported, so a missing upload never deploys a half policy.
-func Compile(version uint64, policies []Policy, lists map[string]List, geo *geoip.DB, nodeID string, labels map[string]string) (*dataplanev1.PolicyBundle, []Skipped) {
+// Compiled is one policy ready for nodes: the policy and its sets. It does
+// not depend on the node.
+type Compiled struct {
+	Policy *dataplanev1.PortPolicy
+	Sets   []*dataplanev1.NamedSet
+}
+
+// Result is the outcome of compiling a policy for the cluster. When Err is
+// set, Compiled is the last version that compiled (or nil if none did):
+// a missing GeoIP database must not remove a protection already deployed.
+type Result struct {
+	Compiled *Compiled
+	Err      string
+}
+
+// CompilePolicy resolves the sources of a policy to CIDRs. It fails when a
+// source cannot be resolved (no GeoIP database, unknown list), so a
+// missing upload never deploys a half policy.
+func CompilePolicy(p Policy, lists map[string]List, geo *geoip.DB) (*Compiled, error) {
+	pp := &dataplanev1.PortPolicy{Id: p.ID, Mode: dataplanev1.PolicyMode_POLICY_MODE_ENFORCE, LogDrops: p.LogDrops,
+		DefaultAction: actions[p.Default], Proto: dataplanev1.L4Proto_L4_PROTO_TCP}
+	if p.Mode == ModeObserve {
+		pp.Mode = dataplanev1.PolicyMode_POLICY_MODE_OBSERVE
+	}
+	if p.Proto == "udp" {
+		pp.Proto = dataplanev1.L4Proto_L4_PROTO_UDP
+	}
+	for _, r := range p.Ports {
+		pp.Ports = append(pp.Ports, &dataplanev1.PortRange{From: r.From, To: r.To})
+	}
+	c := &Compiled{Policy: pp}
+	for i, r := range p.Rules {
+		cidrs, err := resolve(r.Source, lists, geo)
+		if err != nil {
+			return nil, fmt.Errorf("rule %d: %w", i+1, err)
+		}
+		id := fmt.Sprintf("%s_r%d", p.ID, i)
+		c.Sets = append(c.Sets, &dataplanev1.NamedSet{Id: id, Cidrs: cidrs})
+		pp.Rules = append(pp.Rules, &dataplanev1.PolicyRule{SetId: id, Action: actions[r.Action]})
+	}
+	return c, nil
+}
+
+// Assemble builds the bundle of one node from compiled policies: the
+// enabled policies in scope, in order. Policies that failed to compile are
+// reported; their last good version is used when there is one.
+func Assemble(version uint64, policies []Policy, results map[string]Result, nodeID string, labels map[string]string) (*dataplanev1.PolicyBundle, []Skipped) {
 	b := &dataplanev1.PolicyBundle{Version: version}
 	var skipped []Skipped
 	for _, p := range policies {
 		if !p.Enabled || !p.Scope.Matches(nodeID, labels) {
 			continue
 		}
-		pp := &dataplanev1.PortPolicy{Id: p.ID, Mode: dataplanev1.PolicyMode_POLICY_MODE_ENFORCE, LogDrops: p.LogDrops,
-			DefaultAction: actions[p.Default], Proto: dataplanev1.L4Proto_L4_PROTO_TCP}
-		if p.Mode == ModeObserve {
-			pp.Mode = dataplanev1.PolicyMode_POLICY_MODE_OBSERVE
+		r := results[p.ID]
+		if r.Err != "" {
+			skipped = append(skipped, Skipped{ID: p.ID, Reason: r.Err, Stale: r.Compiled != nil})
 		}
-		if p.Proto == "udp" {
-			pp.Proto = dataplanev1.L4Proto_L4_PROTO_UDP
-		}
-		for _, r := range p.Ports {
-			pp.Ports = append(pp.Ports, &dataplanev1.PortRange{From: r.From, To: r.To})
-		}
-		var sets []*dataplanev1.NamedSet
-		failed := ""
-		for i, r := range p.Rules {
-			cidrs, err := resolve(r.Source, lists, geo)
-			if err != nil {
-				failed = fmt.Sprintf("rule %d: %v", i+1, err)
-				break
-			}
-			id := fmt.Sprintf("%s_r%d", p.ID, i)
-			sets = append(sets, &dataplanev1.NamedSet{Id: id, Cidrs: cidrs})
-			pp.Rules = append(pp.Rules, &dataplanev1.PolicyRule{SetId: id, Action: actions[r.Action]})
-		}
-		if failed != "" {
-			skipped = append(skipped, Skipped{ID: p.ID, Reason: failed})
+		if r.Compiled == nil {
 			continue
 		}
-		b.Policies = append(b.Policies, pp)
-		b.Sets = append(b.Sets, sets...)
+		b.Policies = append(b.Policies, r.Compiled.Policy)
+		b.Sets = append(b.Sets, r.Compiled.Sets...)
 	}
 	return b, skipped
+}
+
+// Compile compiles the policies and assembles the bundle of one node,
+// without last good versions.
+func Compile(version uint64, policies []Policy, lists map[string]List, geo *geoip.DB, nodeID string, labels map[string]string) (*dataplanev1.PolicyBundle, []Skipped) {
+	results := map[string]Result{}
+	for _, p := range policies {
+		c, err := CompilePolicy(p, lists, geo)
+		if err != nil {
+			results[p.ID] = Result{Err: err.Error()}
+			continue
+		}
+		results[p.ID] = Result{Compiled: c}
+	}
+	return Assemble(version, policies, results, nodeID, labels)
 }
 
 func resolve(s Source, lists map[string]List, geo *geoip.DB) ([]string, error) {

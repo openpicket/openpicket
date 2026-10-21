@@ -145,6 +145,13 @@ function PoliciesTab() {
                           {t("logs drops")}
                         </Badge>
                       )}
+                      {p.compileError && (
+                        <Tooltip label={p.compileError} multiline w={360} withArrow>
+                          <Badge size="xs" color={p.stale ? "orange" : "red"} variant="light">
+                            {p.stale ? t("last good version deployed") : t("not deployed")}
+                          </Badge>
+                        </Tooltip>
+                      )}
                     </Group>
                     {p.description && (
                       <Text size="xs" c="dimmed">
