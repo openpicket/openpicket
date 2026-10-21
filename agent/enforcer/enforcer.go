@@ -134,7 +134,7 @@ type Enforcer struct {
 	invalid map[string]string
 	// refused decisions (local policy, cap), value -> reason; recomputed.
 	refused map[string]string
-	// applied are the kernel elements, keyed by value.
+	// applied are the kernel elements, keyed by elemKey (set, value).
 	applied map[string]Entry
 	// capped is set when the last full computation hit MaxElements: deltas
 	// then take the full path.
@@ -147,6 +147,9 @@ type Enforcer struct {
 	wan     []string
 	dirty   bool
 	present bool
+	// stale: the last change failed to apply, so applied may not match
+	// the decisions; the next change or check recomputes everything.
+	stale bool
 }
 
 var _ dataplane.DecisionSink = (*Enforcer)(nil)
@@ -337,13 +340,8 @@ func (e *Enforcer) ApplyDelta(ctx context.Context, d *dataplanev1.DecisionDelta)
 // everything: addresses one by one, ranges by recomputing only the sets
 // they belong to. Callers hold mu.
 func (e *Enforcer) syncTouched(ctx context.Context, touched map[string]bool, now time.Time) error {
-	if e.capped || len(e.decisions) > e.cfg.MaxElements {
-		want, refused, capped := e.compute(e.decisions, now)
-		if err := e.sync(ctx, want, now); err != nil {
-			return err
-		}
-		e.refused, e.capped = refused, capped
-		return nil
+	if e.stale || e.capped || len(e.decisions) > e.cfg.MaxElements {
+		return e.syncPlan(ctx, e.compute(e.decisions, now), now)
 	}
 	local := e.cfg.Nets().Prefixes()
 	have, want := map[string]Entry{}, map[string]Entry{}
@@ -356,8 +354,12 @@ func (e *Enforcer) syncTouched(ctx context.Context, touched map[string]bool, now
 			rangeSets[nft.SetName(false, v6, true)], rangeSets[nft.SetName(true, v6, true)] = true, true
 			continue
 		}
-		if old, ok := e.applied[v]; ok {
-			have[v] = old
+		// The address may move between its inbound and two-way sets.
+		v6 := !isV4(v)
+		for _, set := range []string{nft.SetName(false, v6, false), nft.SetName(true, v6, false)} {
+			if old, ok := e.applied[elemKey(set, v)]; ok {
+				have[elemKey(set, v)] = old
+			}
 		}
 		en, ok := e.decisions[v]
 		if !ok || !en.Deadline.After(now) {
@@ -367,7 +369,7 @@ func (e *Enforcer) syncTouched(ctx context.Context, touched map[string]bool, now
 			e.refused[v] = r
 			continue
 		}
-		want[v] = en
+		want[en.key()] = en
 	}
 	if len(rangeSets) > 0 {
 		for k, el := range e.applied {
@@ -397,12 +399,7 @@ func (e *Enforcer) syncTouched(ctx context.Context, touched map[string]bool, now
 	if err := e.apply(ctx, diffScript(have, want, now)); err != nil {
 		// Out of sync: the full path reads the sets back.
 		e.log.Warn("incremental ban update failed; resyncing", "err", err)
-		full, refused, capped := e.compute(e.decisions, now)
-		if err := e.sync(ctx, full, now); err != nil {
-			return err
-		}
-		e.refused, e.capped = refused, capped
-		return nil
+		return e.syncPlan(ctx, e.compute(e.decisions, now), now)
 	}
 	for k := range have {
 		delete(e.applied, k)
@@ -419,7 +416,7 @@ func addPieces(want map[string]Entry, rs []Entry) {
 	for _, p := range Decompose(rs) {
 		src := rs[p.From]
 		v := p.Prefix.String()
-		want[v] = Entry{Value: v, Range: true, Both: src.Both, Deadline: p.Deadline, Origin: src.Origin, Scenario: src.Scenario,
+		want[elemKey(src.set(), v)] = Entry{Value: v, Range: true, Both: src.Both, Deadline: p.Deadline, Origin: src.Origin, Scenario: src.Scenario,
 			pfx: p.Prefix, setN: src.set()}
 	}
 }
@@ -451,19 +448,45 @@ func (e *Enforcer) merge(decisions map[string]Entry, invalid map[string]string, 
 
 // update replaces the decisions and applies them. Callers hold mu.
 func (e *Enforcer) update(ctx context.Context, decisions map[string]Entry, invalid map[string]string, now time.Time) error {
-	want, refused, capped := e.compute(decisions, now)
-	if err := e.sync(ctx, want, now); err != nil {
+	if err := e.syncPlan(ctx, e.compute(decisions, now), now); err != nil {
 		return err
 	}
-	e.decisions, e.invalid, e.refused, e.capped, e.dirty = decisions, invalid, refused, capped, true
+	e.decisions, e.invalid, e.dirty = decisions, invalid, true
+	return nil
+}
+
+// plan is a full computation of the kernel elements.
+type plan struct {
+	// want is keyed by elemKey: the same prefix can be in several sets
+	// (an inbound range and a two-way one decompose into equal pieces).
+	want    map[string]Entry
+	refused map[string]string
+	capped  bool
+	// local is the local networks it was computed with.
+	local []netip.Prefix
+}
+
+// elemKey identifies a kernel element: its set and value.
+func elemKey(set, value string) string { return set + " " + value }
+
+func (e Entry) key() string { return elemKey(e.set(), e.Value) }
+
+// syncPlan applies a full computation. What Ensure compares against (local
+// networks, refusals, cap) changes only once the kernel has it: after a
+// failure the next check computes again. Callers hold mu.
+func (e *Enforcer) syncPlan(ctx context.Context, p plan, now time.Time) error {
+	if err := e.sync(ctx, p.want, now); err != nil {
+		e.stale = true
+		return err
+	}
+	e.refused, e.capped, e.local, e.stale = p.refused, p.capped, p.local, false
 	return nil
 }
 
 // compute derives the kernel elements from the decisions with the current
 // allowlist and local networks. Callers hold mu.
-func (e *Enforcer) compute(decisions map[string]Entry, now time.Time) (map[string]Entry, map[string]string, bool) {
+func (e *Enforcer) compute(decisions map[string]Entry, now time.Time) plan {
 	local := e.cfg.Nets().Prefixes()
-	e.local = local
 	refused := map[string]string{}
 	keep := make([]Entry, 0, len(decisions))
 	for v, en := range decisions {
@@ -501,14 +524,14 @@ func (e *Enforcer) compute(decisions map[string]Entry, now time.Time) (map[strin
 			ranges[en.set()] = append(ranges[en.set()], en)
 			continue
 		}
-		want[en.Value] = en
+		want[en.key()] = en
 	}
 	// Interval sets reject overlapping elements: nested ranges become
 	// disjoint pieces with the latest deadline covering them.
 	for _, rs := range ranges {
 		addPieces(want, rs)
 	}
-	return want, refused, capped
+	return plan{want: want, refused: refused, capped: capped, local: local}
 }
 
 // sync makes the kernel sets match want. On failure (an element expired
@@ -554,21 +577,21 @@ func (e *Enforcer) apply(ctx context.Context, script string) error {
 // added, and values whose set or remaining time changed are replaced.
 func diffScript(have, want map[string]Entry, now time.Time) string {
 	var dels, adds []nft.Element
-	for v, h := range have {
-		w, ok := want[v]
-		if !ok || w.set() != h.set() || absDur(w.Deadline.Sub(h.Deadline)) > tolerance {
+	for k, h := range have {
+		w, ok := want[k]
+		if !ok || absDur(w.Deadline.Sub(h.Deadline)) > tolerance {
 			if h.Deadline.After(now) {
-				dels = append(dels, nft.Element{Set: h.set(), Value: v})
+				dels = append(dels, nft.Element{Set: h.set(), Value: h.Value})
 			}
 		}
 	}
-	for v, w := range want {
-		h, ok := have[v]
-		if ok && w.set() == h.set() && absDur(w.Deadline.Sub(h.Deadline)) <= tolerance && h.Deadline.After(now) {
+	for k, w := range want {
+		h, ok := have[k]
+		if ok && absDur(w.Deadline.Sub(h.Deadline)) <= tolerance && h.Deadline.After(now) {
 			continue
 		}
 		if rem := w.Deadline.Sub(now); rem > 0 {
-			adds = append(adds, nft.Element{Set: w.set(), Value: v, Timeout: rem})
+			adds = append(adds, nft.Element{Set: w.set(), Value: w.Value, Timeout: rem})
 		}
 	}
 	// Deletions first in the transaction: a split range is removed before
@@ -601,7 +624,7 @@ func (e *Enforcer) listed(ctx context.Context, now time.Time) (map[string]Entry,
 					v = netip.PrefixFrom(a, a.BitLen()).String()
 				}
 			}
-			out[v] = withCache(Entry{Value: v, Range: isRange, Both: both, Deadline: now.Add(exp)})
+			out[elemKey(set, v)] = withCache(Entry{Value: v, Range: isRange, Both: both, Deadline: now.Add(exp)})
 		}
 	}
 	return out, nil
@@ -656,7 +679,7 @@ func (e *Enforcer) Ensure(ctx context.Context) error {
 		e.wan = wan
 	}
 	// Capped: expired decisions free room for others.
-	if present && !e.capped && slices.Equal(allow, e.allow) && slices.Equal(e.cfg.Nets().Prefixes(), e.local) {
+	if present && !e.capped && !e.stale && slices.Equal(allow, e.allow) && slices.Equal(e.cfg.Nets().Prefixes(), e.local) {
 		return nil
 	}
 	if !present {
@@ -671,12 +694,7 @@ func (e *Enforcer) Ensure(ctx context.Context) error {
 		}
 		e.allow = allow
 	}
-	want, refused, capped := e.compute(e.decisions, now)
-	if err := e.sync(ctx, want, now); err != nil {
-		return err
-	}
-	e.refused, e.capped = refused, capped
-	return nil
+	return e.syncPlan(ctx, e.compute(e.decisions, now), now)
 }
 
 type stateFile struct {
@@ -759,12 +777,11 @@ func (e *Enforcer) Restore(ctx context.Context) error {
 	// Kept even if nft fails now: Ensure retries.
 	e.decisions, e.version = decisions, version
 	e.allow, e.present = e.cfg.Allow(), false
-	want, refused, capped := e.compute(decisions, now)
-	if err := e.sync(ctx, want, now); err != nil {
+	p := e.compute(decisions, now)
+	if err := e.syncPlan(ctx, p, now); err != nil {
 		return err
 	}
-	e.refused, e.capped = refused, capped
-	e.log.Info("ban table ready", "restored", len(decisions), "applied", len(want), "refused", len(refused), "version", version)
+	e.log.Info("ban table ready", "restored", len(decisions), "applied", len(p.want), "refused", len(p.refused), "version", version)
 	return nil
 }
 

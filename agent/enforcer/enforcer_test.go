@@ -208,10 +208,10 @@ func TestCapKeepsManualFirst(t *testing.T) {
 	manual.Origin = "manual"
 	_, _ = e.ApplySnapshot(context.Background(), &dataplanev1.DecisionSnapshot{Version: 1, Decisions: []*dataplanev1.Decision{
 		ip("198.51.100.2", time.Hour, false), ip("198.51.100.3", 2*time.Hour, false), manual}})
-	if _, ok := e.applied["198.51.100.1"]; !ok || len(e.applied) != 2 {
+	if _, ok := appliedValue(e, "198.51.100.1"); !ok || len(e.applied) != 2 {
 		t.Fatalf("applied = %v", e.applied)
 	}
-	if _, ok := e.applied["198.51.100.3"]; !ok {
+	if _, ok := appliedValue(e, "198.51.100.3"); !ok {
 		t.Fatal("longest crowdsec decision should be kept")
 	}
 }
@@ -308,7 +308,7 @@ func TestNestedRangeOutlivesOuter(t *testing.T) {
 	if err := e.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if en, ok := e.applied["198.51.100.0/25"]; !ok || en.Deadline.Sub(c.t) < 50*time.Minute {
+	if en, ok := appliedValue(e, "198.51.100.0/25"); !ok || en.Deadline.Sub(c.t) < 50*time.Minute {
 		t.Fatalf("inner range lost after the outer expired: %v", e.applied)
 	}
 }
@@ -360,7 +360,7 @@ func TestLocalNetworksAndAllowlistChanges(t *testing.T) {
 		ip("100.64.5.9", time.Hour, false), ip("10.1.2.3", time.Hour, false)}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := e.applied["100.64.5.9"]; !ok {
+	if _, ok := appliedValue(e, "100.64.5.9"); !ok {
 		t.Fatal("not applied")
 	}
 	// The address becomes local (DHCP, HOME_NET): unblocked, kept.
@@ -368,7 +368,7 @@ func TestLocalNetworksAndAllowlistChanges(t *testing.T) {
 	if err := e.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := e.applied["100.64.5.9"]; ok || !strings.Contains(ex.last(), "delete element inet openpicket_ban in4 { 100.64.5.9 }") {
+	if _, ok := appliedValue(e, "100.64.5.9"); ok || !strings.Contains(ex.last(), "delete element inet openpicket_ban in4 { 100.64.5.9 }") {
 		t.Fatalf("local address still blocked: %v\n%s", e.applied, ex.last())
 	}
 	st := e.Status()
@@ -381,7 +381,7 @@ func TestLocalNetworksAndAllowlistChanges(t *testing.T) {
 	if err := e2.Restore(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := e2.applied["100.64.5.9"]; ok || len(e2.decisions) != 2 {
+	if _, ok := appliedValue(e2, "100.64.5.9"); ok || len(e2.decisions) != 2 {
 		t.Fatalf("restore: applied %v decisions %v", e2.applied, e2.decisions)
 	}
 	// Not local any more, and out of the allowlist: both blocked again.
@@ -389,8 +389,8 @@ func TestLocalNetworksAndAllowlistChanges(t *testing.T) {
 	if err := e2.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
-	_, a := e2.applied["100.64.5.9"]
-	_, b := e2.applied["10.1.2.3"]
+	_, a := appliedValue(e2, "100.64.5.9")
+	_, b := appliedValue(e2, "10.1.2.3")
 	if !a || !b || e2.Status().Rejected != 0 {
 		t.Fatalf("not blocked again: %v", e2.applied)
 	}
@@ -427,10 +427,140 @@ func TestNetnsNestedRanges(t *testing.T) {
 	if _, ok := in4r["203.0.113.64/26"]; !ok || len(in4r) != 3 {
 		t.Fatalf("pieces: %v", in4r)
 	}
-	time.Sleep(3 * time.Second) // the outer pieces expire in the kernel
+	// A two-way range decomposes into a piece equal to an inbound one.
+	if _, err := e.ApplyDelta(ctx, &dataplanev1.DecisionDelta{FromVersion: 2, ToVersion: 3, Upserts: []*dataplanev1.Decision{
+		rng("198.51.100.0/24", time.Hour), rng("198.51.100.0/25", 2*time.Hour), bothRng("198.51.100.128/25", 2*time.Second)}}); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(3 * time.Second) // the outer pieces and the two-way range expire in the kernel
 	in4r, _ = e.cfg.Host.ListElements(ctx, "in4r")
-	if exp, ok := in4r["203.0.113.64/26"]; !ok || len(in4r) != 1 || exp < 50*time.Minute {
+	if exp, ok := in4r["203.0.113.64/26"]; !ok || exp < 50*time.Minute {
 		t.Fatalf("after the outer range expired: %v", in4r)
+	}
+	if exp, ok := in4r["198.51.100.128/25"]; !ok || exp < 50*time.Minute || len(in4r) != 3 {
+		t.Fatalf("inbound piece lost with the two-way range: %v", in4r)
+	}
+	if both4r, _ := e.cfg.Host.ListElements(ctx, "both4r"); len(both4r) != 0 {
+		t.Fatalf("both4r = %v", both4r)
+	}
+}
+
+// bothRng is a two-way range decision.
+func bothRng(v string, ttl time.Duration) *dataplanev1.Decision {
+	d := rng(v, ttl)
+	d.Direction = dataplanev1.Direction_DIRECTION_BOTH
+	return d
+}
+
+// TestSamePieceInTwoSets: an inbound range and a two-way range decompose
+// into equal pieces in different sets; neither replaces the other.
+func TestSamePieceInTwoSets(t *testing.T) {
+	c := &clock{t: time.Unix(1_800_000_000, 0)}
+	ex := &recExec{}
+	e := newEnforcer(t, ex, c)
+	ctx := context.Background()
+	_ = e.Restore(ctx)
+	if _, err := e.ApplySnapshot(ctx, &dataplanev1.DecisionSnapshot{Version: 1, Decisions: []*dataplanev1.Decision{
+		rng("203.0.113.0/24", time.Hour), rng("203.0.113.0/25", 2*time.Hour), bothRng("203.0.113.128/25", 2*time.Second)}}); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]time.Duration{"in4r 203.0.113.0/25": 2 * time.Hour, "in4r 203.0.113.128/25": time.Hour, "both4r 203.0.113.128/25": 2 * time.Second}
+	if len(e.applied) != len(want) {
+		t.Fatalf("applied = %v", e.applied)
+	}
+	for k, ttl := range want {
+		if en, ok := e.applied[k]; !ok || en.Deadline.Sub(c.t) != ttl {
+			t.Fatalf("%s: %v", k, en)
+		}
+	}
+	for _, line := range []string{"in4r { 203.0.113.128/25 timeout 3600s", "both4r { 203.0.113.128/25 timeout 2s"} {
+		if !strings.Contains(ex.last(), line) {
+			t.Fatalf("script lacks %q:\n%s", line, ex.last())
+		}
+	}
+	// An address changing direction moves between its sets.
+	if _, err := e.ApplyDelta(ctx, &dataplanev1.DecisionDelta{FromVersion: 1, ToVersion: 2, Upserts: []*dataplanev1.Decision{ip("198.51.100.7", time.Hour, false)}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ApplyDelta(ctx, &dataplanev1.DecisionDelta{FromVersion: 2, ToVersion: 3, Upserts: []*dataplanev1.Decision{ip("198.51.100.7", time.Hour, true)}}); err != nil {
+		t.Fatal(err)
+	}
+	_, in := e.applied["in4 198.51.100.7"]
+	_, both := e.applied["both4 198.51.100.7"]
+	if in || !both || !strings.Contains(ex.last(), "delete element inet openpicket_ban in4 { 198.51.100.7 }") {
+		t.Fatalf("direction change: in=%v both=%v\n%s", in, both, ex.last())
+	}
+}
+
+// kernelExec fails the scripts while fail is set and lists one element,
+// 100.64.5.9 in in4 (what the kernel holds when the change could not be
+// applied).
+type kernelExec struct {
+	mu      sync.Mutex
+	fail    bool
+	scripts []string
+}
+
+func (k *kernelExec) Run(_ context.Context, _ string, args []string, stdin []byte) ([]byte, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	switch {
+	case len(args) > 1 && args[0] == "-j":
+		if args[len(args)-1] == "in4" {
+			return []byte(`{"nftables":[{"set":{"elem":[{"elem":{"val":"100.64.5.9","expires":3600}}]}}]}`), nil
+		}
+		return []byte(`{"nftables":[]}`), nil
+	case len(args) > 0 && args[0] == "list":
+		return []byte("chain guard { iifname != @wan accept; ip saddr @both4 }"), nil
+	case k.fail:
+		return nil, errors.New("nft: transient failure")
+	}
+	k.scripts = append(k.scripts, string(stdin))
+	return nil, nil
+}
+func (k *kernelExec) LookPath(n string) (string, error) { return n, nil }
+
+// TestFailedChangeIsRetried: a local network change that nft could not
+// apply is applied by the next check, as is a delta that failed.
+func TestFailedChangeIsRetried(t *testing.T) {
+	c := &clock{t: time.Unix(1_800_000_000, 0)}
+	ex := &kernelExec{}
+	n1, _ := direction.NewNets([]string{"192.168.1.0/24"})
+	n2, _ := direction.NewNets([]string{"192.168.1.0/24", "100.64.0.0/10"})
+	var mu sync.Mutex
+	nets := n1
+	e := New(Config{Host: &nft.Host{Exec: ex}, Table: nft.BanConfig{WAN: nft.NewWAN("wan")}, Now: c.now, MaxElements: 100,
+		Nets: func() *direction.Nets { mu.Lock(); defer mu.Unlock(); return nets }})
+	ctx := context.Background()
+	_ = e.Restore(ctx)
+	if _, err := e.ApplySnapshot(ctx, &dataplanev1.DecisionSnapshot{Version: 1, Decisions: []*dataplanev1.Decision{ip("100.64.5.9", time.Hour, false)}}); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	nets = n2
+	mu.Unlock()
+	ex.fail = true
+	if err := e.Ensure(ctx); err == nil {
+		t.Fatal("the failure was not reported")
+	}
+	ex.fail = false
+	if err := e.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := appliedValue(e, "100.64.5.9"); ok || !strings.Contains(strings.Join(ex.scripts, ""), "delete element inet openpicket_ban in4 { 100.64.5.9 }") {
+		t.Fatalf("the local address is still blocked: %v %q", e.applied, ex.scripts)
+	}
+	// A failed delta leaves the enforcer stale: the next check recomputes.
+	ex.fail = true
+	if _, err := e.ApplyDelta(ctx, &dataplanev1.DecisionDelta{FromVersion: 1, ToVersion: 2, Upserts: []*dataplanev1.Decision{ip("198.51.100.8", time.Hour, false)}}); err == nil {
+		t.Fatal("the failure was not reported")
+	}
+	ex.fail = false
+	if err := e.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := appliedValue(e, "198.51.100.8"); !ok {
+		t.Fatalf("the failed delta was not applied by the next check: %v", e.applied)
 	}
 }
 
@@ -461,4 +591,14 @@ func TestWANChange(t *testing.T) {
 	if got := ex.last(); got != nft.WANScript([]string{"pppoe-wan", "wwan0"}) || len(ex.scripts) != n+1 {
 		t.Fatalf("WAN change applied %d scripts, last:\n%s", len(ex.scripts)-n, got)
 	}
+}
+
+// appliedValue finds the kernel element holding v (in any set).
+func appliedValue(e *Enforcer, v string) (Entry, bool) {
+	for _, en := range e.applied {
+		if en.Value == v {
+			return en, true
+		}
+	}
+	return Entry{}, false
 }
