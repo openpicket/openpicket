@@ -142,7 +142,9 @@ type Enforcer struct {
 	lastErr string
 	allow   []netip.Prefix
 	// local networks of the last full computation.
-	local   []netip.Prefix
+	local []netip.Prefix
+	// wan is the content of the table's wan set.
+	wan     []string
 	dirty   bool
 	present bool
 }
@@ -608,6 +610,8 @@ func (e *Enforcer) listed(ctx context.Context, now time.Time) (map[string]Entry,
 // recreate builds the table from scratch with want's remaining times.
 // Callers hold mu.
 func (e *Enforcer) recreate(ctx context.Context, want map[string]Entry, now time.Time) error {
+	// Read first: a change while rendering is caught by the next Ensure.
+	e.wan = e.cfg.Table.WAN.Get()
 	script := e.cfg.Table.Script(e.allow) + diffScript(nil, want, now)
 	if err := e.cfg.Host.Apply(ctx, script); err != nil {
 		e.present = false
@@ -618,7 +622,8 @@ func (e *Enforcer) recreate(ctx context.Context, want map[string]Entry, now time
 }
 
 // Ensure checks that the table exists (fw4 or a user may have flushed the
-// ruleset) and, when the allowlist or the local networks changed, applies
+// ruleset), follows WAN changes and, when the allowlist or the local
+// networks changed, applies
 // the decisions again: a value that became local is unblocked, one that
 // is no longer local is blocked again. Call it when the local networks
 // change; it also runs every minute. Expiry needs no recomputation: every
@@ -641,6 +646,15 @@ func (e *Enforcer) Ensure(ctx context.Context) error {
 	}
 	allow := e.cfg.Allow()
 	present := e.present && e.cfg.Host.BanTablePresent(ctx)
+	if wan := e.cfg.Table.WAN.Get(); present && !slices.Equal(wan, e.wan) {
+		// The WAN changed (fw4 zone devices): only the wan set changes,
+		// the bans and their timeouts stay.
+		if err := e.cfg.Host.Apply(ctx, nft.WANScript(wan)); err != nil {
+			e.lastErr = err.Error()
+			return err
+		}
+		e.wan = wan
+	}
 	// Capped: expired decisions free room for others.
 	if present && !e.capped && slices.Equal(allow, e.allow) && slices.Equal(e.cfg.Nets().Prefixes(), e.local) {
 		return nil

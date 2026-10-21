@@ -42,7 +42,9 @@ func BanSets() []string { return append([]string(nil), banSets...) }
 
 // BanConfig is the agent-owned part of the ban table.
 type BanConfig struct {
-	WAN []string
+	// WAN is held in the table's wan set, replaced when it changes
+	// (WANScript).
+	WAN *WAN
 	// Egress also blocks traffic to BOTH decisions leaving through the WAN
 	// (and logs it to NFLOG group 102).
 	Egress bool
@@ -93,8 +95,8 @@ func SplitFamilies(ps []netip.Prefix) (v4, v6 []netip.Prefix) {
 // Script creates the ban table with empty ban sets.
 func (c BanConfig) Script(allow []netip.Prefix) string {
 	a4, a6 := SplitFamilies(allow)
-	wan := quoteSet(c.WAN)
 	var b strings.Builder
+	b.WriteString(wanDecl(c.WAN.Get()))
 	b.WriteString(allowDecl("allow4", "ipv4_addr", a4))
 	b.WriteString(allowDecl("allow6", "ipv6_addr", a6))
 	for _, s := range banSets {
@@ -103,9 +105,9 @@ func (c BanConfig) Script(allow []netip.Prefix) string {
 	// Conntrack does not exist yet at raw priority, so drop only packets
 	// that cannot be replies: TCP SYN without ACK and ICMP echo requests.
 	// BOTH drops everything from the address.
-	fmt.Fprintf(&b, `	chain guard {
+	b.WriteString(`	chain guard {
 		type filter hook prerouting priority raw - 10; policy accept;
-		iifname != %[1]s accept
+		iifname != @wan accept
 		ip saddr @allow4 accept
 		ip6 saddr @allow6 accept
 		ip saddr @both4 counter drop
@@ -121,12 +123,12 @@ func (c BanConfig) Script(allow []netip.Prefix) string {
 		ip6 saddr @in6 icmpv6 type echo-request counter drop
 		ip6 saddr @in6r icmpv6 type echo-request counter drop
 	}
-`, wan)
+`)
 	// After conntrack: the remaining new connections of INBOUND addresses
 	// (UDP and others); replies to connections opened from inside pass.
-	fmt.Fprintf(&b, `	chain guard_ct {
+	b.WriteString(`	chain guard_ct {
 		type filter hook prerouting priority mangle - 10; policy accept;
-		iifname != %[1]s accept
+		iifname != @wan accept
 		ip saddr @allow4 accept
 		ip6 saddr @allow6 accept
 		ip saddr @in4 ct state new counter drop
@@ -134,7 +136,7 @@ func (c BanConfig) Script(allow []netip.Prefix) string {
 		ip6 saddr @in6 ct state new counter drop
 		ip6 saddr @in6r ct state new counter drop
 	}
-`, wan)
+`)
 	if c.Egress {
 		rate := c.EgressLogRate
 		if rate == "" {
@@ -142,13 +144,13 @@ func (c BanConfig) Script(allow []netip.Prefix) string {
 		}
 		fmt.Fprintf(&b, `	chain egress {
 		type filter hook forward priority filter - 10; policy accept;
-		oifname != %[1]s accept
+		oifname != @wan accept
 		ip daddr @allow4 accept
 		ip6 daddr @allow6 accept
-		ip daddr @both4 limit rate %[2]s log group 102 prefix "BAN-EGRESS: " snaplen 128
-		ip daddr @both4r limit rate %[2]s log group 102 prefix "BAN-EGRESS: " snaplen 128
-		ip6 daddr @both6 limit rate %[2]s log group 102 prefix "BAN-EGRESS: " snaplen 128
-		ip6 daddr @both6r limit rate %[2]s log group 102 prefix "BAN-EGRESS: " snaplen 128
+		ip daddr @both4 limit rate %[1]s log group 102 prefix "BAN-EGRESS: " snaplen 128
+		ip daddr @both4r limit rate %[1]s log group 102 prefix "BAN-EGRESS: " snaplen 128
+		ip6 daddr @both6 limit rate %[1]s log group 102 prefix "BAN-EGRESS: " snaplen 128
+		ip6 daddr @both6r limit rate %[1]s log group 102 prefix "BAN-EGRESS: " snaplen 128
 		ip daddr @both4 counter drop
 		ip daddr @both4r counter drop
 		ip6 daddr @both6 counter drop
@@ -156,13 +158,13 @@ func (c BanConfig) Script(allow []netip.Prefix) string {
 	}
 	chain egress_local {
 		type filter hook output priority filter - 10; policy accept;
-		oifname != %[1]s accept
+		oifname != @wan accept
 		ip daddr @both4 counter drop
 		ip daddr @both4r counter drop
 		ip6 daddr @both6 counter drop
 		ip6 daddr @both6r counter drop
 	}
-`, wan, rate)
+`, rate)
 	}
 	return replaceTable("inet", BanTable, b.String())
 }
@@ -298,8 +300,9 @@ func parseElem(raw json.RawMessage) (string, time.Duration, bool) {
 	return v, 0, ok
 }
 
-// BanTablePresent reports whether the ban table and its guard chain exist.
+// BanTablePresent reports whether the ban table and its guard chain exist
+// (in their current form: a table of earlier versions is recreated).
 func (h *Host) BanTablePresent(ctx context.Context) bool {
 	out, err := h.Output(ctx, "list", "chain", "inet", BanTable, "guard")
-	return err == nil && strings.Contains(string(out), "@both4")
+	return err == nil && strings.Contains(string(out), "@both4") && strings.Contains(string(out), "@wan")
 }

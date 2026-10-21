@@ -43,6 +43,7 @@ type Sink struct {
 	mu      sync.Mutex
 	bundle  *dataplanev1.PolicyBundle
 	allow   []netip.Prefix
+	wan     []string
 	lastErr string
 }
 
@@ -87,12 +88,12 @@ func (s *Sink) Apply(ctx context.Context, b *dataplanev1.PolicyBundle) error {
 
 // apply renders and installs b. Callers hold mu.
 func (s *Sink) apply(ctx context.Context, b *dataplanev1.PolicyBundle) error {
-	allow := s.cfg.Allow()
+	allow, wan := s.cfg.Allow(), s.cfg.Table.WAN.Get()
 	if err := s.cfg.Host.Apply(ctx, s.cfg.Table.PolicyScript(b, allow)); err != nil {
 		s.lastErr = err.Error()
 		return err
 	}
-	s.allow, s.lastErr = allow, ""
+	s.allow, s.wan, s.lastErr = allow, wan, ""
 	return nil
 }
 
@@ -146,14 +147,15 @@ func (s *Sink) Restore(ctx context.Context) error {
 	return nil
 }
 
-// Ensure puts the table back if it disappeared or the allowlist changed.
+// Ensure puts the table back if it disappeared, or renders it again when
+// the allowlist or the WAN changed.
 func (s *Sink) Ensure(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.bundle.Policies) == 0 {
 		return nil
 	}
-	if s.cfg.Host.PolicyTablePresent(ctx) && slices.Equal(s.allow, s.cfg.Allow()) {
+	if s.cfg.Host.PolicyTablePresent(ctx) && slices.Equal(s.allow, s.cfg.Allow()) && slices.Equal(s.wan, s.cfg.Table.WAN.Get()) {
 		return nil
 	}
 	return s.apply(ctx, s.bundle)

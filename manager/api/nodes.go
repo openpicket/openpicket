@@ -83,6 +83,10 @@ func (n *nodeService) scan(row pgx.Row) (*apiv1.Node, error) {
 		st := &dataplanev1.Status{}
 		if len(status) > 0 && proto.Unmarshal(status, st) == nil {
 			dp.Status = st
+			if st.WanInterfaces != nil {
+				// Current (fw4 zones); the hello has the list at connect.
+				dp.WanInterfaces = st.WanInterfaces
+			}
 		}
 	}
 	out.DataPlane = dp

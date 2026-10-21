@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 )
@@ -20,8 +22,10 @@ const fw4ChainPost = "/usr/share/nftables.d/chain-post"
 // and port redirections, right before the jump to the zone's reject/drop
 // chain. Only connections the firewall is about to refuse reach it.
 func Fw4SnippetPath(zone string) string {
-	return fw4ChainPost + "/input_" + zone + "/90-openpicket-wan-reject.nft"
+	return fw4ChainPost + "/input_" + zone + "/" + fw4SnippetName
 }
+
+const fw4SnippetName = "90-openpicket-wan-reject.nft"
 
 // legacyFw4Snippet is the rule of earlier versions (fw4 dstnat chain); it
 // logged every connection no DNAT took, accepted ones included.
@@ -38,10 +42,10 @@ type WANReject struct {
 	Host *Host
 	// Mode is fw4 or nftables.
 	Mode string
-	// WAN interfaces (nftables mode; with fw4 the zone selects them).
-	WAN []string
-	// Zone is the fw4 zone of the WAN (default "wan").
-	Zone  string
+	// WAN interfaces (nftables mode; with fw4 the zones select them).
+	WAN *WAN
+	// Zones are the fw4 zones facing the internet.
+	Zones []string
 	Rate  string
 	Burst int
 	Group int
@@ -50,13 +54,6 @@ type WANReject struct {
 
 	// noSocket is set when the kernel lacks nft_socket (nftables mode).
 	noSocket bool
-}
-
-func (w *WANReject) zone() string {
-	if w.Zone == "" {
-		return "wan"
-	}
-	return w.Zone
 }
 
 // rule is the log rule; match goes before the protocol check.
@@ -77,7 +74,13 @@ func (w *WANReject) rule(match string) string {
 
 // tag identifies the rendered configuration, so Ensure notices changes.
 func (w *WANReject) tag() string {
-	h := sha256.Sum256([]byte(fmt.Sprint(w.Mode, w.WAN, w.zone(), w.Rate, w.Burst, w.Group, w.IgnorePorts, w.noSocket)))
+	var wan []string
+	if w.Mode != "fw4" {
+		// With fw4 the zones select the devices: a WAN change must not
+		// rewrite the snippets and reload fw4.
+		wan = w.WAN.Get()
+	}
+	h := sha256.Sum256([]byte(fmt.Sprint(w.Mode, wan, w.Zones, w.Rate, w.Burst, w.Group, w.IgnorePorts, w.noSocket)))
 	return "openpicket-wan-reject " + hex.EncodeToString(h[:4])
 }
 
@@ -96,7 +99,7 @@ func (w *WANReject) Table() string {
 	b.WriteString("\tchain wan_reject {\n\t\ttype filter hook prerouting priority dstnat + 10; policy accept;\n")
 	// Cheap checks first: only new WAN connections to the node itself that
 	// no DNAT took go on to the socket lookup.
-	fmt.Fprintf(&b, "\t\tiifname != %s return\n", quoteSet(w.WAN))
+	fmt.Fprintf(&b, "\t\t%sreturn\n", notWAN("iifname", w.WAN.Get()))
 	b.WriteString("\t\tct state != new return\n\t\tct status dnat return\n\t\tfib daddr type != local return\n")
 	if !w.noSocket {
 		// A listening socket means an open service: not a probe.
@@ -131,47 +134,78 @@ func (w *WANReject) Ensure(ctx context.Context) error {
 }
 
 func (w *WANReject) ensureFw4(ctx context.Context) error {
-	reload := false
-	// Earlier versions logged in dstnat, accepted connections included.
-	removed, err := w.Host.RemoveFile(legacyFw4Snippet)
+	// Earlier versions logged in dstnat, accepted connections included;
+	// zones no longer listed keep no rule.
+	reload, err := w.removeSnippets(w.Zones)
 	if err != nil {
 		return err
 	}
-	reload = reload || removed
-	chain := "input_" + w.zone()
-	out, listErr := w.Host.Output(ctx, "list", "chain", "inet", "fw4", chain)
-	if listErr == nil && strings.Contains(string(out), "jump accept_from_"+w.zone()) {
-		// The zone accepts every input: the rule would log accepted
-		// connections. Leave it out.
-		removed, err := w.Host.RemoveFile(Fw4SnippetPath(w.zone()))
+	var (
+		errs    []error
+		missing []string
+	)
+	for _, zone := range w.Zones {
+		chain := "input_" + zone
+		out, listErr := w.Host.Output(ctx, "list", "chain", "inet", "fw4", chain)
+		if listErr == nil && strings.Contains(string(out), "jump accept_from_"+zone) {
+			// The zone accepts every input: the rule would log accepted
+			// connections. Leave it out.
+			removed, err := w.Host.RemoveFile(Fw4SnippetPath(zone))
+			if err != nil {
+				return err
+			}
+			reload = reload || removed
+			errs = append(errs, fmt.Errorf("fw4 zone %q accepts all input: WAN-REJECT logging is disabled there", zone))
+			continue
+		}
+		changed, err := w.Host.WriteFile(Fw4SnippetPath(zone), []byte(w.Fw4Snippet()))
 		if err != nil {
 			return err
 		}
-		if removed || reload {
-			if err := w.fw4Reload(ctx); err != nil {
-				return err
-			}
+		// No chain yet (fw4 not started, or a zone of another name): a
+		// reload installs it or reports the problem.
+		present := listErr == nil && strings.Contains(string(out), w.tag())
+		reload = reload || changed || !present
+		if listErr != nil {
+			missing = append(missing, zone)
 		}
-		return fmt.Errorf("fw4 zone %q accepts all input: WAN-REJECT logging is disabled", w.zone())
 	}
-	changed, err := w.Host.WriteFile(Fw4SnippetPath(w.zone()), []byte(w.Fw4Snippet()))
-	if err != nil {
-		return err
-	}
-	// No chain yet (fw4 not started, or a zone of another name): a reload
-	// installs it or reports the problem.
-	present := listErr == nil && strings.Contains(string(out), w.tag())
-	if changed || reload || !present {
+	if reload {
 		if err := w.fw4Reload(ctx); err != nil {
 			return err
 		}
-		if listErr != nil {
-			if _, err := w.Host.Output(ctx, "list", "chain", "inet", "fw4", chain); err != nil {
-				return fmt.Errorf("fw4 has no chain %s: set openpicket.nflog.fw4_zone to the WAN zone", chain)
+		for _, zone := range missing {
+			if _, err := w.Host.Output(ctx, "list", "chain", "inet", "fw4", "input_"+zone); err != nil {
+				errs = append(errs, fmt.Errorf("fw4 has no chain input_%s: openpicket.fw4_zones names a zone that does not exist", zone))
 			}
 		}
 	}
-	return nil
+	return errors.Join(errs...)
+}
+
+// removeSnippets removes the rule from every zone not in keep (and the
+// legacy dstnat rule); it reports whether anything was removed.
+func (w *WANReject) removeSnippets(keep []string) (bool, error) {
+	paths, err := filepath.Glob(w.Host.FS.Path(fw4ChainPost + "/input_*/" + fw4SnippetName))
+	if err != nil {
+		return false, err
+	}
+	removed, err := w.Host.RemoveFile(legacyFw4Snippet)
+	if err != nil {
+		return false, err
+	}
+	for _, p := range paths {
+		zone := strings.TrimPrefix(filepath.Base(filepath.Dir(p)), "input_")
+		if slices.Contains(keep, zone) {
+			continue
+		}
+		r, err := w.Host.RemoveFile(Fw4SnippetPath(zone))
+		if err != nil {
+			return false, err
+		}
+		removed = removed || r
+	}
+	return removed, nil
 }
 
 func (w *WANReject) fw4Reload(ctx context.Context) error {
@@ -184,12 +218,8 @@ func (w *WANReject) fw4Reload(ctx context.Context) error {
 // Remove uninstalls the rule.
 func (w *WANReject) Remove(ctx context.Context) error {
 	if w.Mode == "fw4" {
-		removed, err := w.Host.RemoveFile(Fw4SnippetPath(w.zone()))
-		if err != nil {
-			return err
-		}
-		legacy, err := w.Host.RemoveFile(legacyFw4Snippet)
-		if err != nil || !(removed || legacy) {
+		removed, err := w.removeSnippets(nil)
+		if err != nil || !removed {
 			return err
 		}
 		return w.fw4Reload(ctx)

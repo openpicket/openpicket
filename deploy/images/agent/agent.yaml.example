@@ -37,13 +37,17 @@ openpicket:
   # headers:                             # e.g. Cloudflare Access service token
   #   CF-Access-Client-Id: "..."
   #   CF-Access-Client-Secret: "..."
-  wan_interfaces: [wan]                  # NFLOG, bans and port policies apply here
+  # NFLOG, bans and port policies apply to the WAN only. On OpenWrt it is
+  # the devices of the fw4 zones (followed as they change: second uplink,
+  # PPPoE); elsewhere, or for devices outside the zones, wan_interfaces
+  # (a trailing * matches a prefix, e.g. "wg*").
+  fw4_zones: [wan]
+  # wan_interfaces: [eth0]               # required without fw4
   local_nets: []                         # inside networks beyond HOME_NET and interface addresses
   allowlist: [controller]                # never blocked ("controller": both manager hosts)
   nflog:
     enabled: true                        # log WAN connections the firewall refuses (scan detection)
     install_rule: auto                   # auto | fw4 | nftables | none
-    fw4_zone: wan                        # OpenWrt: the rule goes into this zone's input chain
     ignore_ports: []                     # never logged; e.g. services open on the WAN without nft_socket
   enforcer:
     enabled: true                        # CrowdSec bans in nftables

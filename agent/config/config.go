@@ -18,6 +18,8 @@ import (
 
 	suricfg "github.com/jc-lab/suricontroller/agent/config"
 	"github.com/jc-lab/suricontroller/pkg/sshkey"
+
+	"github.com/openpicket/openpicket/agent/nft"
 )
 
 // Config is the whole agent configuration.
@@ -41,8 +43,12 @@ type OpenPicket struct {
 
 	// WANInterfaces are the interfaces facing the internet: NFLOG, ban and
 	// port policies apply to them only. The agent decides; the manager
-	// cannot change them.
+	// cannot change them. On OpenWrt the devices of Fw4Zones are added.
 	WANInterfaces []string `yaml:"wan_interfaces"`
+	// Fw4Zones are the OpenWrt fw4 zones facing the internet (default
+	// "wan"): their devices are WAN interfaces, followed as they change,
+	// and WAN-REJECT logs in their input chains. Ignored without fw4.
+	Fw4Zones []string `yaml:"fw4_zones"`
 	// LocalNets are extra networks treated as inside, beyond Suricata
 	// HOME_NET and the interface addresses.
 	LocalNets []string `yaml:"local_nets"`
@@ -61,9 +67,6 @@ type OpenPicket struct {
 		// Rate is the nftables limit of the WAN-REJECT log rule ("30/minute").
 		Rate  string `yaml:"rate"`
 		Burst int    `yaml:"burst"`
-		// Fw4Zone is the fw4 zone of the WAN (default "wan"): the rule is
-		// appended to its input chain.
-		Fw4Zone string `yaml:"fw4_zone"`
 		// IgnorePorts are destination ports never logged, e.g. services
 		// open on the WAN when nft_socket is unavailable.
 		IgnorePorts []uint16 `yaml:"ignore_ports"`
@@ -86,13 +89,12 @@ type OpenPicket struct {
 
 func defaults() OpenPicket {
 	var o OpenPicket
-	o.WANInterfaces = []string{"wan"}
+	o.Fw4Zones = []string{"wan"}
 	o.Logs.InflightMaxBytes = 4 << 20
 	o.Nflog.Enabled = true
 	o.Nflog.InstallRule = "auto"
 	o.Nflog.Rate = "30/minute"
 	o.Nflog.Burst = 10
-	o.Nflog.Fw4Zone = "wan"
 	o.Enforcer.Enabled = true
 	o.Enforcer.EgressBlock = true
 	o.Enforcer.MaxElements = 100000
@@ -195,8 +197,6 @@ func setFirewall(b []byte, value string) ([]byte, error) {
 	return yaml.Marshal(&root)
 }
 
-var ifaceRe = regexp.MustCompile(`^[A-Za-z0-9_.@-]{1,15}$`)
-
 func (c *Config) validate() error {
 	o := &c.OpenPicket
 	var errs []error
@@ -208,12 +208,17 @@ func (c *Config) validate() error {
 	if _, err := sshkey.ParsePublicKey(o.HostKey); err != nil {
 		errs = append(errs, fmt.Errorf("openpicket.host_key: %w", err))
 	}
-	if len(o.WANInterfaces) == 0 {
-		errs = append(errs, errors.New("openpicket.wan_interfaces must name at least one interface"))
+	if len(o.WANInterfaces) == 0 && len(o.Fw4Zones) == 0 {
+		errs = append(errs, errors.New("openpicket: name the WAN in wan_interfaces or fw4_zones"))
 	}
 	for _, n := range o.WANInterfaces {
-		if !ifaceRe.MatchString(n) {
+		if !nft.ValidIfname(n) {
 			errs = append(errs, fmt.Errorf("openpicket.wan_interfaces: invalid name %q", n))
+		}
+	}
+	for _, z := range o.Fw4Zones {
+		if !zoneRe.MatchString(z) {
+			errs = append(errs, fmt.Errorf("openpicket.fw4_zones: invalid zone name %q", z))
 		}
 	}
 	for _, s := range o.LocalNets {
@@ -236,9 +241,6 @@ func (c *Config) validate() error {
 	}
 	if o.Nflog.Burst < 1 {
 		errs = append(errs, errors.New("openpicket.nflog.burst must be at least 1"))
-	}
-	if !zoneRe.MatchString(o.Nflog.Fw4Zone) {
-		errs = append(errs, fmt.Errorf("openpicket.nflog.fw4_zone: invalid zone name %q", o.Nflog.Fw4Zone))
 	}
 	if slices.Contains(o.Nflog.IgnorePorts, 0) {
 		errs = append(errs, errors.New("openpicket.nflog.ignore_ports: ports are 1-65535"))

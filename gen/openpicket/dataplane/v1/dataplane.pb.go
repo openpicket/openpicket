@@ -1379,12 +1379,15 @@ type Status struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	TimeUnixMs int64                  `protobuf:"varint,1,opt,name=time_unix_ms,json=timeUnixMs,proto3" json:"time_unix_ms,omitempty"`
 	// Suricata instances, interfaces and warnings as reported to suricontroller.
-	Suricata      *v1.StatusReport `protobuf:"bytes,2,opt,name=suricata,proto3" json:"suricata,omitempty"`
-	LocalNets     *LocalNets       `protobuf:"bytes,3,opt,name=local_nets,json=localNets,proto3" json:"local_nets,omitempty"`
-	Logs          *LogStats        `protobuf:"bytes,4,opt,name=logs,proto3" json:"logs,omitempty"`
-	Enforcer      *EnforcerStatus  `protobuf:"bytes,5,opt,name=enforcer,proto3" json:"enforcer,omitempty"`
-	Policy        *PolicyStatus    `protobuf:"bytes,6,opt,name=policy,proto3" json:"policy,omitempty"`
-	Nflog         *NflogStatus     `protobuf:"bytes,7,opt,name=nflog,proto3" json:"nflog,omitempty"`
+	Suricata  *v1.StatusReport `protobuf:"bytes,2,opt,name=suricata,proto3" json:"suricata,omitempty"`
+	LocalNets *LocalNets       `protobuf:"bytes,3,opt,name=local_nets,json=localNets,proto3" json:"local_nets,omitempty"`
+	Logs      *LogStats        `protobuf:"bytes,4,opt,name=logs,proto3" json:"logs,omitempty"`
+	Enforcer  *EnforcerStatus  `protobuf:"bytes,5,opt,name=enforcer,proto3" json:"enforcer,omitempty"`
+	Policy    *PolicyStatus    `protobuf:"bytes,6,opt,name=policy,proto3" json:"policy,omitempty"`
+	Nflog     *NflogStatus     `protobuf:"bytes,7,opt,name=nflog,proto3" json:"nflog,omitempty"`
+	// The WAN interfaces now: on OpenWrt they follow the fw4 zones, so they
+	// may differ from the hello.
+	WanInterfaces []string `protobuf:"bytes,8,rep,name=wan_interfaces,json=wanInterfaces,proto3" json:"wan_interfaces,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1464,6 +1467,13 @@ func (x *Status) GetPolicy() *PolicyStatus {
 func (x *Status) GetNflog() *NflogStatus {
 	if x != nil {
 		return x.Nflog
+	}
+	return nil
+}
+
+func (x *Status) GetWanInterfaces() []string {
+	if x != nil {
+		return x.WanInterfaces
 	}
 	return nil
 }
@@ -2795,7 +2805,7 @@ const file_openpicket_dataplane_v1_dataplane_proto_rawDesc = "" +
 	"last_error\x18\x03 \x01(\tR\tlastError\x1a:\n" +
 	"\fRecordsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xa7\x03\n" +
+	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xce\x03\n" +
 	"\x06Status\x12 \n" +
 	"\ftime_unix_ms\x18\x01 \x01(\x03R\n" +
 	"timeUnixMs\x12A\n" +
@@ -2805,7 +2815,8 @@ const file_openpicket_dataplane_v1_dataplane_proto_rawDesc = "" +
 	"\x04logs\x18\x04 \x01(\v2!.openpicket.dataplane.v1.LogStatsR\x04logs\x12C\n" +
 	"\benforcer\x18\x05 \x01(\v2'.openpicket.dataplane.v1.EnforcerStatusR\benforcer\x12=\n" +
 	"\x06policy\x18\x06 \x01(\v2%.openpicket.dataplane.v1.PolicyStatusR\x06policy\x12:\n" +
-	"\x05nflog\x18\a \x01(\v2$.openpicket.dataplane.v1.NflogStatusR\x05nflog\"T\n" +
+	"\x05nflog\x18\a \x01(\v2$.openpicket.dataplane.v1.NflogStatusR\x05nflog\x12%\n" +
+	"\x0ewan_interfaces\x18\b \x03(\tR\rwanInterfaces\"T\n" +
 	"\x06Record\x12\x12\n" +
 	"\x04line\x18\x01 \x01(\fR\x04line\x12\x10\n" +
 	"\x03rid\x18\x02 \x01(\tR\x03rid\x12$\n" +

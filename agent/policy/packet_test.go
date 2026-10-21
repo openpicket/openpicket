@@ -116,7 +116,8 @@ func TestPacketPolicyAndBans(t *testing.T) {
 	if len(skipped) > 0 {
 		t.Fatal(skipped)
 	}
-	pol := New(Config{Host: host, Table: nft.PolicyConfig{WAN: []string{"wan"}}, MaxElements: 1000})
+	wan := nft.NewWAN("wan")
+	pol := New(Config{Host: host, Table: nft.PolicyConfig{WAN: wan}, MaxElements: 1000})
 	if err := pol.Apply(ctx, bundle); err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +133,7 @@ func TestPacketPolicyAndBans(t *testing.T) {
 	}
 
 	nets, _ := direction.NewNets([]string{"192.168.1.0/24"})
-	enf := enforcer.New(enforcer.Config{Host: host, Table: nft.BanConfig{WAN: []string{"wan"}, Egress: true},
+	enf := enforcer.New(enforcer.Config{Host: host, Table: nft.BanConfig{WAN: wan, Egress: true},
 		Nets: func() *direction.Nets { return nets }, Allow: func() []netip.Prefix { return nil }})
 	if err := enf.Restore(ctx); err != nil {
 		t.Fatal(err)
@@ -162,5 +163,28 @@ func TestPacketPolicyAndBans(t *testing.T) {
 	}
 	if connect("inet", internet["both"], router, 2222) {
 		t.Fatal("BOTH-banned source connected")
+	}
+
+	// The WAN changes (fw4 zone devices): "wan" is no longer one, so
+	// nothing applies to it; then a wildcard brings it back. The bans are
+	// kept throughout.
+	ensure := func() {
+		t.Helper()
+		if err := enf.Ensure(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := pol.Ensure(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	wan.Set([]string{"pppoe-wan"})
+	ensure()
+	if !connect("inet", internet["banned"], router, 2222) || !connect("inet", internet["cn"], router, 443) {
+		t.Fatal("bans or policies still apply to an interface that is no longer a WAN")
+	}
+	wan.Set([]string{"pppoe-wan", "wa*"})
+	ensure()
+	if connect("inet", internet["banned"], router, 2222) || connect("inet", internet["cn"], router, 443) {
+		t.Fatal("bans or policies do not apply to a WAN matched by a wildcard")
 	}
 }

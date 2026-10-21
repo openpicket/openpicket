@@ -18,7 +18,9 @@ const PolicyTable = "openpicket_policy"
 // interfaces, the allowlist, and the logging rate. Nothing here comes from
 // the manager.
 type PolicyConfig struct {
-	WAN []string
+	// WAN is read when the table is rendered; the table is rendered again
+	// when it changes.
+	WAN *WAN
 	// LogRate limits POLICY-DROP logging per rule ("30/minute").
 	LogRate string
 }
@@ -62,7 +64,7 @@ func (c PolicyConfig) PolicyScript(b *dataplanev1.PolicyBundle, allow []netip.Pr
 	// protocol and public port match. Priority mangle: after conntrack and
 	// the ban chains, before DNAT.
 	fmt.Fprintf(&body, "\tchain dispatch {\n\t\ttype filter hook prerouting priority mangle; policy accept;\n"+
-		"\t\tiifname != %s accept\n\t\tct state != new accept\n\t\tip saddr @allow4 accept\n\t\tip6 saddr @allow6 accept\n", quoteSet(c.WAN))
+		"\t\t%saccept\n\t\tct state != new accept\n\t\tip saddr @allow4 accept\n\t\tip6 saddr @allow6 accept\n", notWAN("iifname", c.WAN.Get()))
 	for _, p := range b.Policies {
 		ports := make([]string, len(p.Ports))
 		for i, r := range p.Ports {

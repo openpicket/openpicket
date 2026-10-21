@@ -71,7 +71,10 @@ function ConnectionModal(props: { opened: boolean; onClose: () => void }) {
   const snippet = `openpicket:
   url: ${url}
   host_key: "${info.data?.managerHostKey ?? ""}"
-  wan_interfaces: [wan]
+  # OpenWrt: the devices of these fw4 zones are the WAN (default [wan]).
+  fw4_zones: [wan]
+  # Other hosts (or devices outside the zones): name the WAN interfaces.
+  # wan_interfaces: [eth0]
   allowlist: [controller]
 `;
   return (

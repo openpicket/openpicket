@@ -31,7 +31,7 @@ func (r *recExec) Run(_ context.Context, name string, args []string, stdin []byt
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if len(args) > 0 && args[0] == "list" {
-		return []byte("chain guard { ip saddr @both4 }"), nil
+		return []byte("chain guard { iifname != @wan accept; ip saddr @both4 }"), nil
 	}
 	if r.fail {
 		return nil, errors.New("nft: No such file or directory")
@@ -58,7 +58,7 @@ func newEnforcer(t *testing.T, ex platform.Exec, c *clock) *Enforcer {
 	t.Helper()
 	nets, _ := direction.NewNets([]string{"192.168.1.0/24", "2001:db8:10::/48"})
 	return New(Config{
-		Host: &nft.Host{Exec: ex}, Table: nft.BanConfig{WAN: []string{"wan"}, Egress: true},
+		Host: &nft.Host{Exec: ex}, Table: nft.BanConfig{WAN: nft.NewWAN("wan"), Egress: true},
 		Allow:     func() []netip.Prefix { return []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")} },
 		Nets:      func() *direction.Nets { return nets },
 		StateFile: filepath.Join(t.TempDir(), "decisions.json"), Now: c.now, MaxElements: 100,
@@ -344,7 +344,7 @@ func TestLocalNetworksAndAllowlistChanges(t *testing.T) {
 	nets, allow := nets1, []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}
 	state := filepath.Join(t.TempDir(), "d.json")
 	mk := func() *Enforcer {
-		return New(Config{Host: &nft.Host{Exec: ex}, Table: nft.BanConfig{WAN: []string{"wan"}}, StateFile: state, Now: c.now,
+		return New(Config{Host: &nft.Host{Exec: ex}, Table: nft.BanConfig{WAN: nft.NewWAN("wan")}, StateFile: state, Now: c.now,
 			Nets:  func() *direction.Nets { mu.Lock(); defer mu.Unlock(); return nets },
 			Allow: func() []netip.Prefix { mu.Lock(); defer mu.Unlock(); return allow }})
 	}
@@ -431,5 +431,34 @@ func TestNetnsNestedRanges(t *testing.T) {
 	in4r, _ = e.cfg.Host.ListElements(ctx, "in4r")
 	if exp, ok := in4r["203.0.113.64/26"]; !ok || len(in4r) != 1 || exp < 50*time.Minute {
 		t.Fatalf("after the outer range expired: %v", in4r)
+	}
+}
+
+// TestWANChange: a new WAN list (fw4 zone devices) replaces the wan set
+// only; the bans and their timeouts are not touched. A table of an earlier
+// version (no wan set) is recreated.
+func TestWANChange(t *testing.T) {
+	c := &clock{t: time.Unix(1_800_000_000, 0)}
+	ex := &recExec{}
+	wan := nft.NewWAN("wan")
+	e := New(Config{Host: &nft.Host{Exec: ex}, Table: nft.BanConfig{WAN: wan}, Now: c.now, MaxElements: 100})
+	ctx := context.Background()
+	_ = e.Restore(ctx)
+	if _, err := e.ApplySnapshot(ctx, &dataplanev1.DecisionSnapshot{Version: 1, Decisions: []*dataplanev1.Decision{ip("198.51.100.4", time.Hour, false)}}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(ex.scripts[0], `elements = { "wan" }`) {
+		t.Fatalf("table:\n%s", ex.scripts[0])
+	}
+	n := len(ex.scripts)
+	if err := e.Ensure(ctx); err != nil || len(ex.scripts) != n {
+		t.Fatalf("nothing changed, yet %d scripts: %v", len(ex.scripts)-n, err)
+	}
+	wan.Set([]string{"pppoe-wan", "wwan0"})
+	if err := e.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got := ex.last(); got != nft.WANScript([]string{"pppoe-wan", "wwan0"}) || len(ex.scripts) != n+1 {
+		t.Fatalf("WAN change applied %d scripts, last:\n%s", len(ex.scripts)-n, got)
 	}
 }

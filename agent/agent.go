@@ -67,6 +67,12 @@ type Agent struct {
 	enf     *enforcer.Enforcer
 	pol     *policy.Sink
 
+	// fw4: OpenWrt, the WAN follows the fw4 zones (wan.go).
+	fw4        bool
+	wan        *nft.WAN
+	zoneDevs   []string
+	emptyZones []string
+
 	nets      atomic.Pointer[direction.Nets]
 	localNets atomic.Pointer[dataplanev1.LocalNets]
 }
@@ -117,6 +123,15 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 	if opts.Fw4 != nil {
 		fw4 = *opts.Fw4
 	}
+	a.fw4 = fw4
+	a.wan = nft.NewWAN(cfg.OpenPicket.WANInterfaces...)
+	if fw4 {
+		a.zoneDevs = a.loadZoneDevices()
+		a.wan.Set(append(slices.Clone(cfg.OpenPicket.WANInterfaces), a.zoneDevs...))
+		a.refreshWAN(ctx)
+	} else if len(cfg.OpenPicket.WANInterfaces) == 0 {
+		return nil, errors.New("openpicket.wan_interfaces: required without OpenWrt fw4 (fw4_zones applies to fw4 only)")
+	}
 	if n := cfg.OpenPicket.Nflog; n.Enabled {
 		groups := []uint16{nflog.GroupWANReject}
 		if cfg.OpenPicket.Policy.Enabled {
@@ -135,7 +150,7 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 			}
 		}
 		if mode != "none" {
-			a.reject = &nft.WANReject{Host: a.host, Mode: mode, WAN: cfg.OpenPicket.WANInterfaces, Zone: n.Fw4Zone, Rate: n.Rate, Burst: n.Burst,
+			a.reject = &nft.WANReject{Host: a.host, Mode: mode, WAN: a.wan, Zones: cfg.OpenPicket.Fw4Zones, Rate: n.Rate, Burst: n.Burst,
 				Group: nflog.GroupWANReject, IgnorePorts: n.IgnorePorts}
 		}
 	}
@@ -143,14 +158,14 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 	a.allow.refresh(ctx)
 	if e := cfg.OpenPicket.Enforcer; e.Enabled {
 		a.enf = enforcer.New(enforcer.Config{
-			Host: a.host, Table: nft.BanConfig{WAN: cfg.OpenPicket.WANInterfaces, Egress: e.EgressBlock},
+			Host: a.host, Table: nft.BanConfig{WAN: a.wan, Egress: e.EgressBlock},
 			Allow: a.allow.Prefixes, Nets: func() *direction.Nets { return a.nets.Load() },
 			MaxElements: e.MaxElements, StateFile: filepath.Join(cfg.Suri.StateDir, "openpicket", "decisions.json"), Logger: log,
 		})
 	}
 	if p := cfg.OpenPicket.Policy; p.Enabled {
 		a.pol = policy.New(policy.Config{
-			Host: a.host, Table: nft.PolicyConfig{WAN: cfg.OpenPicket.WANInterfaces}, Allow: a.allow.Prefixes,
+			Host: a.host, Table: nft.PolicyConfig{WAN: a.wan}, Allow: a.allow.Prefixes,
 			MaxElements: p.MaxElements, StateFile: filepath.Join(cfg.Suri.StateDir, "openpicket", "policy.pb"), Logger: log,
 		})
 	}
@@ -202,7 +217,7 @@ func (a *Agent) PublicKey() string { return a.suri.PublicKey() }
 
 // refreshNets recomputes the local networks; it reports a change.
 func (a *Agent) refreshNets() bool {
-	ln := localnets.Collect(a.suri.Instances(), a.cfg.OpenPicket.WANInterfaces, a.cfg.OpenPicket.LocalNets)
+	ln := localnets.Collect(a.suri.Instances(), a.wan.Get(), a.cfg.OpenPicket.LocalNets)
 	old := a.localNets.Load()
 	if slices.Equal(old.HomeNet, ln.HomeNet) && slices.Equal(old.InterfaceAddrs, ln.InterfaceAddrs) && slices.Equal(old.Extra, ln.Extra) {
 		return false
@@ -275,7 +290,8 @@ func (a *Agent) keepWANReject(ctx context.Context) {
 	}
 }
 
-// watchNets follows HOME_NET and address changes (DHCP, PPPoE).
+// watchNets follows HOME_NET and address changes (DHCP, PPPoE), and the
+// devices of the fw4 WAN zones.
 func (a *Agent) watchNets(ctx context.Context) {
 	t := time.NewTicker(15 * time.Second)
 	defer t.Stop()
@@ -284,6 +300,10 @@ func (a *Agent) watchNets(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
+		}
+		if a.refreshWAN(ctx) {
+			a.applyWAN(ctx)
+			a.client.PokeStatus()
 		}
 		if a.refreshNets() {
 			a.log.Info("local networks changed", "home_net", a.localNets.Load().HomeNet, "addresses", a.localNets.Load().InterfaceAddrs)
@@ -305,10 +325,10 @@ func (a *Agent) hello() *dataplanev1.Hello {
 	h := &dataplanev1.Hello{
 		NodeId: a.cfg.Suri.NodeID, AgentVersion: version.Version, BootId: a.bootID,
 		LocalNets: a.localNets.Load(), Platform: sh.GetPlatform(), Engine: sh.GetEngine(),
-		WanInterfaces: a.cfg.OpenPicket.WANInterfaces, LogSources: a.suri.LogSources(), Warnings: sh.GetWarnings(),
+		WanInterfaces: a.wan.Get(), LogSources: a.suri.LogSources(), Warnings: sh.GetWarnings(),
 		Capabilities: a.capabilities(),
 	}
-	for _, p := range localnets.UncoveredIPv6(a.nets.Load(), a.cfg.OpenPicket.WANInterfaces) {
+	for _, p := range localnets.UncoveredIPv6(a.nets.Load(), a.wan.Get()) {
 		h.Warnings = append(h.Warnings, warning("ipv6_not_local", "IPv6 prefix "+p+" is not in HOME_NET or openpicket.local_nets: its hosts look external"))
 	}
 	return h
@@ -330,10 +350,11 @@ func (a *Agent) capabilities() []string {
 
 func (a *Agent) status(ctx context.Context) *dataplanev1.Status {
 	st := &dataplanev1.Status{
-		TimeUnixMs: time.Now().UnixMilli(),
-		Suricata:   a.suri.Status(ctx),
-		LocalNets:  a.localNets.Load(),
-		Logs:       a.shipper.Stats(),
+		TimeUnixMs:    time.Now().UnixMilli(),
+		Suricata:      a.suri.Status(ctx),
+		LocalNets:     a.localNets.Load(),
+		Logs:          a.shipper.Stats(),
+		WanInterfaces: a.wan.Get(),
 	}
 	if a.nflog != nil {
 		st.Nflog = a.nflog.Status()

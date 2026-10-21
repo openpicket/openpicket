@@ -168,6 +168,9 @@ message Status {
   EnforcerStatus enforcer = 5;
   PolicyStatus policy = 6;
   NflogStatus nflog = 7;
+  // The WAN interfaces now: on OpenWrt they follow the fw4 zones, so they
+  // may differ from the hello.
+  repeated string wan_interfaces = 8;
 }
 
 // ---------------------------------------------------------------------------

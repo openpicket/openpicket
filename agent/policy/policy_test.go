@@ -43,7 +43,7 @@ func bundle(v uint64) *dataplanev1.PolicyBundle {
 func TestApplyRefuseRestore(t *testing.T) {
 	ex := &recExec{}
 	state := filepath.Join(t.TempDir(), "policy.pb")
-	s := New(Config{Host: &nft.Host{Exec: ex}, Table: nft.PolicyConfig{WAN: []string{"wan"}}, MaxElements: 10, StateFile: state})
+	s := New(Config{Host: &nft.Host{Exec: ex}, Table: nft.PolicyConfig{WAN: nft.NewWAN("wan")}, MaxElements: 10, StateFile: state})
 	ctx := context.Background()
 	if err := s.Apply(ctx, bundle(4)); err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestApplyRefuseRestore(t *testing.T) {
 	}
 	// Boot: the saved bundle comes back before any connection.
 	ex2 := &recExec{}
-	s2 := New(Config{Host: &nft.Host{Exec: ex2}, Table: nft.PolicyConfig{WAN: []string{"wan"}}, MaxElements: 10, StateFile: state})
+	s2 := New(Config{Host: &nft.Host{Exec: ex2}, Table: nft.PolicyConfig{WAN: nft.NewWAN("wan")}, MaxElements: 10, StateFile: state})
 	if err := s2.Restore(ctx); err != nil || s2.Version() != 4 || len(ex2.scripts) != 1 {
 		t.Fatalf("restore: %v version=%d", err, s2.Version())
 	}

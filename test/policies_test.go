@@ -121,7 +121,7 @@ func TestPortPoliciesReachTheEdge(t *testing.T) {
 		t.Fatal(err)
 	}
 	ex := &scriptExec{}
-	sinkPol := policy.New(policy.Config{Host: &nft.Host{Exec: ex}, Table: nft.PolicyConfig{WAN: []string{"wan"}}, MaxElements: 1000,
+	sinkPol := policy.New(policy.Config{Host: &nft.Host{Exec: ex}, Table: nft.PolicyConfig{WAN: nft.NewWAN("wan")}, MaxElements: 1000,
 		StateFile: t.TempDir() + "/policy.pb", Logger: slog.New(slog.DiscardHandler)})
 	client := dataplane.NewClient(dataplane.DialConfig{
 		URL: "ws" + strings.TrimPrefix(srv.URL, "http") + "/agent/data/v1/connect", Key: agentKey,

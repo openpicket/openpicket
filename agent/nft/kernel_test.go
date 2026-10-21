@@ -39,7 +39,7 @@ func nftCheck(t *testing.T, script string) {
 }
 
 func TestKernelAcceptsWANReject(t *testing.T) {
-	w := &WANReject{WAN: []string{"eth0", "pppoe-wan"}, Rate: "30/minute", Burst: 10, Group: 100, IgnorePorts: []uint16{22, 51820}}
+	w := &WANReject{WAN: NewWAN("eth0", "pppoe-wan"), Rate: "30/minute", Burst: 10, Group: 100, IgnorePorts: []uint16{22, 51820}}
 	nftCheck(t, w.Table())
 	w.noSocket = true
 	nftCheck(t, w.Table())
@@ -51,8 +51,13 @@ func TestKernelAcceptsWANReject(t *testing.T) {
 
 func TestKernelAcceptsBanTable(t *testing.T) {
 	allow := []netip.Prefix{netip.MustParsePrefix("192.168.0.0/16"), netip.MustParsePrefix("2001:db8::/32"), netip.MustParsePrefix("198.51.100.1/32")}
-	nftCheck(t, BanConfig{WAN: []string{"wan"}, Egress: true}.Script(allow))
-	nftCheck(t, BanConfig{WAN: []string{"eth0", "ppp0"}}.Script(nil))
+	nftCheck(t, BanConfig{WAN: NewWAN("wan"), Egress: true}.Script(allow))
+	nftCheck(t, BanConfig{WAN: NewWAN("eth0", "ppp0", "wg*")}.Script(nil))
+	// No WAN yet (fw4 zones not resolved): an empty set, nothing applies.
+	nftCheck(t, BanConfig{WAN: NewWAN()}.Script(nil))
+	nftCheck(t, PolicyConfig{WAN: NewWAN()}.PolicyScript(examplePolicyBundle(), nil))
+	w := &WANReject{WAN: NewWAN(), Rate: "30/minute", Burst: 10, Group: 100}
+	nftCheck(t, w.Table())
 }
 
 // TestNetnsBanElements applies the table on a real kernel and exercises the
@@ -64,7 +69,7 @@ func TestNetnsBanElements(t *testing.T) {
 	h := &Host{Exec: platform.LocalExec{}}
 	ctx := context.Background()
 	allow := []netip.Prefix{netip.MustParsePrefix("192.168.0.0/16")}
-	if err := h.Apply(ctx, BanConfig{WAN: []string{"wan"}, Egress: true}.Script(allow)); err != nil {
+	if err := h.Apply(ctx, BanConfig{WAN: NewWAN("wan"), Egress: true}.Script(allow)); err != nil {
 		t.Fatal(err)
 	}
 	if !h.BanTablePresent(ctx) {
@@ -110,6 +115,20 @@ func TestNetnsBanElements(t *testing.T) {
 	if err := h.Apply(ctx, AllowScript([]netip.Prefix{netip.MustParsePrefix("10.0.0.0/8"), netip.MustParsePrefix("2001:db8:1::/48")})); err != nil {
 		t.Fatal(err)
 	}
+	// A WAN change replaces the wan set only: the bans and their timeouts
+	// stay.
+	for _, wan := range [][]string{{"pppoe-wan", "wg*"}, nil, {"wan"}} {
+		if err := h.Apply(ctx, WANScript(wan)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	in4, _ = h.ListElements(ctx, "in4")
+	if exp := in4["198.51.100.4"]; exp > 10*time.Minute || exp < 9*time.Minute {
+		t.Fatalf("timeout after a WAN change = %v", exp)
+	}
+	if !h.BanTablePresent(ctx) {
+		t.Fatal("table not present after a WAN change")
+	}
 }
 
 func examplePolicyBundle() *dataplanev1.PolicyBundle {
@@ -134,7 +153,7 @@ func examplePolicyBundle() *dataplanev1.PolicyBundle {
 
 func TestKernelAcceptsPolicyTable(t *testing.T) {
 	allow := []netip.Prefix{netip.MustParsePrefix("192.168.0.0/16")}
-	s := PolicyConfig{WAN: []string{"wan"}}.PolicyScript(examplePolicyBundle(), allow)
+	s := PolicyConfig{WAN: NewWAN("wan")}.PolicyScript(examplePolicyBundle(), allow)
 	for _, want := range []string{
 		"tcp dport { 443 } jump p_https_cn_block",
 		"tcp dport { 587, 465 } jump p_smtp_submission",
@@ -154,7 +173,7 @@ func TestKernelAcceptsPolicyTable(t *testing.T) {
 		}
 	}
 	nftCheck(t, s)
-	if got := (PolicyConfig{WAN: []string{"wan"}}).PolicyScript(&dataplanev1.PolicyBundle{}, nil); !strings.Contains(got, "delete table inet openpicket_policy") {
+	if got := (PolicyConfig{WAN: NewWAN("wan")}).PolicyScript(&dataplanev1.PolicyBundle{}, nil); !strings.Contains(got, "delete table inet openpicket_policy") {
 		t.Fatalf("empty bundle: %q", got)
 	}
 }
@@ -165,7 +184,7 @@ func TestNetnsPolicyCounters(t *testing.T) {
 	}
 	h := &Host{Exec: platform.LocalExec{}}
 	ctx := context.Background()
-	if err := h.Apply(ctx, PolicyConfig{WAN: []string{"wan"}}.PolicyScript(examplePolicyBundle(), nil)); err != nil {
+	if err := h.Apply(ctx, PolicyConfig{WAN: NewWAN("wan")}.PolicyScript(examplePolicyBundle(), nil)); err != nil {
 		t.Fatal(err)
 	}
 	if !h.PolicyTablePresent(ctx) {

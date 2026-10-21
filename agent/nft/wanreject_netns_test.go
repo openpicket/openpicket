@@ -86,7 +86,7 @@ func TestNetnsWANReject(t *testing.T) {
 	h := &Host{Exec: platform.LocalExec{}}
 
 	t.Run("nftables", func(t *testing.T) {
-		w := &WANReject{Host: h, Mode: "nftables", WAN: []string{"wan"}, Rate: "100/second", Burst: 100, Group: 100}
+		w := &WANReject{Host: h, Mode: "nftables", WAN: NewWAN("wan"), Rate: "100/second", Burst: 100, Group: 100}
 		if err := w.Ensure(ctx); err != nil {
 			t.Fatal(err)
 		}

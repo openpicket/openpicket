@@ -93,7 +93,7 @@ type fakeNft struct{}
 
 func (fakeNft) Run(_ context.Context, _ string, args []string, _ []byte) ([]byte, error) {
 	if len(args) > 0 && args[0] == "list" {
-		return []byte("chain guard { ip saddr @both4 }"), nil
+		return []byte("chain guard { iifname != @wan accept; ip saddr @both4 }"), nil
 	}
 	return nil, nil
 }
@@ -144,7 +144,7 @@ func TestDecisionsReachTheEdge(t *testing.T) {
 		t.Fatal(err)
 	}
 	inside, _ := direction.NewNets([]string{"192.168.1.0/24"})
-	enf := enforcer.New(enforcer.Config{Host: &nft.Host{Exec: fakeNft{}}, Table: nft.BanConfig{WAN: []string{"wan"}, Egress: true},
+	enf := enforcer.New(enforcer.Config{Host: &nft.Host{Exec: fakeNft{}}, Table: nft.BanConfig{WAN: nft.NewWAN("wan"), Egress: true},
 		Allow: func() []netip.Prefix { return nil }, Nets: func() *direction.Nets { return inside },
 		StateFile: t.TempDir() + "/decisions.json", Logger: slog.New(slog.DiscardHandler)})
 	if err := enf.Restore(ctx); err != nil {

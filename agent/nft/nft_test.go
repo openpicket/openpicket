@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -58,7 +59,7 @@ func TestWANRejectFw4(t *testing.T) {
 	legacy := filepath.Join(root, legacyFw4Snippet)
 	_ = os.MkdirAll(filepath.Dir(legacy), 0o755)
 	_ = os.WriteFile(legacy, []byte("old"), 0o644)
-	w := &WANReject{Host: host, Mode: "fw4", Rate: "30/minute", Burst: 10, Group: 100, IgnorePorts: []uint16{51820, 22}}
+	w := &WANReject{Host: host, Mode: "fw4", Zones: []string{"wan"}, Rate: "30/minute", Burst: 10, Group: 100, IgnorePorts: []uint16{51820, 22}}
 	ex.listing["list chain inet fw4 input_wan"] = "chain input_wan {\n\tjump reject_from_wan\n}"
 	if err := w.Ensure(context.Background()); err != nil {
 		t.Fatal(err)
@@ -107,15 +108,114 @@ func TestWANRejectFw4(t *testing.T) {
 
 func TestWANRejectFw4UnknownZone(t *testing.T) {
 	ex := &fakeExec{listing: map[string]string{}}
-	w := &WANReject{Host: &Host{Exec: ex, FS: platform.HostFS{Root: t.TempDir()}}, Mode: "fw4", Zone: "internet", Rate: "30/minute", Burst: 10, Group: 100}
-	if err := w.Ensure(context.Background()); err == nil || !strings.Contains(err.Error(), "fw4_zone") {
+	w := &WANReject{Host: &Host{Exec: ex, FS: platform.HostFS{Root: t.TempDir()}}, Mode: "fw4", Zones: []string{"internet"}, Rate: "30/minute", Burst: 10, Group: 100}
+	if err := w.Ensure(context.Background()); err == nil || !strings.Contains(err.Error(), "fw4_zones") {
 		t.Fatalf("unknown zone: %v", err)
+	}
+}
+
+// TestWANRejectFw4Zones: one rule per zone; an accepting zone does not
+// stop the others; zones dropped from the list (or renamed) lose theirs.
+func TestWANRejectFw4Zones(t *testing.T) {
+	root := t.TempDir()
+	ex := &fakeExec{listing: map[string]string{
+		"list chain inet fw4 input_wan":   "chain input_wan {\n\tjump reject_from_wan\n}",
+		"list chain inet fw4 input_lte":   "chain input_lte {\n\tjump drop_from_lte\n}",
+		"list chain inet fw4 input_guest": "chain input_guest {\n\tjump accept_from_guest\n}",
+	}}
+	host := &Host{Exec: ex, FS: platform.HostFS{Root: root}}
+	stale := filepath.Join(root, Fw4SnippetPath("wan_old"))
+	_ = os.MkdirAll(filepath.Dir(stale), 0o755)
+	_ = os.WriteFile(stale, []byte("old"), 0o644)
+	other := filepath.Join(root, fw4ChainPost, "input_wan_old", "10-user.nft")
+	_ = os.WriteFile(other, []byte("user"), 0o644)
+	w := &WANReject{Host: host, Mode: "fw4", Zones: []string{"wan", "lte", "guest"}, Rate: "30/minute", Burst: 10, Group: 100}
+	err := w.Ensure(context.Background())
+	if err == nil || !strings.Contains(err.Error(), `"guest" accepts all input`) {
+		t.Fatalf("ensure: %v", err)
+	}
+	for zone, want := range map[string]bool{"wan": true, "lte": true, "guest": false, "wan_old": false} {
+		_, err := os.Stat(filepath.Join(root, Fw4SnippetPath(zone)))
+		if (err == nil) != want {
+			t.Fatalf("zone %s: rule present = %v", zone, err == nil)
+		}
+	}
+	if _, err := os.Stat(other); err != nil {
+		t.Fatal("a file of the user was removed")
+	}
+	if ex.count("fw4 reload") != 1 {
+		t.Fatalf("reloads %d", ex.count("fw4 reload"))
+	}
+	// The WAN devices are the zones' business: no new rule.
+	before := w.Fw4Snippet()
+	w.WAN = NewWAN("pppoe-wan")
+	if w.Fw4Snippet() != before {
+		t.Fatal("a WAN change rewrites the fw4 rule")
+	}
+	w.Zones = []string{"wan"}
+	_ = w.Ensure(context.Background())
+	if _, err := os.Stat(filepath.Join(root, Fw4SnippetPath("lte"))); !os.IsNotExist(err) {
+		t.Fatal("rule left in a zone no longer listed")
+	}
+	if ex.count("fw4 reload") != 2 {
+		t.Fatalf("reloads %d", ex.count("fw4 reload"))
+	}
+}
+
+func TestParseFw4Zones(t *testing.T) {
+	out := `table inet fw4 {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iifname "lo" accept comment "!fw4: Accept traffic from loopback"
+		ct state established,related accept comment "!fw4: Allow inbound established and related flows"
+		iifname "br-lan" jump input_lan comment "!fw4: Handle lan IPv4/IPv6 input traffic"
+		iifname { "eth1", "pppoe-wan" } jump input_wan comment "!fw4: Handle wan IPv4/IPv6 input traffic"
+		meta nfproto ipv4 iifname "wwan0" jump input_lte comment "!fw4: Handle lte IPv4 input traffic"
+		iifname "tun*" jump input_vpn comment "!fw4: Handle vpn IPv4/IPv6 input traffic"
+		iifname "bad name" jump input_odd
+		ip saddr 192.0.2.0/24 jump input_dmz comment "!fw4: Handle dmz IPv4 input traffic"
+	}
+}`
+	z := ParseFw4Zones(out)
+	if !slices.Equal(z["wan"], []string{"eth1", "pppoe-wan"}) || !slices.Equal(z["lte"], []string{"wwan0"}) || !slices.Equal(z["lan"], []string{"br-lan"}) ||
+		!slices.Equal(z["vpn"], []string{"tun*"}) || len(z["odd"]) != 0 || len(z["dmz"]) != 0 {
+		t.Fatalf("zones = %v", z)
+	}
+}
+
+func TestWAN(t *testing.T) {
+	w := NewWAN("pppoe-wan", "eth1", "eth1")
+	if !slices.Equal(w.Get(), []string{"eth1", "pppoe-wan"}) || w.Set([]string{"eth1", "pppoe-wan"}) || !w.Set([]string{"eth1"}) {
+		t.Fatalf("wan = %v", w.Get())
+	}
+	if (*WAN)(nil).Get() != nil {
+		t.Fatal("nil")
+	}
+	if got := WANScript([]string{"eth1", "wg*"}); got != "flush set inet openpicket_ban wan\nadd element inet openpicket_ban wan { \"eth1\", \"wg*\" }\n" {
+		t.Fatalf("script %q", got)
+	}
+	if got := WANScript(nil); got != "flush set inet openpicket_ban wan\n" {
+		t.Fatalf("empty %q", got)
+	}
+	// No WAN: the policy dispatch accepts everything.
+	if s := (PolicyConfig{WAN: NewWAN()}).PolicyScript(examplePolicyBundle(), nil); !strings.Contains(s, "policy accept;\n\t\taccept\n") {
+		t.Fatalf("policy without WAN:\n%s", s)
+	}
+	for _, n := range []string{"eth0", "pppoe-wan", "wg*", "br-lan.10", "abcdefghijklmn*"} {
+		if !ValidIfname(n) {
+			t.Errorf("rejected %q", n)
+		}
+	}
+	for _, n := range []string{"", "*", "a b", `a"`, "eth*0", "abcdefghijklmnop", "abcdefghijklmno*"} {
+		if ValidIfname(n) {
+			t.Errorf("accepted %q", n)
+		}
 	}
 }
 
 func TestWANRejectTable(t *testing.T) {
 	ex := &fakeExec{listing: map[string]string{}}
-	w := &WANReject{Host: &Host{Exec: ex}, Mode: "nftables", WAN: []string{"eth0", "ppp0"}, Rate: "30/minute", Burst: 10, Group: 100}
+	w := &WANReject{Host: &Host{Exec: ex}, Mode: "nftables", WAN: NewWAN("eth0", "ppp0"), Rate: "30/minute", Burst: 10, Group: 100}
 	if err := w.Ensure(context.Background()); err != nil {
 		t.Fatal(err)
 	}

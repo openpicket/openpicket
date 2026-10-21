@@ -114,7 +114,7 @@ func largeEnforcer(b *testing.B) *Enforcer {
 		ds = append(ds, &dataplanev1.Decision{Value: p.String(), Scope: dataplanev1.Scope_SCOPE_RANGE, TtlMs: int64(1+r.IntN(1000)) * 60_000, Origin: "crowdsec"})
 	}
 	c := &clock{t: t0}
-	e := New(Config{Host: &nft.Host{Exec: &recExec{}}, Table: nft.BanConfig{WAN: []string{"wan"}}, Now: c.now, MaxElements: 200_000,
+	e := New(Config{Host: &nft.Host{Exec: &recExec{}}, Table: nft.BanConfig{WAN: nft.NewWAN("wan")}, Now: c.now, MaxElements: 200_000,
 		Logger: slog.New(slog.DiscardHandler)})
 	ctx := context.Background()
 	_ = e.Restore(ctx)
