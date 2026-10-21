@@ -1089,9 +1089,12 @@ type EnforcerStatus struct {
 	BanInV6          uint32                 `protobuf:"varint,4,opt,name=ban_in_v6,json=banInV6,proto3" json:"ban_in_v6,omitempty"`
 	BanBothV4        uint32                 `protobuf:"varint,5,opt,name=ban_both_v4,json=banBothV4,proto3" json:"ban_both_v4,omitempty"`
 	BanBothV6        uint32                 `protobuf:"varint,6,opt,name=ban_both_v6,json=banBothV6,proto3" json:"ban_both_v6,omitempty"`
-	// Decisions refused by local policy (allowlist, local_nets, limits).
-	Rejected      uint64 `protobuf:"varint,7,opt,name=rejected,proto3" json:"rejected,omitempty"`
-	LastError     string `protobuf:"bytes,8,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	// Decisions not applied now: refused by local policy (allowlist,
+	// local networks), invalid, or over the element limit.
+	Rejected  uint64 `protobuf:"varint,7,opt,name=rejected,proto3" json:"rejected,omitempty"`
+	LastError string `protobuf:"bytes,8,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	// Some of them with the reason (at most 100).
+	Refused       []*RefusedDecision `protobuf:"bytes,9,rep,name=refused,proto3" json:"refused,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1182,6 +1185,65 @@ func (x *EnforcerStatus) GetLastError() string {
 	return ""
 }
 
+func (x *EnforcerStatus) GetRefused() []*RefusedDecision {
+	if x != nil {
+		return x.Refused
+	}
+	return nil
+}
+
+type RefusedDecision struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RefusedDecision) Reset() {
+	*x = RefusedDecision{}
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RefusedDecision) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RefusedDecision) ProtoMessage() {}
+
+func (x *RefusedDecision) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RefusedDecision.ProtoReflect.Descriptor instead.
+func (*RefusedDecision) Descriptor() ([]byte, []int) {
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *RefusedDecision) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *RefusedDecision) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 type PolicyStatus struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Enabled   bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
@@ -1196,7 +1258,7 @@ type PolicyStatus struct {
 
 func (x *PolicyStatus) Reset() {
 	*x = PolicyStatus{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[10]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1208,7 +1270,7 @@ func (x *PolicyStatus) String() string {
 func (*PolicyStatus) ProtoMessage() {}
 
 func (x *PolicyStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[10]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1221,7 +1283,7 @@ func (x *PolicyStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicyStatus.ProtoReflect.Descriptor instead.
 func (*PolicyStatus) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{10}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *PolicyStatus) GetEnabled() bool {
@@ -1264,7 +1326,7 @@ type NflogStatus struct {
 
 func (x *NflogStatus) Reset() {
 	*x = NflogStatus{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[11]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1276,7 +1338,7 @@ func (x *NflogStatus) String() string {
 func (*NflogStatus) ProtoMessage() {}
 
 func (x *NflogStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[11]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1289,7 +1351,7 @@ func (x *NflogStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NflogStatus.ProtoReflect.Descriptor instead.
 func (*NflogStatus) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{11}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *NflogStatus) GetEnabled() bool {
@@ -1329,7 +1391,7 @@ type Status struct {
 
 func (x *Status) Reset() {
 	*x = Status{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[12]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1341,7 +1403,7 @@ func (x *Status) String() string {
 func (*Status) ProtoMessage() {}
 
 func (x *Status) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[12]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1354,7 +1416,7 @@ func (x *Status) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Status.ProtoReflect.Descriptor instead.
 func (*Status) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{12}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Status) GetTimeUnixMs() int64 {
@@ -1425,7 +1487,7 @@ type Record struct {
 
 func (x *Record) Reset() {
 	*x = Record{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[13]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1437,7 +1499,7 @@ func (x *Record) String() string {
 func (*Record) ProtoMessage() {}
 
 func (x *Record) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[13]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1450,7 +1512,7 @@ func (x *Record) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Record.ProtoReflect.Descriptor instead.
 func (*Record) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{13}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Record) GetLine() []byte {
@@ -1483,7 +1545,7 @@ type RecordList struct {
 
 func (x *RecordList) Reset() {
 	*x = RecordList{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[14]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1495,7 +1557,7 @@ func (x *RecordList) String() string {
 func (*RecordList) ProtoMessage() {}
 
 func (x *RecordList) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[14]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1508,7 +1570,7 @@ func (x *RecordList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordList.ProtoReflect.Descriptor instead.
 func (*RecordList) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{14}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *RecordList) GetRecords() []*Record {
@@ -1541,7 +1603,7 @@ type LogBatch struct {
 
 func (x *LogBatch) Reset() {
 	*x = LogBatch{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[15]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1553,7 +1615,7 @@ func (x *LogBatch) String() string {
 func (*LogBatch) ProtoMessage() {}
 
 func (x *LogBatch) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[15]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1566,7 +1628,7 @@ func (x *LogBatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogBatch.ProtoReflect.Descriptor instead.
 func (*LogBatch) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{15}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *LogBatch) GetBootId() string {
@@ -1629,7 +1691,7 @@ type LogAck struct {
 
 func (x *LogAck) Reset() {
 	*x = LogAck{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[16]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1641,7 +1703,7 @@ func (x *LogAck) String() string {
 func (*LogAck) ProtoMessage() {}
 
 func (x *LogAck) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[16]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1654,7 +1716,7 @@ func (x *LogAck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogAck.ProtoReflect.Descriptor instead.
 func (*LogAck) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{16}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *LogAck) GetBootId() string {
@@ -1689,7 +1751,7 @@ type Decision struct {
 
 func (x *Decision) Reset() {
 	*x = Decision{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[17]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1701,7 +1763,7 @@ func (x *Decision) String() string {
 func (*Decision) ProtoMessage() {}
 
 func (x *Decision) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[17]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1714,7 +1776,7 @@ func (x *Decision) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Decision.ProtoReflect.Descriptor instead.
 func (*Decision) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{17}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *Decision) GetValue() string {
@@ -1772,7 +1834,7 @@ type DecisionsUp struct {
 
 func (x *DecisionsUp) Reset() {
 	*x = DecisionsUp{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[18]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1784,7 +1846,7 @@ func (x *DecisionsUp) String() string {
 func (*DecisionsUp) ProtoMessage() {}
 
 func (x *DecisionsUp) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[18]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1797,7 +1859,7 @@ func (x *DecisionsUp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecisionsUp.ProtoReflect.Descriptor instead.
 func (*DecisionsUp) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{18}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *DecisionsUp) GetBody() isDecisionsUp_Body {
@@ -1851,7 +1913,7 @@ type DecisionSubscribe struct {
 
 func (x *DecisionSubscribe) Reset() {
 	*x = DecisionSubscribe{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[19]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1863,7 +1925,7 @@ func (x *DecisionSubscribe) String() string {
 func (*DecisionSubscribe) ProtoMessage() {}
 
 func (x *DecisionSubscribe) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[19]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1876,7 +1938,7 @@ func (x *DecisionSubscribe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecisionSubscribe.ProtoReflect.Descriptor instead.
 func (*DecisionSubscribe) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{19}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DecisionSubscribe) GetHaveVersion() uint64 {
@@ -1899,7 +1961,7 @@ type DecisionsDown struct {
 
 func (x *DecisionsDown) Reset() {
 	*x = DecisionsDown{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[20]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1911,7 +1973,7 @@ func (x *DecisionsDown) String() string {
 func (*DecisionsDown) ProtoMessage() {}
 
 func (x *DecisionsDown) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[20]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1924,7 +1986,7 @@ func (x *DecisionsDown) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecisionsDown.ProtoReflect.Descriptor instead.
 func (*DecisionsDown) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{20}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *DecisionsDown) GetBody() isDecisionsDown_Body {
@@ -1979,7 +2041,7 @@ type DecisionSnapshot struct {
 
 func (x *DecisionSnapshot) Reset() {
 	*x = DecisionSnapshot{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[21]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1991,7 +2053,7 @@ func (x *DecisionSnapshot) String() string {
 func (*DecisionSnapshot) ProtoMessage() {}
 
 func (x *DecisionSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[21]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2004,7 +2066,7 @@ func (x *DecisionSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecisionSnapshot.ProtoReflect.Descriptor instead.
 func (*DecisionSnapshot) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{21}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *DecisionSnapshot) GetVersion() uint64 {
@@ -2036,7 +2098,7 @@ type DecisionDelta struct {
 
 func (x *DecisionDelta) Reset() {
 	*x = DecisionDelta{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[22]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2048,7 +2110,7 @@ func (x *DecisionDelta) String() string {
 func (*DecisionDelta) ProtoMessage() {}
 
 func (x *DecisionDelta) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[22]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2061,7 +2123,7 @@ func (x *DecisionDelta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecisionDelta.ProtoReflect.Descriptor instead.
 func (*DecisionDelta) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{22}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *DecisionDelta) GetFromVersion() uint64 {
@@ -2103,7 +2165,7 @@ type DecisionAck struct {
 
 func (x *DecisionAck) Reset() {
 	*x = DecisionAck{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[23]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2115,7 +2177,7 @@ func (x *DecisionAck) String() string {
 func (*DecisionAck) ProtoMessage() {}
 
 func (x *DecisionAck) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[23]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2128,7 +2190,7 @@ func (x *DecisionAck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecisionAck.ProtoReflect.Descriptor instead.
 func (*DecisionAck) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{23}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *DecisionAck) GetVersion() uint64 {
@@ -2162,7 +2224,7 @@ type PortRange struct {
 
 func (x *PortRange) Reset() {
 	*x = PortRange{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[24]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2174,7 +2236,7 @@ func (x *PortRange) String() string {
 func (*PortRange) ProtoMessage() {}
 
 func (x *PortRange) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[24]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2187,7 +2249,7 @@ func (x *PortRange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PortRange.ProtoReflect.Descriptor instead.
 func (*PortRange) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{24}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *PortRange) GetFrom() uint32 {
@@ -2216,7 +2278,7 @@ type NamedSet struct {
 
 func (x *NamedSet) Reset() {
 	*x = NamedSet{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[25]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2228,7 +2290,7 @@ func (x *NamedSet) String() string {
 func (*NamedSet) ProtoMessage() {}
 
 func (x *NamedSet) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[25]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2241,7 +2303,7 @@ func (x *NamedSet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NamedSet.ProtoReflect.Descriptor instead.
 func (*NamedSet) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{25}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *NamedSet) GetId() string {
@@ -2268,7 +2330,7 @@ type PolicyRule struct {
 
 func (x *PolicyRule) Reset() {
 	*x = PolicyRule{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[26]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2280,7 +2342,7 @@ func (x *PolicyRule) String() string {
 func (*PolicyRule) ProtoMessage() {}
 
 func (x *PolicyRule) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[26]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2293,7 +2355,7 @@ func (x *PolicyRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicyRule.ProtoReflect.Descriptor instead.
 func (*PolicyRule) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{26}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *PolicyRule) GetSetId() string {
@@ -2329,7 +2391,7 @@ type PortPolicy struct {
 
 func (x *PortPolicy) Reset() {
 	*x = PortPolicy{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[27]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2341,7 +2403,7 @@ func (x *PortPolicy) String() string {
 func (*PortPolicy) ProtoMessage() {}
 
 func (x *PortPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[27]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2354,7 +2416,7 @@ func (x *PortPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PortPolicy.ProtoReflect.Descriptor instead.
 func (*PortPolicy) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{27}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *PortPolicy) GetId() string {
@@ -2419,7 +2481,7 @@ type PolicyBundle struct {
 
 func (x *PolicyBundle) Reset() {
 	*x = PolicyBundle{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[28]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2431,7 +2493,7 @@ func (x *PolicyBundle) String() string {
 func (*PolicyBundle) ProtoMessage() {}
 
 func (x *PolicyBundle) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[28]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2444,7 +2506,7 @@ func (x *PolicyBundle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicyBundle.ProtoReflect.Descriptor instead.
 func (*PolicyBundle) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{28}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *PolicyBundle) GetVersion() uint64 {
@@ -2481,7 +2543,7 @@ type PolicyUp struct {
 
 func (x *PolicyUp) Reset() {
 	*x = PolicyUp{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[29]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2493,7 +2555,7 @@ func (x *PolicyUp) String() string {
 func (*PolicyUp) ProtoMessage() {}
 
 func (x *PolicyUp) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[29]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2506,7 +2568,7 @@ func (x *PolicyUp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicyUp.ProtoReflect.Descriptor instead.
 func (*PolicyUp) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{29}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *PolicyUp) GetBody() isPolicyUp_Body {
@@ -2559,7 +2621,7 @@ type PolicySubscribe struct {
 
 func (x *PolicySubscribe) Reset() {
 	*x = PolicySubscribe{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[30]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2571,7 +2633,7 @@ func (x *PolicySubscribe) String() string {
 func (*PolicySubscribe) ProtoMessage() {}
 
 func (x *PolicySubscribe) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[30]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2584,7 +2646,7 @@ func (x *PolicySubscribe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicySubscribe.ProtoReflect.Descriptor instead.
 func (*PolicySubscribe) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{30}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *PolicySubscribe) GetHaveVersion() uint64 {
@@ -2604,7 +2666,7 @@ type PolicyAck struct {
 
 func (x *PolicyAck) Reset() {
 	*x = PolicyAck{}
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[31]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2616,7 +2678,7 @@ func (x *PolicyAck) String() string {
 func (*PolicyAck) ProtoMessage() {}
 
 func (x *PolicyAck) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[31]
+	mi := &file_openpicket_dataplane_v1_dataplane_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2629,7 +2691,7 @@ func (x *PolicyAck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicyAck.ProtoReflect.Descriptor instead.
 func (*PolicyAck) Descriptor() ([]byte, []int) {
-	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{31}
+	return file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *PolicyAck) GetVersion() uint64 {
@@ -2702,7 +2764,7 @@ const file_openpicket_dataplane_v1_dataplane_proto_rawDesc = "" +
 	"\x0fdropped_records\x18\x03 \x01(\x04R\x0edroppedRecords\x12!\n" +
 	"\fsent_records\x18\x04 \x01(\x04R\vsentRecords\x12)\n" +
 	"\x10inflight_batches\x18\x05 \x01(\x04R\x0finflightBatches\x12%\n" +
-	"\x0einflight_bytes\x18\x06 \x01(\x04R\rinflightBytes\"\x8a\x02\n" +
+	"\x0einflight_bytes\x18\x06 \x01(\x04R\rinflightBytes\"\xce\x02\n" +
 	"\x0eEnforcerStatus\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12+\n" +
 	"\x11decisions_version\x18\x02 \x01(\x04R\x10decisionsVersion\x12\x1a\n" +
@@ -2712,7 +2774,11 @@ const file_openpicket_dataplane_v1_dataplane_proto_rawDesc = "" +
 	"\vban_both_v6\x18\x06 \x01(\rR\tbanBothV6\x12\x1a\n" +
 	"\brejected\x18\a \x01(\x04R\brejected\x12\x1d\n" +
 	"\n" +
-	"last_error\x18\b \x01(\tR\tlastError\"\xeb\x01\n" +
+	"last_error\x18\b \x01(\tR\tlastError\x12B\n" +
+	"\arefused\x18\t \x03(\v2(.openpicket.dataplane.v1.RefusedDecisionR\arefused\"?\n" +
+	"\x0fRefusedDecision\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\xeb\x01\n" +
 	"\fPolicyStatus\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x04R\aversion\x12\x1d\n" +
@@ -2872,7 +2938,7 @@ func file_openpicket_dataplane_v1_dataplane_proto_rawDescGZIP() []byte {
 }
 
 var file_openpicket_dataplane_v1_dataplane_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_openpicket_dataplane_v1_dataplane_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_openpicket_dataplane_v1_dataplane_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_openpicket_dataplane_v1_dataplane_proto_goTypes = []any{
 	(RejectReason)(0),              // 0: openpicket.dataplane.v1.RejectReason
 	(StreamType)(0),                // 1: openpicket.dataplane.v1.StreamType
@@ -2891,82 +2957,84 @@ var file_openpicket_dataplane_v1_dataplane_proto_goTypes = []any{
 	(*HelloAck)(nil),               // 14: openpicket.dataplane.v1.HelloAck
 	(*LogStats)(nil),               // 15: openpicket.dataplane.v1.LogStats
 	(*EnforcerStatus)(nil),         // 16: openpicket.dataplane.v1.EnforcerStatus
-	(*PolicyStatus)(nil),           // 17: openpicket.dataplane.v1.PolicyStatus
-	(*NflogStatus)(nil),            // 18: openpicket.dataplane.v1.NflogStatus
-	(*Status)(nil),                 // 19: openpicket.dataplane.v1.Status
-	(*Record)(nil),                 // 20: openpicket.dataplane.v1.Record
-	(*RecordList)(nil),             // 21: openpicket.dataplane.v1.RecordList
-	(*LogBatch)(nil),               // 22: openpicket.dataplane.v1.LogBatch
-	(*LogAck)(nil),                 // 23: openpicket.dataplane.v1.LogAck
-	(*Decision)(nil),               // 24: openpicket.dataplane.v1.Decision
-	(*DecisionsUp)(nil),            // 25: openpicket.dataplane.v1.DecisionsUp
-	(*DecisionSubscribe)(nil),      // 26: openpicket.dataplane.v1.DecisionSubscribe
-	(*DecisionsDown)(nil),          // 27: openpicket.dataplane.v1.DecisionsDown
-	(*DecisionSnapshot)(nil),       // 28: openpicket.dataplane.v1.DecisionSnapshot
-	(*DecisionDelta)(nil),          // 29: openpicket.dataplane.v1.DecisionDelta
-	(*DecisionAck)(nil),            // 30: openpicket.dataplane.v1.DecisionAck
-	(*PortRange)(nil),              // 31: openpicket.dataplane.v1.PortRange
-	(*NamedSet)(nil),               // 32: openpicket.dataplane.v1.NamedSet
-	(*PolicyRule)(nil),             // 33: openpicket.dataplane.v1.PolicyRule
-	(*PortPolicy)(nil),             // 34: openpicket.dataplane.v1.PortPolicy
-	(*PolicyBundle)(nil),           // 35: openpicket.dataplane.v1.PolicyBundle
-	(*PolicyUp)(nil),               // 36: openpicket.dataplane.v1.PolicyUp
-	(*PolicySubscribe)(nil),        // 37: openpicket.dataplane.v1.PolicySubscribe
-	(*PolicyAck)(nil),              // 38: openpicket.dataplane.v1.PolicyAck
-	nil,                            // 39: openpicket.dataplane.v1.PolicyStatus.PacketsEntry
-	nil,                            // 40: openpicket.dataplane.v1.NflogStatus.RecordsEntry
-	(*v1.LogCollectionPolicy)(nil), // 41: suricontroller.agent.v1.LogCollectionPolicy
-	(*v1.PlatformInfo)(nil),        // 42: suricontroller.agent.v1.PlatformInfo
-	(*v1.EngineInfo)(nil),          // 43: suricontroller.agent.v1.EngineInfo
-	(*v1.LogSource)(nil),           // 44: suricontroller.agent.v1.LogSource
-	(*v1.Warning)(nil),             // 45: suricontroller.agent.v1.Warning
-	(*v1.StatusReport)(nil),        // 46: suricontroller.agent.v1.StatusReport
+	(*RefusedDecision)(nil),        // 17: openpicket.dataplane.v1.RefusedDecision
+	(*PolicyStatus)(nil),           // 18: openpicket.dataplane.v1.PolicyStatus
+	(*NflogStatus)(nil),            // 19: openpicket.dataplane.v1.NflogStatus
+	(*Status)(nil),                 // 20: openpicket.dataplane.v1.Status
+	(*Record)(nil),                 // 21: openpicket.dataplane.v1.Record
+	(*RecordList)(nil),             // 22: openpicket.dataplane.v1.RecordList
+	(*LogBatch)(nil),               // 23: openpicket.dataplane.v1.LogBatch
+	(*LogAck)(nil),                 // 24: openpicket.dataplane.v1.LogAck
+	(*Decision)(nil),               // 25: openpicket.dataplane.v1.Decision
+	(*DecisionsUp)(nil),            // 26: openpicket.dataplane.v1.DecisionsUp
+	(*DecisionSubscribe)(nil),      // 27: openpicket.dataplane.v1.DecisionSubscribe
+	(*DecisionsDown)(nil),          // 28: openpicket.dataplane.v1.DecisionsDown
+	(*DecisionSnapshot)(nil),       // 29: openpicket.dataplane.v1.DecisionSnapshot
+	(*DecisionDelta)(nil),          // 30: openpicket.dataplane.v1.DecisionDelta
+	(*DecisionAck)(nil),            // 31: openpicket.dataplane.v1.DecisionAck
+	(*PortRange)(nil),              // 32: openpicket.dataplane.v1.PortRange
+	(*NamedSet)(nil),               // 33: openpicket.dataplane.v1.NamedSet
+	(*PolicyRule)(nil),             // 34: openpicket.dataplane.v1.PolicyRule
+	(*PortPolicy)(nil),             // 35: openpicket.dataplane.v1.PortPolicy
+	(*PolicyBundle)(nil),           // 36: openpicket.dataplane.v1.PolicyBundle
+	(*PolicyUp)(nil),               // 37: openpicket.dataplane.v1.PolicyUp
+	(*PolicySubscribe)(nil),        // 38: openpicket.dataplane.v1.PolicySubscribe
+	(*PolicyAck)(nil),              // 39: openpicket.dataplane.v1.PolicyAck
+	nil,                            // 40: openpicket.dataplane.v1.PolicyStatus.PacketsEntry
+	nil,                            // 41: openpicket.dataplane.v1.NflogStatus.RecordsEntry
+	(*v1.LogCollectionPolicy)(nil), // 42: suricontroller.agent.v1.LogCollectionPolicy
+	(*v1.PlatformInfo)(nil),        // 43: suricontroller.agent.v1.PlatformInfo
+	(*v1.EngineInfo)(nil),          // 44: suricontroller.agent.v1.EngineInfo
+	(*v1.LogSource)(nil),           // 45: suricontroller.agent.v1.LogSource
+	(*v1.Warning)(nil),             // 46: suricontroller.agent.v1.Warning
+	(*v1.StatusReport)(nil),        // 47: suricontroller.agent.v1.StatusReport
 }
 var file_openpicket_dataplane_v1_dataplane_proto_depIdxs = []int32{
 	0,  // 0: openpicket.dataplane.v1.HandshakeResponse.reason:type_name -> openpicket.dataplane.v1.RejectReason
 	1,  // 1: openpicket.dataplane.v1.StreamHeader.type:type_name -> openpicket.dataplane.v1.StreamType
 	13, // 2: openpicket.dataplane.v1.ControlUp.hello:type_name -> openpicket.dataplane.v1.Hello
-	19, // 3: openpicket.dataplane.v1.ControlUp.status:type_name -> openpicket.dataplane.v1.Status
+	20, // 3: openpicket.dataplane.v1.ControlUp.status:type_name -> openpicket.dataplane.v1.Status
 	14, // 4: openpicket.dataplane.v1.ControlDown.hello_ack:type_name -> openpicket.dataplane.v1.HelloAck
-	41, // 5: openpicket.dataplane.v1.ControlDown.log_policy:type_name -> suricontroller.agent.v1.LogCollectionPolicy
+	42, // 5: openpicket.dataplane.v1.ControlDown.log_policy:type_name -> suricontroller.agent.v1.LogCollectionPolicy
 	12, // 6: openpicket.dataplane.v1.Hello.local_nets:type_name -> openpicket.dataplane.v1.LocalNets
-	42, // 7: openpicket.dataplane.v1.Hello.platform:type_name -> suricontroller.agent.v1.PlatformInfo
-	43, // 8: openpicket.dataplane.v1.Hello.engine:type_name -> suricontroller.agent.v1.EngineInfo
-	44, // 9: openpicket.dataplane.v1.Hello.log_sources:type_name -> suricontroller.agent.v1.LogSource
-	45, // 10: openpicket.dataplane.v1.Hello.warnings:type_name -> suricontroller.agent.v1.Warning
-	41, // 11: openpicket.dataplane.v1.HelloAck.log_policy:type_name -> suricontroller.agent.v1.LogCollectionPolicy
-	39, // 12: openpicket.dataplane.v1.PolicyStatus.packets:type_name -> openpicket.dataplane.v1.PolicyStatus.PacketsEntry
-	40, // 13: openpicket.dataplane.v1.NflogStatus.records:type_name -> openpicket.dataplane.v1.NflogStatus.RecordsEntry
-	46, // 14: openpicket.dataplane.v1.Status.suricata:type_name -> suricontroller.agent.v1.StatusReport
-	12, // 15: openpicket.dataplane.v1.Status.local_nets:type_name -> openpicket.dataplane.v1.LocalNets
-	15, // 16: openpicket.dataplane.v1.Status.logs:type_name -> openpicket.dataplane.v1.LogStats
-	16, // 17: openpicket.dataplane.v1.Status.enforcer:type_name -> openpicket.dataplane.v1.EnforcerStatus
-	17, // 18: openpicket.dataplane.v1.Status.policy:type_name -> openpicket.dataplane.v1.PolicyStatus
-	18, // 19: openpicket.dataplane.v1.Status.nflog:type_name -> openpicket.dataplane.v1.NflogStatus
-	20, // 20: openpicket.dataplane.v1.RecordList.records:type_name -> openpicket.dataplane.v1.Record
-	3,  // 21: openpicket.dataplane.v1.Decision.scope:type_name -> openpicket.dataplane.v1.Scope
-	2,  // 22: openpicket.dataplane.v1.Decision.direction:type_name -> openpicket.dataplane.v1.Direction
-	26, // 23: openpicket.dataplane.v1.DecisionsUp.subscribe:type_name -> openpicket.dataplane.v1.DecisionSubscribe
-	30, // 24: openpicket.dataplane.v1.DecisionsUp.ack:type_name -> openpicket.dataplane.v1.DecisionAck
-	28, // 25: openpicket.dataplane.v1.DecisionsDown.snapshot:type_name -> openpicket.dataplane.v1.DecisionSnapshot
-	29, // 26: openpicket.dataplane.v1.DecisionsDown.delta:type_name -> openpicket.dataplane.v1.DecisionDelta
-	24, // 27: openpicket.dataplane.v1.DecisionSnapshot.decisions:type_name -> openpicket.dataplane.v1.Decision
-	24, // 28: openpicket.dataplane.v1.DecisionDelta.upserts:type_name -> openpicket.dataplane.v1.Decision
-	6,  // 29: openpicket.dataplane.v1.PolicyRule.action:type_name -> openpicket.dataplane.v1.PolicyAction
-	4,  // 30: openpicket.dataplane.v1.PortPolicy.mode:type_name -> openpicket.dataplane.v1.PolicyMode
-	5,  // 31: openpicket.dataplane.v1.PortPolicy.proto:type_name -> openpicket.dataplane.v1.L4Proto
-	31, // 32: openpicket.dataplane.v1.PortPolicy.ports:type_name -> openpicket.dataplane.v1.PortRange
-	33, // 33: openpicket.dataplane.v1.PortPolicy.rules:type_name -> openpicket.dataplane.v1.PolicyRule
-	6,  // 34: openpicket.dataplane.v1.PortPolicy.default_action:type_name -> openpicket.dataplane.v1.PolicyAction
-	34, // 35: openpicket.dataplane.v1.PolicyBundle.policies:type_name -> openpicket.dataplane.v1.PortPolicy
-	32, // 36: openpicket.dataplane.v1.PolicyBundle.sets:type_name -> openpicket.dataplane.v1.NamedSet
-	37, // 37: openpicket.dataplane.v1.PolicyUp.subscribe:type_name -> openpicket.dataplane.v1.PolicySubscribe
-	38, // 38: openpicket.dataplane.v1.PolicyUp.ack:type_name -> openpicket.dataplane.v1.PolicyAck
-	39, // [39:39] is the sub-list for method output_type
-	39, // [39:39] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	43, // 7: openpicket.dataplane.v1.Hello.platform:type_name -> suricontroller.agent.v1.PlatformInfo
+	44, // 8: openpicket.dataplane.v1.Hello.engine:type_name -> suricontroller.agent.v1.EngineInfo
+	45, // 9: openpicket.dataplane.v1.Hello.log_sources:type_name -> suricontroller.agent.v1.LogSource
+	46, // 10: openpicket.dataplane.v1.Hello.warnings:type_name -> suricontroller.agent.v1.Warning
+	42, // 11: openpicket.dataplane.v1.HelloAck.log_policy:type_name -> suricontroller.agent.v1.LogCollectionPolicy
+	17, // 12: openpicket.dataplane.v1.EnforcerStatus.refused:type_name -> openpicket.dataplane.v1.RefusedDecision
+	40, // 13: openpicket.dataplane.v1.PolicyStatus.packets:type_name -> openpicket.dataplane.v1.PolicyStatus.PacketsEntry
+	41, // 14: openpicket.dataplane.v1.NflogStatus.records:type_name -> openpicket.dataplane.v1.NflogStatus.RecordsEntry
+	47, // 15: openpicket.dataplane.v1.Status.suricata:type_name -> suricontroller.agent.v1.StatusReport
+	12, // 16: openpicket.dataplane.v1.Status.local_nets:type_name -> openpicket.dataplane.v1.LocalNets
+	15, // 17: openpicket.dataplane.v1.Status.logs:type_name -> openpicket.dataplane.v1.LogStats
+	16, // 18: openpicket.dataplane.v1.Status.enforcer:type_name -> openpicket.dataplane.v1.EnforcerStatus
+	18, // 19: openpicket.dataplane.v1.Status.policy:type_name -> openpicket.dataplane.v1.PolicyStatus
+	19, // 20: openpicket.dataplane.v1.Status.nflog:type_name -> openpicket.dataplane.v1.NflogStatus
+	21, // 21: openpicket.dataplane.v1.RecordList.records:type_name -> openpicket.dataplane.v1.Record
+	3,  // 22: openpicket.dataplane.v1.Decision.scope:type_name -> openpicket.dataplane.v1.Scope
+	2,  // 23: openpicket.dataplane.v1.Decision.direction:type_name -> openpicket.dataplane.v1.Direction
+	27, // 24: openpicket.dataplane.v1.DecisionsUp.subscribe:type_name -> openpicket.dataplane.v1.DecisionSubscribe
+	31, // 25: openpicket.dataplane.v1.DecisionsUp.ack:type_name -> openpicket.dataplane.v1.DecisionAck
+	29, // 26: openpicket.dataplane.v1.DecisionsDown.snapshot:type_name -> openpicket.dataplane.v1.DecisionSnapshot
+	30, // 27: openpicket.dataplane.v1.DecisionsDown.delta:type_name -> openpicket.dataplane.v1.DecisionDelta
+	25, // 28: openpicket.dataplane.v1.DecisionSnapshot.decisions:type_name -> openpicket.dataplane.v1.Decision
+	25, // 29: openpicket.dataplane.v1.DecisionDelta.upserts:type_name -> openpicket.dataplane.v1.Decision
+	6,  // 30: openpicket.dataplane.v1.PolicyRule.action:type_name -> openpicket.dataplane.v1.PolicyAction
+	4,  // 31: openpicket.dataplane.v1.PortPolicy.mode:type_name -> openpicket.dataplane.v1.PolicyMode
+	5,  // 32: openpicket.dataplane.v1.PortPolicy.proto:type_name -> openpicket.dataplane.v1.L4Proto
+	32, // 33: openpicket.dataplane.v1.PortPolicy.ports:type_name -> openpicket.dataplane.v1.PortRange
+	34, // 34: openpicket.dataplane.v1.PortPolicy.rules:type_name -> openpicket.dataplane.v1.PolicyRule
+	6,  // 35: openpicket.dataplane.v1.PortPolicy.default_action:type_name -> openpicket.dataplane.v1.PolicyAction
+	35, // 36: openpicket.dataplane.v1.PolicyBundle.policies:type_name -> openpicket.dataplane.v1.PortPolicy
+	33, // 37: openpicket.dataplane.v1.PolicyBundle.sets:type_name -> openpicket.dataplane.v1.NamedSet
+	38, // 38: openpicket.dataplane.v1.PolicyUp.subscribe:type_name -> openpicket.dataplane.v1.PolicySubscribe
+	39, // 39: openpicket.dataplane.v1.PolicyUp.ack:type_name -> openpicket.dataplane.v1.PolicyAck
+	40, // [40:40] is the sub-list for method output_type
+	40, // [40:40] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_openpicket_dataplane_v1_dataplane_proto_init() }
@@ -2982,15 +3050,15 @@ func file_openpicket_dataplane_v1_dataplane_proto_init() {
 		(*ControlDown_HelloAck)(nil),
 		(*ControlDown_LogPolicy)(nil),
 	}
-	file_openpicket_dataplane_v1_dataplane_proto_msgTypes[18].OneofWrappers = []any{
+	file_openpicket_dataplane_v1_dataplane_proto_msgTypes[19].OneofWrappers = []any{
 		(*DecisionsUp_Subscribe)(nil),
 		(*DecisionsUp_Ack)(nil),
 	}
-	file_openpicket_dataplane_v1_dataplane_proto_msgTypes[20].OneofWrappers = []any{
+	file_openpicket_dataplane_v1_dataplane_proto_msgTypes[21].OneofWrappers = []any{
 		(*DecisionsDown_Snapshot)(nil),
 		(*DecisionsDown_Delta)(nil),
 	}
-	file_openpicket_dataplane_v1_dataplane_proto_msgTypes[29].OneofWrappers = []any{
+	file_openpicket_dataplane_v1_dataplane_proto_msgTypes[30].OneofWrappers = []any{
 		(*PolicyUp_Subscribe)(nil),
 		(*PolicyUp_Ack)(nil),
 	}
@@ -3000,7 +3068,7 @@ func file_openpicket_dataplane_v1_dataplane_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_openpicket_dataplane_v1_dataplane_proto_rawDesc), len(file_openpicket_dataplane_v1_dataplane_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   34,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

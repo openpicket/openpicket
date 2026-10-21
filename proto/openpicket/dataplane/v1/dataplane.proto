@@ -130,9 +130,17 @@ message EnforcerStatus {
   uint32 ban_in_v6 = 4;
   uint32 ban_both_v4 = 5;
   uint32 ban_both_v6 = 6;
-  // Decisions refused by local policy (allowlist, local_nets, limits).
+  // Decisions not applied now: refused by local policy (allowlist,
+  // local networks), invalid, or over the element limit.
   uint64 rejected = 7;
   string last_error = 8;
+  // Some of them with the reason (at most 100).
+  repeated RefusedDecision refused = 9;
+}
+
+message RefusedDecision {
+  string value = 1;
+  string reason = 2;
 }
 
 message PolicyStatus {

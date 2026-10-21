@@ -20,7 +20,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file openpicket/dataplane/v1/dataplane.proto.
  */
 export const file_openpicket_dataplane_v1_dataplane: GenFile = /*@__PURE__*/
-  fileDesc("CidvcGVucGlja2V0L2RhdGFwbGFuZS92MS9kYXRhcGxhbmUucHJvdG8SF29wZW5waWNrZXQuZGF0YXBsYW5lLnYxIlIKDUhhbmRzaGFrZUluaXQSDwoHbm9kZV9pZBgBIAEoCRIVCg1hZ2VudF92ZXJzaW9uGAIgASgJEhkKEXRpbWVzdGFtcF91bml4X21zGAMgASgDIooBChFIYW5kc2hha2VSZXNwb25zZRIQCghhY2NlcHRlZBgBIAEoCBI1CgZyZWFzb24YAiABKA4yJS5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5SZWplY3RSZWFzb24SDwoHbWVzc2FnZRgDIAEoCRIbChNzZXJ2ZXJfdGltZV91bml4X21zGAQgASgDIkEKDFN0cmVhbUhlYWRlchIxCgR0eXBlGAEgASgOMiMub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuU3RyZWFtVHlwZSJ3CglDb250cm9sVXASLwoFaGVsbG8YASABKAsyHi5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5IZWxsb0gAEjEKBnN0YXR1cxgCIAEoCzIfLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLlN0YXR1c0gAQgYKBGJvZHkikQEKC0NvbnRyb2xEb3duEjYKCWhlbGxvX2FjaxgBIAEoCzIhLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLkhlbGxvQWNrSAASQgoKbG9nX3BvbGljeRgCIAEoCzIsLnN1cmljb250cm9sbGVyLmFnZW50LnYxLkxvZ0NvbGxlY3Rpb25Qb2xpY3lIAEIGCgRib2R5IkUKCUxvY2FsTmV0cxIQCghob21lX25ldBgBIAMoCRIXCg9pbnRlcmZhY2VfYWRkcnMYAiADKAkSDQoFZXh0cmEYAyADKAkigQMKBUhlbGxvEg8KB25vZGVfaWQYASABKAkSFQoNYWdlbnRfdmVyc2lvbhgCIAEoCRIPCgdib290X2lkGAMgASgJEjYKCmxvY2FsX25ldHMYBCABKAsyIi5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5Mb2NhbE5ldHMSNwoIcGxhdGZvcm0YBSABKAsyJS5zdXJpY29udHJvbGxlci5hZ2VudC52MS5QbGF0Zm9ybUluZm8SMwoGZW5naW5lGAYgASgLMiMuc3VyaWNvbnRyb2xsZXIuYWdlbnQudjEuRW5naW5lSW5mbxIWCg53YW5faW50ZXJmYWNlcxgHIAMoCRI3Cgtsb2dfc291cmNlcxgIIAMoCzIiLnN1cmljb250cm9sbGVyLmFnZW50LnYxLkxvZ1NvdXJjZRIyCgh3YXJuaW5ncxgJIAMoCzIgLnN1cmljb250cm9sbGVyLmFnZW50LnYxLldhcm5pbmcSFAoMY2FwYWJpbGl0aWVzGAogAygJIqMBCghIZWxsb0FjaxIbChNzZXJ2ZXJfdGltZV91bml4X21zGAEgASgDEhcKD21hbmFnZXJfdmVyc2lvbhgCIAEoCRIfChdzdGF0dXNfaW50ZXJ2YWxfc2Vjb25kcxgDIAEoDRJACgpsb2dfcG9saWN5GAQgASgLMiwuc3VyaWNvbnRyb2xsZXIuYWdlbnQudjEuTG9nQ29sbGVjdGlvblBvbGljeSKeAQoITG9nU3RhdHMSEwoLcXVldWVfYnl0ZXMYASABKAQSHAoUcXVldWVfY2FwYWNpdHlfYnl0ZXMYAiABKAQSFwoPZHJvcHBlZF9yZWNvcmRzGAMgASgEEhQKDHNlbnRfcmVjb3JkcxgEIAEoBBIYChBpbmZsaWdodF9iYXRjaGVzGAUgASgEEhYKDmluZmxpZ2h0X2J5dGVzGAYgASgEIrIBCg5FbmZvcmNlclN0YXR1cxIPCgdlbmFibGVkGAEgASgIEhkKEWRlY2lzaW9uc192ZXJzaW9uGAIgASgEEhEKCWJhbl9pbl92NBgDIAEoDRIRCgliYW5faW5fdjYYBCABKA0SEwoLYmFuX2JvdGhfdjQYBSABKA0SEwoLYmFuX2JvdGhfdjYYBiABKA0SEAoIcmVqZWN0ZWQYByABKAQSEgoKbGFzdF9lcnJvchgIIAEoCSK5AQoMUG9saWN5U3RhdHVzEg8KB2VuYWJsZWQYASABKAgSDwoHdmVyc2lvbhgCIAEoBBISCgpsYXN0X2Vycm9yGAMgASgJEkMKB3BhY2tldHMYBCADKAsyMi5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5Qb2xpY3lTdGF0dXMuUGFja2V0c0VudHJ5Gi4KDFBhY2tldHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAQ6AjgBIqYBCgtOZmxvZ1N0YXR1cxIPCgdlbmFibGVkGAEgASgIEkIKB3JlY29yZHMYAiADKAsyMS5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5OZmxvZ1N0YXR1cy5SZWNvcmRzRW50cnkSEgoKbGFzdF9lcnJvchgDIAEoCRouCgxSZWNvcmRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgEOgI4ASLnAgoGU3RhdHVzEhQKDHRpbWVfdW5peF9tcxgBIAEoAxI3CghzdXJpY2F0YRgCIAEoCzIlLnN1cmljb250cm9sbGVyLmFnZW50LnYxLlN0YXR1c1JlcG9ydBI2Cgpsb2NhbF9uZXRzGAMgASgLMiIub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuTG9jYWxOZXRzEi8KBGxvZ3MYBCABKAsyIS5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5Mb2dTdGF0cxI5CghlbmZvcmNlchgFIAEoCzInLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLkVuZm9yY2VyU3RhdHVzEjUKBnBvbGljeRgGIAEoCzIlLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLlBvbGljeVN0YXR1cxIzCgVuZmxvZxgHIAEoCzIkLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLk5mbG9nU3RhdHVzIjsKBlJlY29yZBIMCgRsaW5lGAEgASgMEgsKA3JpZBgCIAEoCRIWCg50aW1lX3VuaXhfbmFubxgDIAEoAyI+CgpSZWNvcmRMaXN0EjAKB3JlY29yZHMYASADKAsyHy5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5SZWNvcmQikAEKCExvZ0JhdGNoEg8KB2Jvb3RfaWQYASABKAkSCwoDc2VxGAIgASgEEgwKBHR5cGUYAyABKAkSEAoIaW5zdGFuY2UYBCABKAkSFAoMenN0ZF9yZWNvcmRzGAUgASgMEhQKDHJlY29yZF9jb3VudBgGIAEoDRIaChJkcm9wcGVkX3NpbmNlX2xhc3QYByABKAQiJgoGTG9nQWNrEg8KB2Jvb3RfaWQYASABKAkSCwoDc2VxGAIgASgEIrEBCghEZWNpc2lvbhINCgV2YWx1ZRgBIAEoCRItCgVzY29wZRgCIAEoDjIeLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLlNjb3BlEjUKCWRpcmVjdGlvbhgDIAEoDjIiLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLkRpcmVjdGlvbhIOCgZ0dGxfbXMYBCABKAMSDgoGb3JpZ2luGAUgASgJEhAKCHNjZW5hcmlvGAYgASgJIosBCgtEZWNpc2lvbnNVcBI/CglzdWJzY3JpYmUYASABKAsyKi5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5EZWNpc2lvblN1YnNjcmliZUgAEjMKA2FjaxgCIAEoCzIkLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLkRlY2lzaW9uQWNrSABCBgoEYm9keSIpChFEZWNpc2lvblN1YnNjcmliZRIUCgxoYXZlX3ZlcnNpb24YASABKAQijwEKDURlY2lzaW9uc0Rvd24SPQoIc25hcHNob3QYASABKAsyKS5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5EZWNpc2lvblNuYXBzaG90SAASNwoFZGVsdGEYAiABKAsyJi5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5EZWNpc2lvbkRlbHRhSABCBgoEYm9keSJZChBEZWNpc2lvblNuYXBzaG90Eg8KB3ZlcnNpb24YASABKAQSNAoJZGVjaXNpb25zGAIgAygLMiEub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuRGVjaXNpb24ifgoNRGVjaXNpb25EZWx0YRIUCgxmcm9tX3ZlcnNpb24YASABKAQSEgoKdG9fdmVyc2lvbhgCIAEoBBIyCgd1cHNlcnRzGAMgAygLMiEub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuRGVjaXNpb24SDwoHZGVsZXRlcxgEIAMoCSI/CgtEZWNpc2lvbkFjaxIPCgd2ZXJzaW9uGAEgASgEEhAKCHNldF9zaXplGAIgASgNEg0KBWVycm9yGAMgASgJIiUKCVBvcnRSYW5nZRIMCgRmcm9tGAEgASgNEgoKAnRvGAIgASgNIiUKCE5hbWVkU2V0EgoKAmlkGAEgASgJEg0KBWNpZHJzGAIgAygJIlMKClBvbGljeVJ1bGUSDgoGc2V0X2lkGAEgASgJEjUKBmFjdGlvbhgCIAEoDjIlLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLlBvbGljeUFjdGlvbiK1AgoKUG9ydFBvbGljeRIKCgJpZBgBIAEoCRIxCgRtb2RlGAIgASgOMiMub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuUG9saWN5TW9kZRIvCgVwcm90bxgDIAEoDjIgLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLkw0UHJvdG8SMQoFcG9ydHMYBCADKAsyIi5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5Qb3J0UmFuZ2USMgoFcnVsZXMYBSADKAsyIy5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5Qb2xpY3lSdWxlEj0KDmRlZmF1bHRfYWN0aW9uGAYgASgOMiUub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuUG9saWN5QWN0aW9uEhEKCWxvZ19kcm9wcxgHIAEoCCKHAQoMUG9saWN5QnVuZGxlEg8KB3ZlcnNpb24YASABKAQSNQoIcG9saWNpZXMYAiADKAsyIy5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5Qb3J0UG9saWN5Ei8KBHNldHMYAyADKAsyIS5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5OYW1lZFNldCKEAQoIUG9saWN5VXASPQoJc3Vic2NyaWJlGAEgASgLMigub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuUG9saWN5U3Vic2NyaWJlSAASMQoDYWNrGAIgASgLMiIub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuUG9saWN5QWNrSABCBgoEYm9keSInCg9Qb2xpY3lTdWJzY3JpYmUSFAoMaGF2ZV92ZXJzaW9uGAEgASgEIisKCVBvbGljeUFjaxIPCgd2ZXJzaW9uGAEgASgEEg0KBWVycm9yGAIgASgJKv8BCgxSZWplY3RSZWFzb24SHQoZUkVKRUNUX1JFQVNPTl9VTlNQRUNJRklFRBAAEh0KGVJFSkVDVF9SRUFTT05fVU5LTk9XTl9LRVkQARIaChZSRUpFQ1RfUkVBU09OX0RJU0FCTEVEEAISIgoeUkVKRUNUX1JFQVNPTl9OT0RFX0lEX01JU01BVENIEAMSHAoYUkVKRUNUX1JFQVNPTl9DTE9DS19TS0VXEAQSGAoUUkVKRUNUX1JFQVNPTl9SRVBMQVkQBRIaChZSRUpFQ1RfUkVBU09OX1BST1RPQ09MEAYSHQoZUkVKRUNUX1JFQVNPTl9VTkFWQUlMQUJMRRAHKosBCgpTdHJlYW1UeXBlEhsKF1NUUkVBTV9UWVBFX1VOU1BFQ0lGSUVEEAASFwoTU1RSRUFNX1RZUEVfQ09OVFJPTBABEhQKEFNUUkVBTV9UWVBFX0xPR1MQAhIZChVTVFJFQU1fVFlQRV9ERUNJU0lPTlMQAxIWChJTVFJFQU1fVFlQRV9QT0xJQ1kQBCpRCglEaXJlY3Rpb24SGQoVRElSRUNUSU9OX1VOU1BFQ0lGSUVEEAASFQoRRElSRUNUSU9OX0lOQk9VTkQQARISCg5ESVJFQ1RJT05fQk9USBACKj0KBVNjb3BlEhUKEVNDT1BFX1VOU1BFQ0lGSUVEEAASDAoIU0NPUEVfSVAQARIPCgtTQ09QRV9SQU5HRRACKlsKClBvbGljeU1vZGUSGwoXUE9MSUNZX01PREVfVU5TUEVDSUZJRUQQABIXChNQT0xJQ1lfTU9ERV9FTkZPUkNFEAESFwoTUE9MSUNZX01PREVfT0JTRVJWRRACKkcKB0w0UHJvdG8SGAoUTDRfUFJPVE9fVU5TUEVDSUZJRUQQABIQCgxMNF9QUk9UT19UQ1AQARIQCgxMNF9QUk9UT19VRFAQAip5CgxQb2xpY3lBY3Rpb24SHQoZUE9MSUNZX0FDVElPTl9VTlNQRUNJRklFRBAAEhgKFFBPTElDWV9BQ1RJT05fQUNDRVBUEAESFgoSUE9MSUNZX0FDVElPTl9EUk9QEAISGAoUUE9MSUNZX0FDVElPTl9SRUpFQ1QQA0JKWkhnaXRodWIuY29tL29wZW5waWNrZXQvb3BlbnBpY2tldC9nZW4vb3BlbnBpY2tldC9kYXRhcGxhbmUvdjE7ZGF0YXBsYW5ldjFiBnByb3RvMw", [file_suricontroller_agent_v1_agent]);
+  fileDesc("CidvcGVucGlja2V0L2RhdGFwbGFuZS92MS9kYXRhcGxhbmUucHJvdG8SF29wZW5waWNrZXQuZGF0YXBsYW5lLnYxIlIKDUhhbmRzaGFrZUluaXQSDwoHbm9kZV9pZBgBIAEoCRIVCg1hZ2VudF92ZXJzaW9uGAIgASgJEhkKEXRpbWVzdGFtcF91bml4X21zGAMgASgDIooBChFIYW5kc2hha2VSZXNwb25zZRIQCghhY2NlcHRlZBgBIAEoCBI1CgZyZWFzb24YAiABKA4yJS5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5SZWplY3RSZWFzb24SDwoHbWVzc2FnZRgDIAEoCRIbChNzZXJ2ZXJfdGltZV91bml4X21zGAQgASgDIkEKDFN0cmVhbUhlYWRlchIxCgR0eXBlGAEgASgOMiMub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuU3RyZWFtVHlwZSJ3CglDb250cm9sVXASLwoFaGVsbG8YASABKAsyHi5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5IZWxsb0gAEjEKBnN0YXR1cxgCIAEoCzIfLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLlN0YXR1c0gAQgYKBGJvZHkikQEKC0NvbnRyb2xEb3duEjYKCWhlbGxvX2FjaxgBIAEoCzIhLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLkhlbGxvQWNrSAASQgoKbG9nX3BvbGljeRgCIAEoCzIsLnN1cmljb250cm9sbGVyLmFnZW50LnYxLkxvZ0NvbGxlY3Rpb25Qb2xpY3lIAEIGCgRib2R5IkUKCUxvY2FsTmV0cxIQCghob21lX25ldBgBIAMoCRIXCg9pbnRlcmZhY2VfYWRkcnMYAiADKAkSDQoFZXh0cmEYAyADKAkigQMKBUhlbGxvEg8KB25vZGVfaWQYASABKAkSFQoNYWdlbnRfdmVyc2lvbhgCIAEoCRIPCgdib290X2lkGAMgASgJEjYKCmxvY2FsX25ldHMYBCABKAsyIi5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5Mb2NhbE5ldHMSNwoIcGxhdGZvcm0YBSABKAsyJS5zdXJpY29udHJvbGxlci5hZ2VudC52MS5QbGF0Zm9ybUluZm8SMwoGZW5naW5lGAYgASgLMiMuc3VyaWNvbnRyb2xsZXIuYWdlbnQudjEuRW5naW5lSW5mbxIWCg53YW5faW50ZXJmYWNlcxgHIAMoCRI3Cgtsb2dfc291cmNlcxgIIAMoCzIiLnN1cmljb250cm9sbGVyLmFnZW50LnYxLkxvZ1NvdXJjZRIyCgh3YXJuaW5ncxgJIAMoCzIgLnN1cmljb250cm9sbGVyLmFnZW50LnYxLldhcm5pbmcSFAoMY2FwYWJpbGl0aWVzGAogAygJIqMBCghIZWxsb0FjaxIbChNzZXJ2ZXJfdGltZV91bml4X21zGAEgASgDEhcKD21hbmFnZXJfdmVyc2lvbhgCIAEoCRIfChdzdGF0dXNfaW50ZXJ2YWxfc2Vjb25kcxgDIAEoDRJACgpsb2dfcG9saWN5GAQgASgLMiwuc3VyaWNvbnRyb2xsZXIuYWdlbnQudjEuTG9nQ29sbGVjdGlvblBvbGljeSKeAQoITG9nU3RhdHMSEwoLcXVldWVfYnl0ZXMYASABKAQSHAoUcXVldWVfY2FwYWNpdHlfYnl0ZXMYAiABKAQSFwoPZHJvcHBlZF9yZWNvcmRzGAMgASgEEhQKDHNlbnRfcmVjb3JkcxgEIAEoBBIYChBpbmZsaWdodF9iYXRjaGVzGAUgASgEEhYKDmluZmxpZ2h0X2J5dGVzGAYgASgEIu0BCg5FbmZvcmNlclN0YXR1cxIPCgdlbmFibGVkGAEgASgIEhkKEWRlY2lzaW9uc192ZXJzaW9uGAIgASgEEhEKCWJhbl9pbl92NBgDIAEoDRIRCgliYW5faW5fdjYYBCABKA0SEwoLYmFuX2JvdGhfdjQYBSABKA0SEwoLYmFuX2JvdGhfdjYYBiABKA0SEAoIcmVqZWN0ZWQYByABKAQSEgoKbGFzdF9lcnJvchgIIAEoCRI5CgdyZWZ1c2VkGAkgAygLMigub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuUmVmdXNlZERlY2lzaW9uIjAKD1JlZnVzZWREZWNpc2lvbhINCgV2YWx1ZRgBIAEoCRIOCgZyZWFzb24YAiABKAkiuQEKDFBvbGljeVN0YXR1cxIPCgdlbmFibGVkGAEgASgIEg8KB3ZlcnNpb24YAiABKAQSEgoKbGFzdF9lcnJvchgDIAEoCRJDCgdwYWNrZXRzGAQgAygLMjIub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuUG9saWN5U3RhdHVzLlBhY2tldHNFbnRyeRouCgxQYWNrZXRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgEOgI4ASKmAQoLTmZsb2dTdGF0dXMSDwoHZW5hYmxlZBgBIAEoCBJCCgdyZWNvcmRzGAIgAygLMjEub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuTmZsb2dTdGF0dXMuUmVjb3Jkc0VudHJ5EhIKCmxhc3RfZXJyb3IYAyABKAkaLgoMUmVjb3Jkc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoBDoCOAEi5wIKBlN0YXR1cxIUCgx0aW1lX3VuaXhfbXMYASABKAMSNwoIc3VyaWNhdGEYAiABKAsyJS5zdXJpY29udHJvbGxlci5hZ2VudC52MS5TdGF0dXNSZXBvcnQSNgoKbG9jYWxfbmV0cxgDIAEoCzIiLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLkxvY2FsTmV0cxIvCgRsb2dzGAQgASgLMiEub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuTG9nU3RhdHMSOQoIZW5mb3JjZXIYBSABKAsyJy5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5FbmZvcmNlclN0YXR1cxI1CgZwb2xpY3kYBiABKAsyJS5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5Qb2xpY3lTdGF0dXMSMwoFbmZsb2cYByABKAsyJC5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5OZmxvZ1N0YXR1cyI7CgZSZWNvcmQSDAoEbGluZRgBIAEoDBILCgNyaWQYAiABKAkSFgoOdGltZV91bml4X25hbm8YAyABKAMiPgoKUmVjb3JkTGlzdBIwCgdyZWNvcmRzGAEgAygLMh8ub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuUmVjb3JkIpABCghMb2dCYXRjaBIPCgdib290X2lkGAEgASgJEgsKA3NlcRgCIAEoBBIMCgR0eXBlGAMgASgJEhAKCGluc3RhbmNlGAQgASgJEhQKDHpzdGRfcmVjb3JkcxgFIAEoDBIUCgxyZWNvcmRfY291bnQYBiABKA0SGgoSZHJvcHBlZF9zaW5jZV9sYXN0GAcgASgEIiYKBkxvZ0FjaxIPCgdib290X2lkGAEgASgJEgsKA3NlcRgCIAEoBCKxAQoIRGVjaXNpb24SDQoFdmFsdWUYASABKAkSLQoFc2NvcGUYAiABKA4yHi5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5TY29wZRI1CglkaXJlY3Rpb24YAyABKA4yIi5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5EaXJlY3Rpb24SDgoGdHRsX21zGAQgASgDEg4KBm9yaWdpbhgFIAEoCRIQCghzY2VuYXJpbxgGIAEoCSKLAQoLRGVjaXNpb25zVXASPwoJc3Vic2NyaWJlGAEgASgLMioub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuRGVjaXNpb25TdWJzY3JpYmVIABIzCgNhY2sYAiABKAsyJC5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5EZWNpc2lvbkFja0gAQgYKBGJvZHkiKQoRRGVjaXNpb25TdWJzY3JpYmUSFAoMaGF2ZV92ZXJzaW9uGAEgASgEIo8BCg1EZWNpc2lvbnNEb3duEj0KCHNuYXBzaG90GAEgASgLMikub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuRGVjaXNpb25TbmFwc2hvdEgAEjcKBWRlbHRhGAIgASgLMiYub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuRGVjaXNpb25EZWx0YUgAQgYKBGJvZHkiWQoQRGVjaXNpb25TbmFwc2hvdBIPCgd2ZXJzaW9uGAEgASgEEjQKCWRlY2lzaW9ucxgCIAMoCzIhLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLkRlY2lzaW9uIn4KDURlY2lzaW9uRGVsdGESFAoMZnJvbV92ZXJzaW9uGAEgASgEEhIKCnRvX3ZlcnNpb24YAiABKAQSMgoHdXBzZXJ0cxgDIAMoCzIhLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLkRlY2lzaW9uEg8KB2RlbGV0ZXMYBCADKAkiPwoLRGVjaXNpb25BY2sSDwoHdmVyc2lvbhgBIAEoBBIQCghzZXRfc2l6ZRgCIAEoDRINCgVlcnJvchgDIAEoCSIlCglQb3J0UmFuZ2USDAoEZnJvbRgBIAEoDRIKCgJ0bxgCIAEoDSIlCghOYW1lZFNldBIKCgJpZBgBIAEoCRINCgVjaWRycxgCIAMoCSJTCgpQb2xpY3lSdWxlEg4KBnNldF9pZBgBIAEoCRI1CgZhY3Rpb24YAiABKA4yJS5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5Qb2xpY3lBY3Rpb24itQIKClBvcnRQb2xpY3kSCgoCaWQYASABKAkSMQoEbW9kZRgCIAEoDjIjLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLlBvbGljeU1vZGUSLwoFcHJvdG8YAyABKA4yIC5vcGVucGlja2V0LmRhdGFwbGFuZS52MS5MNFByb3RvEjEKBXBvcnRzGAQgAygLMiIub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuUG9ydFJhbmdlEjIKBXJ1bGVzGAUgAygLMiMub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuUG9saWN5UnVsZRI9Cg5kZWZhdWx0X2FjdGlvbhgGIAEoDjIlLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLlBvbGljeUFjdGlvbhIRCglsb2dfZHJvcHMYByABKAgihwEKDFBvbGljeUJ1bmRsZRIPCgd2ZXJzaW9uGAEgASgEEjUKCHBvbGljaWVzGAIgAygLMiMub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuUG9ydFBvbGljeRIvCgRzZXRzGAMgAygLMiEub3BlbnBpY2tldC5kYXRhcGxhbmUudjEuTmFtZWRTZXQihAEKCFBvbGljeVVwEj0KCXN1YnNjcmliZRgBIAEoCzIoLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLlBvbGljeVN1YnNjcmliZUgAEjEKA2FjaxgCIAEoCzIiLm9wZW5waWNrZXQuZGF0YXBsYW5lLnYxLlBvbGljeUFja0gAQgYKBGJvZHkiJwoPUG9saWN5U3Vic2NyaWJlEhQKDGhhdmVfdmVyc2lvbhgBIAEoBCIrCglQb2xpY3lBY2sSDwoHdmVyc2lvbhgBIAEoBBINCgVlcnJvchgCIAEoCSr/AQoMUmVqZWN0UmVhc29uEh0KGVJFSkVDVF9SRUFTT05fVU5TUEVDSUZJRUQQABIdChlSRUpFQ1RfUkVBU09OX1VOS05PV05fS0VZEAESGgoWUkVKRUNUX1JFQVNPTl9ESVNBQkxFRBACEiIKHlJFSkVDVF9SRUFTT05fTk9ERV9JRF9NSVNNQVRDSBADEhwKGFJFSkVDVF9SRUFTT05fQ0xPQ0tfU0tFVxAEEhgKFFJFSkVDVF9SRUFTT05fUkVQTEFZEAUSGgoWUkVKRUNUX1JFQVNPTl9QUk9UT0NPTBAGEh0KGVJFSkVDVF9SRUFTT05fVU5BVkFJTEFCTEUQByqLAQoKU3RyZWFtVHlwZRIbChdTVFJFQU1fVFlQRV9VTlNQRUNJRklFRBAAEhcKE1NUUkVBTV9UWVBFX0NPTlRST0wQARIUChBTVFJFQU1fVFlQRV9MT0dTEAISGQoVU1RSRUFNX1RZUEVfREVDSVNJT05TEAMSFgoSU1RSRUFNX1RZUEVfUE9MSUNZEAQqUQoJRGlyZWN0aW9uEhkKFURJUkVDVElPTl9VTlNQRUNJRklFRBAAEhUKEURJUkVDVElPTl9JTkJPVU5EEAESEgoORElSRUNUSU9OX0JPVEgQAio9CgVTY29wZRIVChFTQ09QRV9VTlNQRUNJRklFRBAAEgwKCFNDT1BFX0lQEAESDwoLU0NPUEVfUkFOR0UQAipbCgpQb2xpY3lNb2RlEhsKF1BPTElDWV9NT0RFX1VOU1BFQ0lGSUVEEAASFwoTUE9MSUNZX01PREVfRU5GT1JDRRABEhcKE1BPTElDWV9NT0RFX09CU0VSVkUQAipHCgdMNFByb3RvEhgKFEw0X1BST1RPX1VOU1BFQ0lGSUVEEAASEAoMTDRfUFJPVE9fVENQEAESEAoMTDRfUFJPVE9fVURQEAIqeQoMUG9saWN5QWN0aW9uEh0KGVBPTElDWV9BQ1RJT05fVU5TUEVDSUZJRUQQABIYChRQT0xJQ1lfQUNUSU9OX0FDQ0VQVBABEhYKElBPTElDWV9BQ1RJT05fRFJPUBACEhgKFFBPTElDWV9BQ1RJT05fUkVKRUNUEANCSlpIZ2l0aHViLmNvbS9vcGVucGlja2V0L29wZW5waWNrZXQvZ2VuL29wZW5waWNrZXQvZGF0YXBsYW5lL3YxO2RhdGFwbGFuZXYxYgZwcm90bzM", [file_suricontroller_agent_v1_agent]);
 
 /**
  * HandshakeInit is the payload of Noise message 1 (agent -> manager).
@@ -382,7 +382,8 @@ export type EnforcerStatus = Message<"openpicket.dataplane.v1.EnforcerStatus"> &
   banBothV6: number;
 
   /**
-   * Decisions refused by local policy (allowlist, local_nets, limits).
+   * Decisions not applied now: refused by local policy (allowlist,
+   * local networks), invalid, or over the element limit.
    *
    * @generated from field: uint64 rejected = 7;
    */
@@ -392,6 +393,13 @@ export type EnforcerStatus = Message<"openpicket.dataplane.v1.EnforcerStatus"> &
    * @generated from field: string last_error = 8;
    */
   lastError: string;
+
+  /**
+   * Some of them with the reason (at most 100).
+   *
+   * @generated from field: repeated openpicket.dataplane.v1.RefusedDecision refused = 9;
+   */
+  refused: RefusedDecision[];
 };
 
 /**
@@ -400,6 +408,28 @@ export type EnforcerStatus = Message<"openpicket.dataplane.v1.EnforcerStatus"> &
  */
 export const EnforcerStatusSchema: GenMessage<EnforcerStatus> = /*@__PURE__*/
   messageDesc(file_openpicket_dataplane_v1_dataplane, 9);
+
+/**
+ * @generated from message openpicket.dataplane.v1.RefusedDecision
+ */
+export type RefusedDecision = Message<"openpicket.dataplane.v1.RefusedDecision"> & {
+  /**
+   * @generated from field: string value = 1;
+   */
+  value: string;
+
+  /**
+   * @generated from field: string reason = 2;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message openpicket.dataplane.v1.RefusedDecision.
+ * Use `create(RefusedDecisionSchema)` to create a new message.
+ */
+export const RefusedDecisionSchema: GenMessage<RefusedDecision> = /*@__PURE__*/
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 10);
 
 /**
  * @generated from message openpicket.dataplane.v1.PolicyStatus
@@ -434,7 +464,7 @@ export type PolicyStatus = Message<"openpicket.dataplane.v1.PolicyStatus"> & {
  * Use `create(PolicyStatusSchema)` to create a new message.
  */
 export const PolicyStatusSchema: GenMessage<PolicyStatus> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 10);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 11);
 
 /**
  * @generated from message openpicket.dataplane.v1.NflogStatus
@@ -463,7 +493,7 @@ export type NflogStatus = Message<"openpicket.dataplane.v1.NflogStatus"> & {
  * Use `create(NflogStatusSchema)` to create a new message.
  */
 export const NflogStatusSchema: GenMessage<NflogStatus> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 11);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 12);
 
 /**
  * @generated from message openpicket.dataplane.v1.Status
@@ -512,7 +542,7 @@ export type Status = Message<"openpicket.dataplane.v1.Status"> & {
  * Use `create(StatusSchema)` to create a new message.
  */
 export const StatusSchema: GenMessage<Status> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 12);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 13);
 
 /**
  * Record is one log line.
@@ -551,7 +581,7 @@ export type Record = Message<"openpicket.dataplane.v1.Record"> & {
  * Use `create(RecordSchema)` to create a new message.
  */
 export const RecordSchema: GenMessage<Record> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 13);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 14);
 
 /**
  * @generated from message openpicket.dataplane.v1.RecordList
@@ -568,7 +598,7 @@ export type RecordList = Message<"openpicket.dataplane.v1.RecordList"> & {
  * Use `create(RecordListSchema)` to create a new message.
  */
 export const RecordListSchema: GenMessage<RecordList> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 14);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 15);
 
 /**
  * LogBatch is sent by the agent. The manager acknowledges batches
@@ -628,7 +658,7 @@ export type LogBatch = Message<"openpicket.dataplane.v1.LogBatch"> & {
  * Use `create(LogBatchSchema)` to create a new message.
  */
 export const LogBatchSchema: GenMessage<LogBatch> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 15);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 16);
 
 /**
  * @generated from message openpicket.dataplane.v1.LogAck
@@ -652,7 +682,7 @@ export type LogAck = Message<"openpicket.dataplane.v1.LogAck"> & {
  * Use `create(LogAckSchema)` to create a new message.
  */
 export const LogAckSchema: GenMessage<LogAck> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 16);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 17);
 
 /**
  * Decision is the edge view of one blocked value: the manager merges the
@@ -701,7 +731,7 @@ export type Decision = Message<"openpicket.dataplane.v1.Decision"> & {
  * Use `create(DecisionSchema)` to create a new message.
  */
 export const DecisionSchema: GenMessage<Decision> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 17);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 18);
 
 /**
  * @generated from message openpicket.dataplane.v1.DecisionsUp
@@ -732,7 +762,7 @@ export type DecisionsUp = Message<"openpicket.dataplane.v1.DecisionsUp"> & {
  * Use `create(DecisionsUpSchema)` to create a new message.
  */
 export const DecisionsUpSchema: GenMessage<DecisionsUp> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 18);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 19);
 
 /**
  * @generated from message openpicket.dataplane.v1.DecisionSubscribe
@@ -749,7 +779,7 @@ export type DecisionSubscribe = Message<"openpicket.dataplane.v1.DecisionSubscri
  * Use `create(DecisionSubscribeSchema)` to create a new message.
  */
 export const DecisionSubscribeSchema: GenMessage<DecisionSubscribe> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 19);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 20);
 
 /**
  * @generated from message openpicket.dataplane.v1.DecisionsDown
@@ -778,7 +808,7 @@ export type DecisionsDown = Message<"openpicket.dataplane.v1.DecisionsDown"> & {
  * Use `create(DecisionsDownSchema)` to create a new message.
  */
 export const DecisionsDownSchema: GenMessage<DecisionsDown> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 20);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 21);
 
 /**
  * DecisionSnapshot replaces the whole set.
@@ -802,7 +832,7 @@ export type DecisionSnapshot = Message<"openpicket.dataplane.v1.DecisionSnapshot
  * Use `create(DecisionSnapshotSchema)` to create a new message.
  */
 export const DecisionSnapshotSchema: GenMessage<DecisionSnapshot> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 21);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 22);
 
 /**
  * DecisionDelta applies on top of from_version.
@@ -840,7 +870,7 @@ export type DecisionDelta = Message<"openpicket.dataplane.v1.DecisionDelta"> & {
  * Use `create(DecisionDeltaSchema)` to create a new message.
  */
 export const DecisionDeltaSchema: GenMessage<DecisionDelta> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 22);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 23);
 
 /**
  * @generated from message openpicket.dataplane.v1.DecisionAck
@@ -867,7 +897,7 @@ export type DecisionAck = Message<"openpicket.dataplane.v1.DecisionAck"> & {
  * Use `create(DecisionAckSchema)` to create a new message.
  */
 export const DecisionAckSchema: GenMessage<DecisionAck> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 23);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 24);
 
 /**
  * @generated from message openpicket.dataplane.v1.PortRange
@@ -889,7 +919,7 @@ export type PortRange = Message<"openpicket.dataplane.v1.PortRange"> & {
  * Use `create(PortRangeSchema)` to create a new message.
  */
 export const PortRangeSchema: GenMessage<PortRange> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 24);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 25);
 
 /**
  * NamedSet is a list of CIDRs (countries and ASNs are resolved by the
@@ -914,7 +944,7 @@ export type NamedSet = Message<"openpicket.dataplane.v1.NamedSet"> & {
  * Use `create(NamedSetSchema)` to create a new message.
  */
 export const NamedSetSchema: GenMessage<NamedSet> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 25);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 26);
 
 /**
  * @generated from message openpicket.dataplane.v1.PolicyRule
@@ -936,7 +966,7 @@ export type PolicyRule = Message<"openpicket.dataplane.v1.PolicyRule"> & {
  * Use `create(PolicyRuleSchema)` to create a new message.
  */
 export const PolicyRuleSchema: GenMessage<PolicyRule> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 26);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 27);
 
 /**
  * PortPolicy matches new inbound connections on the WAN to the given
@@ -989,7 +1019,7 @@ export type PortPolicy = Message<"openpicket.dataplane.v1.PortPolicy"> & {
  * Use `create(PortPolicySchema)` to create a new message.
  */
 export const PortPolicySchema: GenMessage<PortPolicy> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 27);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 28);
 
 /**
  * PolicyBundle is data only: the agent renders nftables from a fixed
@@ -1019,7 +1049,7 @@ export type PolicyBundle = Message<"openpicket.dataplane.v1.PolicyBundle"> & {
  * Use `create(PolicyBundleSchema)` to create a new message.
  */
 export const PolicyBundleSchema: GenMessage<PolicyBundle> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 28);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 29);
 
 /**
  * @generated from message openpicket.dataplane.v1.PolicyUp
@@ -1048,7 +1078,7 @@ export type PolicyUp = Message<"openpicket.dataplane.v1.PolicyUp"> & {
  * Use `create(PolicyUpSchema)` to create a new message.
  */
 export const PolicyUpSchema: GenMessage<PolicyUp> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 29);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 30);
 
 /**
  * @generated from message openpicket.dataplane.v1.PolicySubscribe
@@ -1065,7 +1095,7 @@ export type PolicySubscribe = Message<"openpicket.dataplane.v1.PolicySubscribe">
  * Use `create(PolicySubscribeSchema)` to create a new message.
  */
 export const PolicySubscribeSchema: GenMessage<PolicySubscribe> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 30);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 31);
 
 /**
  * @generated from message openpicket.dataplane.v1.PolicyAck
@@ -1087,7 +1117,7 @@ export type PolicyAck = Message<"openpicket.dataplane.v1.PolicyAck"> & {
  * Use `create(PolicyAckSchema)` to create a new message.
  */
 export const PolicyAckSchema: GenMessage<PolicyAck> = /*@__PURE__*/
-  messageDesc(file_openpicket_dataplane_v1_dataplane, 31);
+  messageDesc(file_openpicket_dataplane_v1_dataplane, 32);
 
 /**
  * @generated from enum openpicket.dataplane.v1.RejectReason

@@ -287,6 +287,14 @@ func (a *Agent) watchNets(ctx context.Context) {
 		}
 		if a.refreshNets() {
 			a.log.Info("local networks changed", "home_net", a.localNets.Load().HomeNet, "addresses", a.localNets.Load().InterfaceAddrs)
+			// Blocks on addresses that became local are lifted (and ones
+			// that stopped being local come back) now, not at the next
+			// periodic check.
+			if a.enf != nil {
+				if err := a.enf.Ensure(ctx); err != nil && ctx.Err() == nil {
+					a.log.Warn("re-check bans after a network change", "err", err)
+				}
+			}
 			a.client.PokeStatus()
 		}
 	}
