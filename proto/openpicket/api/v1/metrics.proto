@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package openpicket.api.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1";
+
+// CrowdSec runtime metrics (Prometheus endpoints of the agents and LAPIs),
+// as cscli metrics shows them.
+service MetricsService {
+  rpc GetCrowdSecMetrics(GetCrowdSecMetricsRequest) returns (GetCrowdSecMetricsResponse);
+}
+
+message GetCrowdSecMetricsRequest {
+  // Endpoint name; empty: every endpoint combined.
+  string endpoint = 1;
+}
+
+message MetricsEndpoint {
+  string name = 1;
+  string url = 2;
+  bool ok = 3;
+  string error = 4;
+  // cs_info version label.
+  string version = 5;
+}
+
+message MetricsTable {
+  // acquisition | parsers | scenarios | lapi | lapi_machines |
+  // lapi_bouncers | decisions | alerts | appsec | whitelists |
+  // lapi_latency | parsing_time
+  string name = 1;
+  string title = 2;
+  repeated string columns = 3;
+  repeated MetricsRow rows = 4;
+}
+
+message MetricsRow {
+  repeated string cells = 1;
+}
+
+message GetCrowdSecMetricsResponse {
+  repeated MetricsEndpoint endpoints = 1;
+  repeated MetricsTable tables = 2;
+  google.protobuf.Timestamp scraped_at = 3;
+  // Some endpoints failed: totals are partial.
+  bool partial = 4;
+}

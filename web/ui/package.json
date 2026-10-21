@@ -1,0 +1,51 @@
+{
+  "name": "openpicket-web",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Management web UI of OpenPicket",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run typecheck && vite build && node -e \"require('fs').writeFileSync('../dist/.keep', '')\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "preview": "vite preview",
+    "gen": "bash ../../scripts/gen-proto-ts.sh"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.16.0",
+    "@connectrpc/connect": "2.2.0",
+    "@connectrpc/connect-web": "2.2.0",
+    "@mantine/charts": "8.3.18",
+    "@mantine/core": "8.3.18",
+    "@mantine/dates": "8.3.18",
+    "@mantine/dropzone": "8.3.18",
+    "@mantine/hooks": "8.3.18",
+    "@mantine/modals": "8.3.18",
+    "@mantine/notifications": "8.3.18",
+    "@tabler/icons-react": "3.49.0",
+    "@tanstack/react-query": "5.104.2",
+    "d3-geo": "3.1.1",
+    "dayjs": "1.11.23",
+    "i18n-iso-countries": "7.14.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router": "7.18.4",
+    "recharts": "2.15.4",
+    "topojson-client": "3.1.0",
+    "world-atlas": "2.0.2"
+  },
+  "devDependencies": {
+    "@bufbuild/protoc-gen-es": "2.16.0",
+    "@types/d3-geo": "3.1.0",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/topojson-client": "3.1.5",
+    "@vitejs/plugin-react": "5.2.0",
+    "postcss": "8.5.30",
+    "postcss-preset-mantine": "1.18.0",
+    "postcss-simple-vars": "7.0.1",
+    "typescript": "5.9.3",
+    "vite": "7.3.7"
+  }
+}

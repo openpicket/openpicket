@@ -1,0 +1,57 @@
+# openpicket-agent configuration: the suricontroller agent settings
+# (channel A) plus the "openpicket" section (channel B).
+node_id: edge-01                         # must match the key comment registered in OpenPicket
+key_file: /etc/suri-agent/agent_ed25519  # `openpicket-agent keygen` prints the public key to register
+
+controller:                              # openpicket-suricontroller (Suricata management)
+  url: wss://suricata.openpicket.example.com/agent/v1/connect
+  host_key: "ssh-ed25519 AAAA... suricontroller"   # `openpicket-suricontroller hostkey`
+
+platform:
+  profile: docker                        # docker | openwrt-native | systemd-native
+  host_root: /host
+  firewall: nftables                     # OpenPicket supports nftables only
+
+interfaces:
+  - name: br-lan
+  - name: wan
+    ips: false
+
+ips:
+  enabled: false                         # inline IPS needs NFQUEUE (kmod-nft-queue kmod-nfnetlink-queue)
+
+suricata:
+  base_config: /etc/suricata/suricata.yaml
+  local_rules_dir: /etc/suricata/rules.local
+  instances:
+    ids: { log_dir: /var/log/suricata/ids }
+
+logs:
+  queue_max_bytes: 16MiB
+
+openpicket:
+  # openpicket-manager data plane endpoint and its host key
+  # (Nodes > Connection info in the UI, or `openpicket-manager pubkey`).
+  url: wss://openpicket.example.com/agent/data/v1/connect
+  host_key: "ssh-ed25519 AAAA... openpicket-manager"
+  # headers:                             # e.g. Cloudflare Access service token
+  #   CF-Access-Client-Id: "..."
+  #   CF-Access-Client-Secret: "..."
+  # NFLOG, bans and port policies apply to the WAN only. On OpenWrt it is
+  # the devices of the fw4 zones (followed as they change: second uplink,
+  # PPPoE); elsewhere, or for devices outside the zones, wan_interfaces
+  # (a trailing * matches a prefix, e.g. "wg*").
+  fw4_zones: [wan]
+  # wan_interfaces: [eth0]               # required without fw4
+  local_nets: []                         # inside networks beyond HOME_NET and interface addresses
+  allowlist: [controller]                # never blocked ("controller": both manager hosts)
+  nflog:
+    enabled: true                        # log WAN connections the firewall refuses (scan detection)
+    install_rule: auto                   # auto | fw4 | nftables | none
+    ignore_ports: []                     # never logged; e.g. services open on the WAN without nft_socket
+    without_socket_check: false          # no nft_socket: log anyway (open services too, unless in ignore_ports)
+  enforcer:
+    enabled: true                        # CrowdSec bans in nftables
+    egress_block: true                   # BOTH bans also block outbound
+  policy:
+    enabled: true                        # port policies before DNAT

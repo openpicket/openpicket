@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package openpicket.api.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1";
+
+// Raw logs in Loki (eve, nflog, Suricata and agent logs).
+service LogService {
+  rpc QueryLogs(QueryLogsRequest) returns (QueryLogsResponse);
+  // Follows new lines (polls Loki; the stream ends after 30 minutes).
+  rpc TailLogs(TailLogsRequest) returns (stream TailLogsResponse);
+  rpc LogLabelValues(LogLabelValuesRequest) returns (LogLabelValuesResponse);
+}
+
+message LogFilter {
+  repeated string nodes = 1;
+  // eve | nflog | suricata | agent
+  repeated string types = 2;
+  // eve event types (alert, flow, dns, tls, http...)
+  repeated string event_types = 3;
+  string instance = 4;
+  // Matches src_ip, dest_ip or remote_ip.
+  string ip = 5;
+  // Line contains (case-insensitive).
+  string text = 6;
+  // inbound | outbound | internal
+  string direction = 7;
+  string signature_id = 8;
+  string community_id = 9;
+  string site = 10;
+  // A full LogQL log query; replaces the fields above.
+  string logql = 11;
+}
+
+message LogEntry {
+  google.protobuf.Timestamp time = 1;
+  string line = 2;
+  // Stream labels and structured metadata.
+  map<string, string> labels = 3;
+}
+
+message QueryLogsRequest {
+  LogFilter filter = 1;
+  google.protobuf.Timestamp from = 2;
+  google.protobuf.Timestamp to = 3;
+  int32 limit = 4;
+  bool ascending = 5;
+}
+
+message QueryLogsResponse {
+  repeated LogEntry entries = 1;
+  // The LogQL query that ran.
+  string logql = 2;
+}
+
+message TailLogsRequest {
+  LogFilter filter = 1;
+}
+
+message TailLogsResponse {
+  repeated LogEntry entries = 1;
+}
+
+message LogLabelValuesRequest {
+  // node | type | instance | event_type
+  string label = 1;
+  google.protobuf.Timestamp from = 2;
+}
+
+message LogLabelValuesResponse {
+  repeated string values = 1;
+}

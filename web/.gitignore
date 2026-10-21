@@ -1,0 +1,4 @@
+# Built by `npm run build` in web/ui; only the placeholder is committed.
+/dist/*
+!/dist/.keep
+/ui/node_modules/

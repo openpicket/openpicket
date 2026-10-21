@@ -1,0 +1,5 @@
+**/node_modules
+**/.git
+bin
+web
+internal/suriweb/dist/assets

@@ -1,0 +1,3 @@
+# Built by scripts/build-suricata-web.sh; only the placeholder is committed.
+/dist/*
+!/dist/.keep

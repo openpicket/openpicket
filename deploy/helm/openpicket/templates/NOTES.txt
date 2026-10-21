@@ -1,0 +1,23 @@
+OpenPicket is being deployed.
+
+1. Sign in: {{ .Values.publicURL }}
+{{- if .Values.manager.auth.admin.enabled }}
+   user:     {{ .Values.manager.auth.admin.username }}
+   password: kubectl -n {{ .Release.Namespace }} get secret {{ default (include "openpicket.secret" .) .Values.manager.auth.admin.existingSecret }} -o jsonpath='{.data.{{ ternary .Values.manager.auth.admin.passwordKey "admin-password" (not (empty .Values.manager.auth.admin.existingSecret)) }}}' | base64 -d; echo
+{{- end }}
+{{- if not .Values.ingress.enabled }}
+   (no ingress: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "openpicket.fullname" . }}-manager 8080)
+{{- end }}
+
+2. Agents (agent.yaml, openpicket section):
+   url:      {{ regexReplaceAll "^http" .Values.publicURL "ws" }}/agent/data/v1/connect
+   host_key: kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "openpicket.fullname" . }}-manager -- openpicket-manager pubkey
+{{- if .Values.suricontroller.enabled }}
+   Channel A (controller section):
+   url:      {{ regexReplaceAll "^http" .Values.publicURL "ws" }}/agent/v1/connect
+   host_key: kubectl -n {{ .Release.Namespace }} exec sts/{{ include "openpicket.fullname" . }}-suricontroller -- openpicket-suricontroller hostkey
+{{- end }}
+   The Nodes page shows the same values and registers the agents' keys.
+
+3. Upload MaxMind GeoLite2/GeoIP2 Country and ASN databases on the GeoIP
+   page: country and AS policies and the geo of records need them.

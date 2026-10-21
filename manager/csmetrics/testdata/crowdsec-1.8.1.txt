@@ -1,0 +1,295 @@
+# HELP cs_active_decisions Number of active decisions.
+# TYPE cs_active_decisions gauge
+cs_active_decisions{action="ban",origin="crowdsec",reason="openpicket/dnat-miss-portscan"} 1
+cs_active_decisions{action="ban",origin="crowdsec",reason="openpicket/dnat-miss-sensitive-port"} 1
+# HELP cs_alerts Number of alerts (excluding CAPI).
+# TYPE cs_alerts gauge
+cs_alerts{reason="openpicket/dnat-miss-portscan"} 1
+cs_alerts{reason="openpicket/dnat-miss-sensitive-port"} 1
+# HELP cs_bucket_instantiation_total Total buckets were instantiated.
+# TYPE cs_bucket_instantiation_total counter
+cs_bucket_instantiation_total{name="openpicket/dnat-miss-distributed"} 1
+cs_bucket_instantiation_total{name="openpicket/dnat-miss-portscan"} 1
+cs_bucket_instantiation_total{name="openpicket/dnat-miss-sensitive-port"} 2
+# HELP cs_bucket_overflowed_total Total buckets overflowed.
+# TYPE cs_bucket_overflowed_total counter
+cs_bucket_overflowed_total{name="openpicket/dnat-miss-portscan"} 1
+cs_bucket_overflowed_total{name="openpicket/dnat-miss-sensitive-port"} 1
+# HELP cs_bucket_pour_seconds Time spent pouring an event to buckets.
+# TYPE cs_bucket_pour_seconds histogram
+cs_bucket_pour_seconds_bucket{source="127.0.0.1",type="http",le="0.001"} 10
+cs_bucket_pour_seconds_bucket{source="127.0.0.1",type="http",le="0.002"} 10
+cs_bucket_pour_seconds_bucket{source="127.0.0.1",type="http",le="0.005"} 10
+cs_bucket_pour_seconds_bucket{source="127.0.0.1",type="http",le="0.01"} 10
+cs_bucket_pour_seconds_bucket{source="127.0.0.1",type="http",le="0.015"} 10
+cs_bucket_pour_seconds_bucket{source="127.0.0.1",type="http",le="0.02"} 10
+cs_bucket_pour_seconds_bucket{source="127.0.0.1",type="http",le="0.03"} 10
+cs_bucket_pour_seconds_bucket{source="127.0.0.1",type="http",le="0.04"} 10
+cs_bucket_pour_seconds_bucket{source="127.0.0.1",type="http",le="0.05"} 10
+cs_bucket_pour_seconds_bucket{source="127.0.0.1",type="http",le="+Inf"} 10
+cs_bucket_pour_seconds_sum{source="127.0.0.1",type="http"} 0.0007651059999999999
+cs_bucket_pour_seconds_count{source="127.0.0.1",type="http"} 10
+# HELP cs_bucket_poured_total Total events were poured in bucket.
+# TYPE cs_bucket_poured_total counter
+cs_bucket_poured_total{name="openpicket/dnat-miss-distributed",source="127.0.0.1",type="http"} 1
+cs_bucket_poured_total{name="openpicket/dnat-miss-portscan",source="127.0.0.1",type="http"} 10
+cs_bucket_poured_total{name="openpicket/dnat-miss-sensitive-port",source="127.0.0.1",type="http"} 4
+# HELP cs_buckets Number of buckets that currently exist.
+# TYPE cs_buckets gauge
+cs_buckets{name="openpicket/dnat-miss-distributed"} 1
+cs_buckets{name="openpicket/dnat-miss-portscan"} 0
+cs_buckets{name="openpicket/dnat-miss-sensitive-port"} 1
+# HELP cs_httpsource_hits_total Total lines that were read from http source
+# TYPE cs_httpsource_hits_total counter
+cs_httpsource_hits_total{acquis_type="openpicket",datasource_type="http",path="/openpicket",src="127.0.0.1"} 10
+# HELP cs_info Information about Crowdsec.
+# TYPE cs_info gauge
+cs_info{version="v1.8.1-909b5157"} 0
+# HELP cs_lapi_machine_requests_total Number of calls to each route per method grouped by machines.
+# TYPE cs_lapi_machine_requests_total counter
+cs_lapi_machine_requests_total{machine="localhost",method="GET",route="/v1/alerts"} 2
+cs_lapi_machine_requests_total{machine="localhost",method="POST",route="/v1/alerts"} 1
+# HELP cs_lapi_request_duration_seconds Response time of LAPI
+# TYPE cs_lapi_request_duration_seconds histogram
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.005"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.01"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.025"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.05"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.075"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.1"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.2"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.3"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.4"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.5"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.75"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="1"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="+Inf"} 2
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/alerts",method="GET"} 0.003480979
+cs_lapi_request_duration_seconds_count{endpoint="/v1/alerts",method="GET"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.005"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.01"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.025"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.05"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.075"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.1"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.2"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.3"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.4"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.5"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.75"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="1"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="+Inf"} 1
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/alerts",method="POST"} 0.032378819
+cs_lapi_request_duration_seconds_count{endpoint="/v1/alerts",method="POST"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.005"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.01"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.025"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.05"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.075"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.1"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.2"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.3"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.4"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.5"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.75"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="1"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="+Inf"} 1
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/usage-metrics",method="POST"} 0.027265626
+cs_lapi_request_duration_seconds_count{endpoint="/v1/usage-metrics",method="POST"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.005"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.01"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.025"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.05"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.075"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.1"} 4
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.2"} 4
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.3"} 4
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.4"} 4
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.5"} 4
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.75"} 4
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="1"} 4
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="+Inf"} 4
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/watchers/login",method="POST"} 0.309785914
+cs_lapi_request_duration_seconds_count{endpoint="/v1/watchers/login",method="POST"} 4
+# HELP cs_lapi_route_requests_total Number of calls to each route per method.
+# TYPE cs_lapi_route_requests_total counter
+cs_lapi_route_requests_total{method="GET",route="/v1/alerts"} 2
+cs_lapi_route_requests_total{method="POST",route="/v1/alerts"} 1
+cs_lapi_route_requests_total{method="POST",route="/v1/usage-metrics"} 1
+cs_lapi_route_requests_total{method="POST",route="/v1/watchers/login"} 4
+# HELP cs_node_hits_ok_total Total events successfully exited node.
+# TYPE cs_node_hits_ok_total counter
+cs_node_hits_ok_total{acquis_type="openpicket",name="crowdsecurity/dateparse-enrich",source="127.0.0.1",stage="s02-enrich",type="http"} 10
+cs_node_hits_ok_total{acquis_type="openpicket",name="crowdsecurity/non-syslog",source="127.0.0.1",stage="s00-raw",type="http"} 10
+cs_node_hits_ok_total{acquis_type="openpicket",name="crowdsecurity/whitelists",source="127.0.0.1",stage="s02-enrich",type="http"} 10
+cs_node_hits_ok_total{acquis_type="openpicket",name="openpicket/nflog",source="127.0.0.1",stage="s01-parse",type="http"} 10
+cs_node_hits_ok_total{acquis_type="openpicket",name="openpicket/whitelists",source="127.0.0.1",stage="s02-enrich",type="http"} 10
+# HELP cs_node_hits_total Total events entered node.
+# TYPE cs_node_hits_total counter
+cs_node_hits_total{acquis_type="openpicket",name="crowdsecurity/dateparse-enrich",source="127.0.0.1",stage="s02-enrich",type="http"} 10
+cs_node_hits_total{acquis_type="openpicket",name="crowdsecurity/non-syslog",source="127.0.0.1",stage="s00-raw",type="http"} 10
+cs_node_hits_total{acquis_type="openpicket",name="crowdsecurity/whitelists",source="127.0.0.1",stage="s02-enrich",type="http"} 10
+cs_node_hits_total{acquis_type="openpicket",name="openpicket/nflog",source="127.0.0.1",stage="s01-parse",type="http"} 10
+cs_node_hits_total{acquis_type="openpicket",name="openpicket/whitelists",source="127.0.0.1",stage="s02-enrich",type="http"} 10
+# HELP cs_node_wl_hits_total Total events processed by whitelist node.
+# TYPE cs_node_wl_hits_total counter
+cs_node_wl_hits_total{acquis_type="openpicket",name="crowdsecurity/whitelists",reason="private ipv4/ipv6 ip/ranges",source="127.0.0.1",stage="s02-enrich",type="http"} 10
+cs_node_wl_hits_total{acquis_type="openpicket",name="openpicket/whitelists",reason="OpenPicket: internal or non-routable",source="127.0.0.1",stage="s02-enrich",type="http"} 20
+# HELP cs_papi_invalid_orders_received_total Number of invalid orders received by papi.
+# TYPE cs_papi_invalid_orders_received_total counter
+cs_papi_invalid_orders_received_total 0
+# HELP cs_papi_last_pull_timestamp Unix timestamp of the last successful PAPI pull.
+# TYPE cs_papi_last_pull_timestamp gauge
+cs_papi_last_pull_timestamp 0
+# HELP cs_papi_poll_errors_total Number of errors encountered while polling PAPI.
+# TYPE cs_papi_poll_errors_total counter
+cs_papi_poll_errors_total 0
+# HELP cs_parser_hits_ok_total Total events were successfully parsed.
+# TYPE cs_parser_hits_ok_total counter
+cs_parser_hits_ok_total{acquis_type="openpicket",source="127.0.0.1",type="http"} 10
+# HELP cs_parser_hits_total Total events entered the parser.
+# TYPE cs_parser_hits_total counter
+cs_parser_hits_total{source="127.0.0.1",type="http"} 10
+# HELP cs_parsing_time_seconds Time spent parsing a line
+# TYPE cs_parsing_time_seconds histogram
+cs_parsing_time_seconds_bucket{source="127.0.0.1",type="http",le="0.0005"} 10
+cs_parsing_time_seconds_bucket{source="127.0.0.1",type="http",le="0.001"} 10
+cs_parsing_time_seconds_bucket{source="127.0.0.1",type="http",le="0.0015"} 10
+cs_parsing_time_seconds_bucket{source="127.0.0.1",type="http",le="0.002"} 10
+cs_parsing_time_seconds_bucket{source="127.0.0.1",type="http",le="0.0025"} 10
+cs_parsing_time_seconds_bucket{source="127.0.0.1",type="http",le="0.003"} 10
+cs_parsing_time_seconds_bucket{source="127.0.0.1",type="http",le="0.004"} 10
+cs_parsing_time_seconds_bucket{source="127.0.0.1",type="http",le="0.005"} 10
+cs_parsing_time_seconds_bucket{source="127.0.0.1",type="http",le="0.0075"} 10
+cs_parsing_time_seconds_bucket{source="127.0.0.1",type="http",le="0.01"} 10
+cs_parsing_time_seconds_bucket{source="127.0.0.1",type="http",le="+Inf"} 10
+cs_parsing_time_seconds_sum{source="127.0.0.1",type="http"} 0.0007993570000000001
+cs_parsing_time_seconds_count{source="127.0.0.1",type="http"} 10
+# HELP go_gc_duration_seconds A summary of the wall-time pause (stop-the-world) duration in garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 4.4275e-05
+go_gc_duration_seconds{quantile="0.25"} 5.9255e-05
+go_gc_duration_seconds{quantile="0.5"} 6.5311e-05
+go_gc_duration_seconds{quantile="0.75"} 7.9581e-05
+go_gc_duration_seconds{quantile="1"} 0.000820612
+go_gc_duration_seconds_sum 0.002219157
+go_gc_duration_seconds_count 18
+# HELP go_gc_gogc_percent Heap size target percentage configured by the user, otherwise 100. This value is set by the GOGC environment variable, and the runtime/debug.SetGCPercent function. Sourced from /gc/gogc:percent.
+# TYPE go_gc_gogc_percent gauge
+go_gc_gogc_percent 100
+# HELP go_gc_gomemlimit_bytes Go runtime memory limit configured by the user, otherwise math.MaxInt64. This value is set by the GOMEMLIMIT environment variable, and the runtime/debug.SetMemoryLimit function. Sourced from /gc/gomemlimit:bytes.
+# TYPE go_gc_gomemlimit_bytes gauge
+go_gc_gomemlimit_bytes 9.223372036854776e+18
+# HELP go_goroutines Number of goroutines that currently exist.
+# TYPE go_goroutines gauge
+go_goroutines 37
+# HELP go_info Information about the Go environment.
+# TYPE go_info gauge
+go_info{version="go1.26.8"} 1
+# HELP go_memstats_alloc_bytes Number of bytes allocated in heap and currently in use. Equals to /memory/classes/heap/objects:bytes.
+# TYPE go_memstats_alloc_bytes gauge
+go_memstats_alloc_bytes 8.032552e+06
+# HELP go_memstats_alloc_bytes_total Total number of bytes allocated in heap until now, even if released already. Equals to /gc/heap/allocs:bytes.
+# TYPE go_memstats_alloc_bytes_total counter
+go_memstats_alloc_bytes_total 1.21095664e+08
+# HELP go_memstats_buck_hash_sys_bytes Number of bytes used by the profiling bucket hash table. Equals to /memory/classes/profiling/buckets:bytes.
+# TYPE go_memstats_buck_hash_sys_bytes gauge
+go_memstats_buck_hash_sys_bytes 1.529044e+06
+# HELP go_memstats_frees_total Total number of heap objects frees. Equals to /gc/heap/frees:objects + /gc/heap/tiny/allocs:objects.
+# TYPE go_memstats_frees_total counter
+go_memstats_frees_total 737089
+# HELP go_memstats_gc_sys_bytes Number of bytes used for garbage collection system metadata. Equals to /memory/classes/metadata/other:bytes.
+# TYPE go_memstats_gc_sys_bytes gauge
+go_memstats_gc_sys_bytes 4.445424e+06
+# HELP go_memstats_heap_alloc_bytes Number of heap bytes allocated and currently in use, same as go_memstats_alloc_bytes. Equals to /memory/classes/heap/objects:bytes.
+# TYPE go_memstats_heap_alloc_bytes gauge
+go_memstats_heap_alloc_bytes 8.032552e+06
+# HELP go_memstats_heap_idle_bytes Number of heap bytes waiting to be used. Equals to /memory/classes/heap/released:bytes + /memory/classes/heap/free:bytes.
+# TYPE go_memstats_heap_idle_bytes gauge
+go_memstats_heap_idle_bytes 1.777664e+07
+# HELP go_memstats_heap_inuse_bytes Number of heap bytes that are in use. Equals to /memory/classes/heap/objects:bytes + /memory/classes/heap/unused:bytes
+# TYPE go_memstats_heap_inuse_bytes gauge
+go_memstats_heap_inuse_bytes 1.449984e+07
+# HELP go_memstats_heap_objects Number of currently allocated objects. Equals to /gc/heap/objects:objects.
+# TYPE go_memstats_heap_objects gauge
+go_memstats_heap_objects 53683
+# HELP go_memstats_heap_released_bytes Number of heap bytes released to OS. Equals to /memory/classes/heap/released:bytes.
+# TYPE go_memstats_heap_released_bytes gauge
+go_memstats_heap_released_bytes 1.2525568e+07
+# HELP go_memstats_heap_sys_bytes Number of heap bytes obtained from system. Equals to /memory/classes/heap/objects:bytes + /memory/classes/heap/unused:bytes + /memory/classes/heap/released:bytes + /memory/classes/heap/free:bytes.
+# TYPE go_memstats_heap_sys_bytes gauge
+go_memstats_heap_sys_bytes 3.227648e+07
+# HELP go_memstats_last_gc_time_seconds Number of seconds since 1970 of last garbage collection.
+# TYPE go_memstats_last_gc_time_seconds gauge
+go_memstats_last_gc_time_seconds 1.7924847637845392e+09
+# HELP go_memstats_mallocs_total Total number of heap objects allocated, both live and gc-ed. Semantically a counter version for go_memstats_heap_objects gauge. Equals to /gc/heap/allocs:objects + /gc/heap/tiny/allocs:objects.
+# TYPE go_memstats_mallocs_total counter
+go_memstats_mallocs_total 790772
+# HELP go_memstats_mcache_inuse_bytes Number of bytes in use by mcache structures. Equals to /memory/classes/metadata/mcache/inuse:bytes.
+# TYPE go_memstats_mcache_inuse_bytes gauge
+go_memstats_mcache_inuse_bytes 36736
+# HELP go_memstats_mcache_sys_bytes Number of bytes used for mcache structures obtained from system. Equals to /memory/classes/metadata/mcache/inuse:bytes + /memory/classes/metadata/mcache/free:bytes.
+# TYPE go_memstats_mcache_sys_bytes gauge
+go_memstats_mcache_sys_bytes 48216
+# HELP go_memstats_mspan_inuse_bytes Number of bytes in use by mspan structures. Equals to /memory/classes/metadata/mspan/inuse:bytes.
+# TYPE go_memstats_mspan_inuse_bytes gauge
+go_memstats_mspan_inuse_bytes 351840
+# HELP go_memstats_mspan_sys_bytes Number of bytes used for mspan structures obtained from system. Equals to /memory/classes/metadata/mspan/inuse:bytes + /memory/classes/metadata/mspan/free:bytes.
+# TYPE go_memstats_mspan_sys_bytes gauge
+go_memstats_mspan_sys_bytes 473280
+# HELP go_memstats_next_gc_bytes Number of heap bytes when next garbage collection will take place. Equals to /gc/heap/goal:bytes.
+# TYPE go_memstats_next_gc_bytes gauge
+go_memstats_next_gc_bytes 1.6530594e+07
+# HELP go_memstats_other_sys_bytes Number of bytes used for other system allocations. Equals to /memory/classes/other:bytes.
+# TYPE go_memstats_other_sys_bytes gauge
+go_memstats_other_sys_bytes 3.422764e+06
+# HELP go_memstats_stack_inuse_bytes Number of bytes obtained from system for stack allocator in non-CGO environments. Equals to /memory/classes/heap/stacks:bytes.
+# TYPE go_memstats_stack_inuse_bytes gauge
+go_memstats_stack_inuse_bytes 1.277952e+06
+# HELP go_memstats_stack_sys_bytes Number of bytes obtained from system for stack allocator. Equals to /memory/classes/heap/stacks:bytes + /memory/classes/os-stacks:bytes.
+# TYPE go_memstats_stack_sys_bytes gauge
+go_memstats_stack_sys_bytes 1.277952e+06
+# HELP go_memstats_sys_bytes Number of bytes obtained from system. Equals to /memory/classes/total:byte.
+# TYPE go_memstats_sys_bytes gauge
+go_memstats_sys_bytes 4.347316e+07
+# HELP go_sched_gomaxprocs_threads The current runtime.GOMAXPROCS setting, or the number of operating system threads that can execute user-level Go code simultaneously. Sourced from /sched/gomaxprocs:threads.
+# TYPE go_sched_gomaxprocs_threads gauge
+go_sched_gomaxprocs_threads 16
+# HELP go_threads Number of OS threads created.
+# TYPE go_threads gauge
+go_threads 21
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 2.02
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 524287
+# HELP process_network_receive_bytes_total Number of bytes received by the process over the network.
+# TYPE process_network_receive_bytes_total counter
+process_network_receive_bytes_total 43770
+# HELP process_network_transmit_bytes_total Number of bytes sent by the process over the network.
+# TYPE process_network_transmit_bytes_total counter
+process_network_transmit_bytes_total 42558
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 15
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 9.0013696e+07
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.79248474598e+09
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 1.412497408e+09
+# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+# TYPE process_virtual_memory_max_bytes gauge
+process_virtual_memory_max_bytes 1.8446744073709552e+19
+# HELP promhttp_metric_handler_requests_in_flight Current number of scrapes being served.
+# TYPE promhttp_metric_handler_requests_in_flight gauge
+promhttp_metric_handler_requests_in_flight 1
+# HELP promhttp_metric_handler_requests_total Total number of scrapes by HTTP status code.
+# TYPE promhttp_metric_handler_requests_total counter
+promhttp_metric_handler_requests_total{code="200"} 1
+promhttp_metric_handler_requests_total{code="500"} 0
+promhttp_metric_handler_requests_total{code="503"} 0

@@ -1,0 +1,278 @@
+global:
+  # Registry prefix for every image (air-gapped mirrors), e.g. registry.local:5000.
+  imageRegistry: ""
+  imagePullSecrets: []
+
+# External URL of the UI (links in notifications, agent.yaml snippets).
+publicURL: https://openpicket.example.com
+
+ingress:
+  enabled: false
+  className: ""
+  host: openpicket.example.com
+  annotations: {}
+  # Agents keep long-lived WebSocket connections on /agent/...: raise the
+  # proxy read timeout of your controller, e.g. for ingress-nginx:
+  #   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  #   nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  tls: []
+  #  - secretName: openpicket-tls
+  #    hosts: [openpicket.example.com]
+
+# ---------------------------------------------------------------------------
+# PostgreSQL: openpicket-manager, openpicket-suricontroller and the CrowdSec
+# LAPIs share one server (two databases).
+# ---------------------------------------------------------------------------
+database:
+  openpicketDatabase: openpicket
+  crowdsecDatabase: crowdsec
+  builtin:
+    # A single PostgreSQL instance. For production prefer an HA server
+    # (CloudNativePG, managed service) through database.external.
+    enabled: true
+    image:
+      repository: postgres
+      tag: "16-alpine"
+    persistence:
+      size: 20Gi
+      storageClass: ""
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+  external:
+    host: ""
+    port: 5432
+    user: openpicket
+    sslmode: require
+    # Plain password (stored in the chart secret), or an existing secret.
+    password: ""
+    existingSecret: ""
+    passwordKey: password
+
+# ---------------------------------------------------------------------------
+# openpicket-manager: agents' data plane, log pipeline, decision and policy
+# distribution, UI and API. Every replica is equal.
+# ---------------------------------------------------------------------------
+manager:
+  replicas: 2
+  image:
+    repository: ghcr.io/openpicket/openpicket-manager
+    tag: ""
+    digest: ""
+  # Channel B host key shared by all replicas (PEM). Empty: generated once
+  # and kept in the chart secret. Or an existing secret with key host_key.
+  hostKey: ""
+  existingHostKeySecret: ""
+  auth:
+    # The fixed username/password login (bootstrap and emergencies).
+    admin:
+      enabled: true
+      username: admin
+      # Empty: generated (see the NOTES after install).
+      password: ""
+      existingSecret: ""
+      passwordKey: password
+    # Authentication chain (header, jwt, forward providers and role
+    # mapping), see docs. Example:
+    #   providers:
+    #     - type: header
+    #       user_header: Remote-User
+    #       groups_header: Remote-Groups
+    #       trusted_proxies: [10.0.0.0/8]
+    #   roles:
+    #     admin: {groups: [secops-admins]}
+    #     operator: {groups: [secops]}
+    #     viewer: {groups: [staff]}
+    config: {}
+    # Drop the Secure cookie attribute (plain HTTP only).
+    insecureCookies: false
+  readOnly: false
+  allowedOrigins: []
+  # Behind an ingress the client address comes from X-Forwarded-For.
+  trustProxyHeaders: true
+  alertRetention: 720h
+  # Extra LAPI instances shown in the UI (JSON list, see docs).
+  extraLAPIs: ""
+  logLevel: info
+  extraEnv: []
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { memory: 1Gi }
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ---------------------------------------------------------------------------
+# openpicket-suricontroller: Suricata management (single replica).
+# ---------------------------------------------------------------------------
+suricontroller:
+  enabled: true
+  image:
+    repository: ghcr.io/openpicket/openpicket-suricontroller
+    tag: ""
+    digest: ""
+  # Air-gapped installations cannot fetch the ET Open ruleset.
+  disableETOpen: false
+  persistence:
+    size: 5Gi
+    storageClass: ""
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 1Gi }
+
+# ---------------------------------------------------------------------------
+# CrowdSec: LAPIs (shared PostgreSQL) and agents receiving the manager's
+# records. The image is offline: hub content is installed at build time.
+# ---------------------------------------------------------------------------
+crowdsec:
+  image:
+    repository: ghcr.io/openpicket/openpicket-crowdsec
+    tag: ""
+    digest: ""
+  lapi:
+    replicas: 2
+    # Watchers from these addresses may delete alerts (the manager).
+    trustedIPs: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7]
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 1Gi }
+  agents:
+    replicas: 2
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 2Gi }
+  # Extra bouncers (Traefik, nginx...): name -> key; empty key generates one.
+  bouncers: {}
+
+# ---------------------------------------------------------------------------
+# Loki: raw log archive (eve, NFLOG, Suricata and agent logs).
+# ---------------------------------------------------------------------------
+loki:
+  builtin:
+    # Single-binary Loki with filesystem storage. For large installations
+    # deploy Loki in microservices mode with object storage and set
+    # loki.external.
+    enabled: true
+    image:
+      repository: grafana/loki
+      tag: "3.5.0"
+    retention: 720h
+    persistence:
+      size: 50Gi
+      storageClass: ""
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 2Gi }
+  external:
+    url: ""
+    # Read endpoint when it differs (query frontend).
+    queryURL: ""
+    tenant: openpicket
+    username: ""
+    password: ""
+    existingSecret: ""
+    passwordKey: password
+  # Records older than this are not sent (Loki reject_old_samples_max_age).
+  maxAge: 168h
+
+# ---------------------------------------------------------------------------
+# OpenSearch (optional): every record after the acknowledgement (best
+# effort, deduplicated by record id) and the LAPI alerts, for long-term
+# aggregation. Point it at an existing cluster.
+# ---------------------------------------------------------------------------
+opensearch:
+  enabled: false
+  url: ""
+  username: ""
+  password: ""
+  existingSecret: ""
+  passwordKey: password
+  # Secret with the CA certificate (key ca.crt).
+  caSecret: ""
+  insecureSkipVerify: false
+  retention: 720h
+  replicas: 1
+
+# ---------------------------------------------------------------------------
+# MISP (optional): approval queue of indicators blocked at the edge.
+# ---------------------------------------------------------------------------
+misp:
+  enabled: false
+  # External MISP: set url and the API key (secret). Empty url deploys the
+  # built-in MISP (misp-core, MariaDB, Valkey).
+  external:
+    url: ""
+    apiKey: ""
+    existingSecret: ""
+    apiKeyKey: api-key
+    caSecret: ""
+    insecureSkipVerify: false
+  # Automatic proposals: sources with this many alerts in the window
+  # (0: only proposals from the UI).
+  proposeMinAlerts: 5
+  proposeWindow: 168h
+  defaultTTL: 30d
+  syncInterval: 5m
+  renew: 6h
+  builtin:
+    # Pinned by digest (MISP 2.5.50); override tag/digest to upgrade.
+    image:
+      repository: ghcr.io/misp/misp-docker/misp-core
+      tag: ""
+      digest: "sha256:37e236d9f39ffc61ee08e74ed35180990e533036a1ac106e8218532b79b21df4"
+    nginxImage:
+      repository: ghcr.io/misp/misp-docker/misp-nginx
+      tag: ""
+      digest: "sha256:9c823a0e73f55b5385dd78f5e3c5c34f6791a4b2fcc90213f9585cdb8175c967"
+    # Public URL of the MISP UI (its links and redirects).
+    baseURL: https://misp.example.com
+    adminEmail: admin@admin.test
+    org: OpenPicket
+    ingress:
+      enabled: false
+      host: misp.example.com
+      annotations: {}
+      tls: []
+    persistence:
+      size: 10Gi
+      storageClass: ""
+    resources:
+      requests: { cpu: 200m, memory: 1Gi }
+      limits: { memory: 4Gi }
+    mariadb:
+      image:
+        repository: mariadb
+        tag: "10.11"
+      persistence:
+        size: 10Gi
+        storageClass: ""
+    valkey:
+      image:
+        repository: valkey/valkey
+        tag: "7.2"
+
+# ---------------------------------------------------------------------------
+# Prometheus Operator and Grafana.
+# ---------------------------------------------------------------------------
+monitoring:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    labels: {}
+  prometheusRule:
+    enabled: false
+    labels: {}
+  grafanaDashboards:
+    # ConfigMaps picked up by the Grafana dashboard sidecar.
+    enabled: false
+    labels:
+      grafana_dashboard: "1"
+    annotations: {}
+
+networkPolicy:
+  # Only the manager may reach the CrowdSec datasource and the database.
+  enabled: false
+
+fullnameOverride: ""

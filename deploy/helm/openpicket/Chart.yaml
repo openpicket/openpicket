@@ -1,0 +1,11 @@
+apiVersion: v2
+name: openpicket
+description: >-
+  OpenPicket management side: openpicket-manager (HA), openpicket-suricontroller,
+  CrowdSec LAPI and agents, PostgreSQL and Loki, with Prometheus Operator
+  monitoring. Every image works offline.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords: [crowdsec, suricata, ids, ips, firewall, security]
+home: https://github.com/openpicket/openpicket

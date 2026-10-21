@@ -1,0 +1,291 @@
+{{- if and .Values.misp.enabled (not .Values.misp.external.url) }}
+{{- $full := include "openpicket.fullname" . }}
+{{- $secret := include "openpicket.secret" . }}
+{{- $b := .Values.misp.builtin }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $full }}-misp-taxonomy
+  labels:
+    {{- include "openpicket.componentLabels" (list . "misp") | nindent 4 }}
+data:
+  machinetag.json: |-
+    {{- .Files.Get "files/misp-taxonomy.json" | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}-misp
+  labels:
+    {{- include "openpicket.componentLabels" (list . "misp") | nindent 4 }}
+spec:
+  selector:
+    {{- include "openpicket.selector" (list . "misp") | nindent 4 }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $full }}-misp
+  labels:
+    {{- include "openpicket.componentLabels" (list . "misp") | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ $full }}-misp
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "misp") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openpicket.componentLabels" (list . "misp") | nindent 8 }}
+    spec:
+      {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: misp-core
+          image: {{ include "openpicket.image" (list . $b.image) }}
+          env:
+            - name: BASE_URL
+              value: {{ $b.baseURL | quote }}
+            - name: ADMIN_EMAIL
+              value: {{ $b.adminEmail | quote }}
+            - name: ADMIN_ORG
+              value: {{ $b.org | quote }}
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: {{ $secret }}, key: misp-admin-password }
+            # The API key openpicket-manager uses.
+            - name: ADMIN_KEY
+              valueFrom:
+                secretKeyRef: { name: {{ $secret }}, key: misp-api-key }
+            - name: MYSQL_HOST
+              value: {{ $full }}-misp-db
+            - name: MYSQL_DATABASE
+              value: misp
+            - name: MYSQL_USER
+              value: misp
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: {{ $secret }}, key: misp-db-password }
+            - name: REDIS_HOST
+              value: {{ $full }}-misp-valkey
+            - name: ENABLE_REDIS_EMPTY_PASSWORD
+              value: "true"
+            - name: DISABLE_IPV6
+              value: "true"
+            # Offline by default: no feed fetching, no module host.
+            - name: MISP_MODULES_FQDN
+              value: ""
+            - name: CRON_PULLALL
+              value: "0"
+            - name: CRON_PUSHALL
+              value: "0"
+          # PHP-FPM; the misp-nginx sidecar serves HTTP.
+          ports:
+            - name: fastcgi
+              containerPort: 9002
+          readinessProbe:
+            tcpSocket:
+              port: fastcgi
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 60
+          resources:
+            {{- toYaml $b.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/www/MISP/app/files
+              subPath: files
+            - name: data
+              mountPath: /var/www/MISP/app/Config
+              subPath: config
+            - name: taxonomy
+              mountPath: /var/www/MISP/app/files/taxonomies/openpicket
+              readOnly: true
+        - name: misp-nginx
+          image: {{ include "openpicket.image" (list . $b.nginxImage) }}
+          env:
+            - name: BASE_URL
+              value: {{ $b.baseURL | quote }}
+            - name: FASTCGI_LISTEN
+              value: 127.0.0.1:9002
+            - name: FASTCGI_LISTEN_STATUS
+              value: 127.0.0.1:9003
+            - name: DISABLE_IPV6
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: nginx-conf, mountPath: /etc/nginx/conf.d }
+            - { name: nginx-cache, mountPath: /var/cache/nginx }
+            - { name: nginx-tmp, mountPath: /tmp }
+      volumes:
+        - name: nginx-conf
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-tmp
+          emptyDir: {}
+        - name: taxonomy
+          configMap:
+            name: {{ $full }}-misp-taxonomy
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with $b.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $b.persistence.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}-misp-db
+  labels:
+    {{- include "openpicket.componentLabels" (list . "misp-db") | nindent 4 }}
+spec:
+  selector:
+    {{- include "openpicket.selector" (list . "misp-db") | nindent 4 }}
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: mysql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $full }}-misp-db
+  labels:
+    {{- include "openpicket.componentLabels" (list . "misp-db") | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ $full }}-misp-db
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "misp-db") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openpicket.componentLabels" (list . "misp-db") | nindent 8 }}
+    spec:
+      {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: mariadb
+          image: {{ include "openpicket.image" (list . $b.mariadb.image) }}
+          env:
+            - name: MARIADB_RANDOM_ROOT_PASSWORD
+              value: "yes"
+            - name: MARIADB_DATABASE
+              value: misp
+            - name: MARIADB_USER
+              value: misp
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: {{ $secret }}, key: misp-db-password }
+          ports:
+            - name: mysql
+              containerPort: 3306
+          readinessProbe:
+            exec:
+              command: [healthcheck.sh, --connect, --innodb_initialized]
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with $b.mariadb.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $b.mariadb.persistence.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}-misp-valkey
+  labels:
+    {{- include "openpicket.componentLabels" (list . "misp-valkey") | nindent 4 }}
+spec:
+  selector:
+    {{- include "openpicket.selector" (list . "misp-valkey") | nindent 4 }}
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $full }}-misp-valkey
+  labels:
+    {{- include "openpicket.componentLabels" (list . "misp-valkey") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "misp-valkey") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openpicket.componentLabels" (list . "misp-valkey") | nindent 8 }}
+    spec:
+      {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: valkey
+          image: {{ include "openpicket.image" (list . $b.valkey.image) }}
+          ports:
+            - name: redis
+              containerPort: 6379
+{{- if $b.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $full }}-misp
+  labels:
+    {{- include "openpicket.componentLabels" (list . "misp") | nindent 4 }}
+  {{- with $b.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with $b.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ $b.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $full }}-misp
+                port: { name: http }
+{{- end }}
+{{- end }}

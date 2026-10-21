@@ -1,0 +1,26 @@
+# Alert context (stored with every alert in the LAPI). Installed as
+# console/context.yaml, the file `cscli lapi context add` edits.
+node_id:
+  - evt.Meta.node_id
+node_site:
+  - evt.Meta.node_site
+direction:
+  - evt.Meta.openpicket_direction
+src_ip:
+  - evt.Parsed.src_ip
+dst_ip:
+  - evt.Parsed.dest_ip
+dst_port:
+  - evt.Parsed.dest_port
+local_ip:
+  - evt.Meta.openpicket_local_ip
+alert_signature:
+  - evt.Parsed.suricata_alert_signature
+signature_id:
+  - evt.Meta.suricata_alert_signature_id
+alert_category:
+  - evt.Parsed.suricata_alert_category
+ja4:
+  - evt.Parsed.ja4
+nflog_prefix:
+  - evt.Meta.nflog_prefix

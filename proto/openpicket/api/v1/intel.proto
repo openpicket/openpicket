@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package openpicket.api.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1";
+
+// Threat intelligence: MISP attributes OpenPicket manages and their
+// approval queue. The approval state is stored in MISP.
+service IntelService {
+  rpc GetIntelStatus(GetIntelStatusRequest) returns (GetIntelStatusResponse);
+  rpc ListIOCs(ListIOCsRequest) returns (ListIOCsResponse);
+  // Approve, reject or revoke attributes.
+  rpc SetIOCState(SetIOCStateRequest) returns (SetIOCStateResponse);
+  // Proposes an address to MISP (pending approval).
+  rpc ProposeIOC(ProposeIOCRequest) returns (ProposeIOCResponse);
+}
+
+message GetIntelStatusRequest {}
+message GetIntelStatusResponse {
+  bool configured = 1;
+  string misp_url = 2;
+  google.protobuf.Timestamp last_sync_at = 3;
+  string last_error = 4;
+  // Approved attributes currently enforced.
+  int64 active = 5;
+  int64 proposed = 6;
+  // Automatic proposals: alerts within the window (0: off).
+  int32 propose_min_alerts = 7;
+  string default_ttl = 8;
+}
+
+message IOC {
+  string uuid = 1;
+  string attribute_id = 2;
+  string event_id = 3;
+  string event_info = 4;
+  // ip-src | ip-dst ...
+  string type = 5;
+  string value = 6;
+  bool to_ids = 7;
+  // proposed | approved | rejected | revoked
+  string state = 8;
+  string ttl = 9;
+  string comment = 10;
+  repeated string tags = 11;
+  google.protobuf.Timestamp modified_at = 12;
+  google.protobuf.Timestamp approved_at = 13;
+  // End of the approval (approved_at + ttl).
+  google.protobuf.Timestamp expires_at = 14;
+  // Evidence from the alert copy.
+  int64 alerts = 15;
+  repeated string scenarios = 16;
+  repeated string nodes = 17;
+  google.protobuf.Timestamp last_alert_at = 18;
+  string country = 19;
+  string as_name = 20;
+}
+
+message ListIOCsRequest {
+  // Empty: every state.
+  string state = 1;
+  // Value contains.
+  string value = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+message ListIOCsResponse {
+  repeated IOC iocs = 1;
+  int64 total = 2;
+}
+
+message SetIOCStateRequest {
+  repeated string uuids = 1;
+  // approved | rejected | revoked | proposed
+  string state = 2;
+  // For approved: 7d, 30d, 90d...
+  string ttl = 3;
+}
+message SetIOCStateResponse {}
+
+message ProposeIOCRequest {
+  string value = 1;
+  // ip-src (inbound block) | ip-dst (both ways)
+  string type = 2;
+  string comment = 3;
+}
+message ProposeIOCResponse {
+  IOC ioc = 1;
+}

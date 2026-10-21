@@ -1,0 +1,154 @@
+syntax = "proto3";
+
+package openpicket.api.v1;
+
+import "google/protobuf/timestamp.proto";
+import "suricontroller/agent/v1/agent.proto";
+
+option go_package = "github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1";
+
+// Settings, audit log and saved filters.
+service SystemService {
+  rpc GetLogPolicy(GetLogPolicyRequest) returns (GetLogPolicyResponse);
+  rpc SetLogPolicy(SetLogPolicyRequest) returns (SetLogPolicyResponse);
+  rpc ListAudit(ListAuditRequest) returns (ListAuditResponse);
+  rpc ListSavedFilters(ListSavedFiltersRequest) returns (ListSavedFiltersResponse);
+  rpc SaveFilter(SaveFilterRequest) returns (SaveFilterResponse);
+  rpc DeleteSavedFilter(DeleteSavedFilterRequest) returns (DeleteSavedFilterResponse);
+  // Components and their health (LAPI instances, Loki, CrowdSec agents,
+  // GeoIP, leaders).
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  // Recent searches of the caller (last 5 per page).
+  rpc ListRecentQueries(ListRecentQueriesRequest) returns (ListRecentQueriesResponse);
+  rpc AddRecentQuery(AddRecentQueryRequest) returns (AddRecentQueryResponse);
+  // UI settings: manual decision scenarios and display defaults.
+  rpc GetUISettings(GetUISettingsRequest) returns (GetUISettingsResponse);
+  rpc SetUISettings(SetUISettingsRequest) returns (SetUISettingsResponse);
+  // Rebuilds the alert copy from the LAPIs.
+  rpc ResyncAlerts(ResyncAlertsRequest) returns (ResyncAlertsResponse);
+}
+
+message ListRecentQueriesRequest {
+  string page = 1;
+}
+message ListRecentQueriesResponse {
+  repeated string queries = 1;
+}
+
+message AddRecentQueryRequest {
+  string page = 1;
+  string query = 2;
+}
+message AddRecentQueryResponse {}
+
+message UISettings {
+  // Scenarios offered in the Add Decision form.
+  repeated string manual_scenarios = 1;
+  // Defaults for users without their own preference.
+  string time_zone = 2;
+  // 24h | 12h
+  string clock = 3;
+  // iso | us | eu
+  string date_format = 4;
+  string language = 5;
+}
+
+message GetUISettingsRequest {}
+message GetUISettingsResponse {
+  UISettings settings = 1;
+}
+
+message SetUISettingsRequest {
+  UISettings settings = 1;
+}
+message SetUISettingsResponse {}
+
+message ResyncAlertsRequest {}
+message ResyncAlertsResponse {}
+
+message GetLogPolicyRequest {}
+message GetLogPolicyResponse {
+  suricontroller.agent.v1.LogCollectionPolicy policy = 1;
+  // True when no value was saved (built-in default).
+  bool is_default = 2;
+}
+
+message SetLogPolicyRequest {
+  suricontroller.agent.v1.LogCollectionPolicy policy = 1;
+  // Reset to the default.
+  bool reset = 2;
+}
+message SetLogPolicyResponse {}
+
+message AuditEntry {
+  int64 id = 1;
+  google.protobuf.Timestamp time = 2;
+  // openpicket | suricontroller
+  string source = 3;
+  string principal = 4;
+  string action = 5;
+  string target = 6;
+  string detail = 7;
+}
+
+message ListAuditRequest {
+  int32 limit = 1;
+  // Entries older than this id (paging).
+  int64 before_id = 2;
+  string principal = 3;
+  string action_prefix = 4;
+  string target = 5;
+}
+message ListAuditResponse {
+  repeated AuditEntry entries = 1;
+}
+
+message SavedFilter {
+  string id = 1;
+  // alerts | decisions | logs
+  string page = 2;
+  string name = 3;
+  string query = 4;
+  // Visible to every user (operators and admins can share).
+  bool shared = 5;
+  string owner = 6;
+  google.protobuf.Timestamp created_at = 7;
+  // Extra page state (time range, columns) as JSON.
+  string state_json = 8;
+}
+
+message ListSavedFiltersRequest {
+  string page = 1;
+}
+message ListSavedFiltersResponse {
+  repeated SavedFilter filters = 1;
+}
+
+message SaveFilterRequest {
+  SavedFilter filter = 1;
+}
+message SaveFilterResponse {
+  SavedFilter filter = 1;
+}
+
+message DeleteSavedFilterRequest {
+  string id = 1;
+}
+message DeleteSavedFilterResponse {}
+
+message GetStatusRequest {}
+
+message ComponentStatus {
+  string name = 1;
+  // ok | degraded | down | disabled
+  string state = 2;
+  string detail = 3;
+  google.protobuf.Timestamp checked_at = 4;
+}
+
+message GetStatusResponse {
+  string version = 1;
+  string replica = 2;
+  repeated string replicas = 3;
+  repeated ComponentStatus components = 4;
+}

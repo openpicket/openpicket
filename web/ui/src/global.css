@@ -1,0 +1,41 @@
+html,
+body {
+  margin: 0;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.facet-row .mantine-ActionIcon-root {
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.facet-row:hover .mantine-ActionIcon-root {
+  opacity: 1;
+}
+
+.log-line {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-xs);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+pre.json {
+  margin: 0;
+  font-size: var(--mantine-font-size-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Monospace values in inputs, labels in the UI font. */
+.mono-input input,
+.mono-input textarea {
+  font-family: var(--mantine-font-family-monospace);
+}

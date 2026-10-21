@@ -1,0 +1,44 @@
+# nflog records (WAN-REJECT, POLICY-DROP, BAN-EGRESS) from openpicket-agent
+# (docs/ARCHITECTURE.md §4.5).
+onsuccess: next_stage
+filter: |
+  evt.Parsed.program == "openpicket" && JsonExtract(evt.Parsed.message, "event_type") == "nflog"
+name: openpicket/nflog
+description: "Parse OpenPicket nflog records"
+statics:
+  - meta: service
+    value: openpicket
+  - meta: log_type
+    value: openpicket_nflog
+  - target: evt.StrTime
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.ts")'
+  - meta: nflog_prefix
+    expression: 'JsonExtract(evt.Parsed.message, "prefix")'
+  - meta: source_ip
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket.remote_ip")'
+  - meta: openpicket_direction
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket.direction")'
+  - meta: openpicket_local_ip
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket.local_ip")'
+  - meta: node_id
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.node_id")'
+  - meta: node_site
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.site")'
+  # Geo of the remote party, from the MaxMind databases uploaded to
+  # OpenPicket (the manager resolves it; CrowdSec has no mmdb of its own).
+  - target: evt.Enriched.IsoCode
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.remote_geo.cc")'
+  - target: evt.Enriched.ASNumber
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.remote_geo.asn")'
+  - target: evt.Enriched.ASNOrg
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.remote_geo.as_org")'
+  - meta: dest_port
+    expression: 'JsonExtract(evt.Parsed.message, "dest_port")'
+  - target: evt.Parsed.src_ip
+    expression: 'JsonExtract(evt.Parsed.message, "src_ip")'
+  - target: evt.Parsed.dest_ip
+    expression: 'JsonExtract(evt.Parsed.message, "dest_ip")'
+  - target: evt.Parsed.dest_port
+    expression: 'JsonExtract(evt.Parsed.message, "dest_port")'
+  - target: evt.Parsed.proto
+    expression: 'JsonExtract(evt.Parsed.message, "proto")'
