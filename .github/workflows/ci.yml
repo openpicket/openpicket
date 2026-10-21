@@ -1,0 +1,342 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  # Rebuilds the images of the selected branch/tag, e.g. when Alpine ships a
+  # new Suricata for the agent image.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  go:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.2
+      # Unit and end-to-end tests against a throwaway PostgreSQL (docker).
+      - run: ./scripts/test-pg.sh
+
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/ui/package-lock.json
+      # openpicket-web (embedded in openpicket-manager).
+      - run: npm ci && npm run build
+        working-directory: web/ui
+      # suri-controller-web (embedded in openpicket-suricontroller), built
+      # from the suricontroller module pinned in go.mod.
+      - run: ./scripts/build-suricata-web.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-dist
+          path: |
+            web/dist
+            internal/suriweb/dist
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  helm:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+      - run: make helm-lint
+
+  # Tests against real kernels and services (docker).
+  integration:
+    needs: [go]
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          # nftables, NFLOG and real packets in network namespaces.
+          - test-netns
+          # The offline CrowdSec image: parsers, scenarios, decisions.
+          - test-crowdsec
+          # Watcher, alert copy and bouncer stream against a real LAPI.
+          - test-lapi
+          # OpenSearch sink against a real OpenSearch.
+          - test-opensearch
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      # The test container shares the runner's kernel.
+      - if: matrix.suite == 'test-netns'
+        run: sudo modprobe -a nf_tables nfnetlink_log || true
+      - run: make ${{ matrix.suite }}
+
+  # Builds each binary exactly once per architecture; the images and the
+  # release ship these very files. Pure Go (CGO_ENABLED=0), so every target
+  # cross-compiles on one runner.
+  binaries:
+    needs: [web]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v8
+        with:
+          name: web-dist
+          path: .
+      - name: Build
+        run: |
+          version=$(git describe --tags --always)
+          ldflags="-s -w -X github.com/openpicket/openpicket/pkg/version.Version=$version"
+          out="$RUNNER_TEMP/bin"
+          for platform in linux/amd64 linux/arm64; do
+            IFS=/ read -r os arch <<<"$platform"
+            for cmd in openpicket-manager openpicket-suricontroller openpicket-agent; do
+              CGO_ENABLED=0 GOOS=$os GOARCH=$arch \
+                go build -trimpath -ldflags "$ldflags" -o "$out/${os}_${arch}/$cmd" "./cmd/$cmd"
+            done
+          done
+          {
+            echo "Binaries \`$version\`:"
+            echo '```'
+            (cd "$out" && sha256sum -- */*)
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binaries
+          path: ${{ runner.temp }}/bin
+          if-no-files-found: error
+          retention-days: 1
+
+  # Resolves the Suricata version the agent image ships (it comes from the
+  # Alpine repository, so it can change without a commit).
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      suricata: ${{ steps.suricata.outputs.version }}
+      suricata-tag: ${{ steps.suricata.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Resolve Suricata version
+        id: suricata
+        run: |
+          base=$(sed -nE 's/^FROM (alpine:[^ ]+).*/\1/p' deploy/images/agent/Dockerfile | tail -n1)
+          pkg=$(docker run --rm "$base" sh -c 'apk update -q >/dev/null && apk search -x suricata')
+          version=${pkg#suricata-}
+          if [[ ! $version =~ ^[0-9][^[:space:]]*-r[0-9]+$ ]]; then
+            echo "::error::unexpected apk output from $base: $pkg"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=${version%-r*}" >> "$GITHUB_OUTPUT"
+          echo "Suricata in \`$base\`: \`$version\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # Each platform is built natively on its own runner (amd64 / arm64) and
+  # pushed by digest; images-merge stitches the digests into multi-arch tags.
+  # The Go images take the prebuilt binaries (build context "binary"); the
+  # CrowdSec image installs its hub content at build time.
+  images:
+    needs: [go, web, helm, binaries, resolve]
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [openpicket-manager, openpicket-suricontroller, openpicket-agent, openpicket-crowdsec]
+        platform: [linux/amd64, linux/arm64]
+        include:
+          - { platform: linux/amd64, runner: ubuntu-24.04 }
+          - { platform: linux/arm64, runner: ubuntu-24.04-arm }
+          - { image: openpicket-manager, file: deploy/images/manager/Dockerfile }
+          - { image: openpicket-suricontroller, file: deploy/images/suricontroller/Dockerfile }
+          - { image: openpicket-agent, file: deploy/images/agent/Dockerfile }
+          - { image: openpicket-crowdsec, file: deploy/images/crowdsec/Dockerfile }
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+      PUSH: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        if: matrix.image != 'openpicket-crowdsec'
+        with:
+          name: binaries
+          path: ${{ runner.temp }}/bin
+      - name: Prepare
+        id: prep
+        run: |
+          platform='${{ matrix.platform }}'
+          echo "pair=${platform//\//-}" >> "$GITHUB_OUTPUT"
+          if [[ '${{ matrix.image }}' != openpicket-crowdsec ]]; then
+            chmod +x "$RUNNER_TEMP"/bin/*/*
+            echo "contexts=binary=$RUNNER_TEMP/bin/${platform//\//_}" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ '${{ matrix.image }}' == openpicket-agent ]]; then
+            echo "args=SURICATA_VERSION=${{ needs.resolve.outputs.suricata }}" >> "$GITHUB_OUTPUT"
+          fi
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+      - uses: docker/setup-buildx-action@v4
+      - if: env.PUSH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          platforms: ${{ matrix.platform }}
+          build-contexts: ${{ steps.prep.outputs.contexts }}
+          build-args: ${{ steps.prep.outputs.args }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=${{ env.PUSH }}
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ steps.prep.outputs.pair }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ steps.prep.outputs.pair }}
+      - name: Export digest
+        if: env.PUSH == 'true'
+        run: |
+          mkdir -p "${{ runner.temp }}/digests"
+          digest='${{ steps.build.outputs.digest }}'
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+      - if: env.PUSH == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.image }}-${{ steps.prep.outputs.pair }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  images-merge:
+    if: github.event_name != 'pull_request'
+    needs: [resolve, images]
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [openpicket-manager, openpicket-suricontroller, openpicket-agent, openpicket-crowdsec]
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+      SURICATA_SUFFIX: ${{ matrix.image == 'openpicket-agent' && format('-suricata{0}', needs.resolve.outputs.suricata-tag) || '' }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-${{ matrix.image }}-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: latest=false
+          # The agent also gets immutable "-suricata<version>" variants; the
+          # plain tags follow the most recent build.
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+            type=ref,event=branch,suffix=${{ env.SURICATA_SUFFIX }},enable=${{ env.SURICATA_SUFFIX != '' }}
+            type=semver,pattern={{version}},suffix=${{ env.SURICATA_SUFFIX }},enable=${{ env.SURICATA_SUFFIX != '' }}
+            type=sha,suffix=${{ env.SURICATA_SUFFIX }},enable=${{ env.SURICATA_SUFFIX != '' }}
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          mapfile -t tags < <(jq -r '.tags[] | "-t", .' <<<"$DOCKER_METADATA_OUTPUT_JSON")
+          mapfile -t annotations < <(jq -r '.annotations[] | "--annotation", .' <<<"$DOCKER_METADATA_OUTPUT_JSON")
+          refs=()
+          for d in *; do refs+=("$IMAGE@sha256:$d"); done
+          docker buildx imagetools create "${tags[@]}" "${annotations[@]}" "${refs[@]}"
+      - name: Inspect
+        run: docker buildx imagetools inspect "$IMAGE:${{ steps.meta.outputs.version }}"
+
+  # On a v* tag: the binaries (the same files baked into the images) and the
+  # packaged Helm chart as a GitHub release.
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [go, web, helm, integration, binaries, images-merge]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+      - uses: actions/download-artifact@v8
+        with:
+          name: binaries
+          path: ${{ runner.temp }}/bin
+      - name: Package
+        run: |
+          version=$GITHUB_REF_NAME
+          out="$RUNNER_TEMP/dist"
+          mkdir -p "$out"
+          for dir in "$RUNNER_TEMP"/bin/*/; do
+            platform=$(basename "$dir")
+            for cmd in openpicket-manager openpicket-suricontroller openpicket-agent; do
+              name="${cmd}_${version}_${platform}"
+              mkdir -p "$out/$name"
+              install -m 0755 "$dir/$cmd" "$out/$name/$cmd"
+              cp README.md "$out/$name/"
+              if [[ $cmd == openpicket-agent ]]; then
+                cp deploy/images/agent/agent.yaml.example "$out/$name/"
+              fi
+              tar -C "$out" -czf "$out/$name.tar.gz" "$name"
+              rm -rf "${out:?}/$name"
+            done
+          done
+          helm package deploy/helm/openpicket --version "${version#v}" --app-version "${version#v}" -d "$out"
+          (cd "$out" && sha256sum -- * > SHA256SUMS)
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$GITHUB_REF_NAME
+          # Re-runs replace the assets of the existing release.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$RUNNER_TEMP"/dist/* --clobber
+          else
+            flags=()
+            if [[ $tag == *-* ]]; then flags+=(--prerelease); fi
+            gh release create "$tag" "$RUNNER_TEMP"/dist/* --verify-tag --generate-notes "${flags[@]}"
+          fi
