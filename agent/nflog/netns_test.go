@@ -22,7 +22,7 @@ func TestNetnsReceive(t *testing.T) {
 	rules := `table inet t {
 	chain o {
 		type filter hook output priority 0; policy accept;
-		udp dport 9999 log group 100 prefix "DNAT-MISS: " snaplen 128
+		udp dport 9999 log group 100 prefix "WAN-REJECT: " snaplen 128
 	}
 }`
 	cmd := exec.Command("nft", "-f", "-")
@@ -30,7 +30,7 @@ func TestNetnsReceive(t *testing.T) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("nft: %v %s", err, out)
 	}
-	r, err := openNetlink(GroupDNATMiss, nil)
+	r, err := openNetlink(GroupWANReject, nil)
 	if err != nil {
 		t.Fatalf("open nflog: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestNetnsReceive(t *testing.T) {
 	select {
 	case ev := <-got:
 		kind, _ := SplitPrefix(ev.Prefix)
-		if kind != PrefixDNATMiss || ev.Packet.Proto != "UDP" || ev.Packet.DstPort != 9999 || ev.Packet.Dst.String() != "127.0.0.1" || ev.Group != GroupDNATMiss {
+		if kind != PrefixWANReject || ev.Packet.Proto != "UDP" || ev.Packet.DstPort != 9999 || ev.Packet.Dst.String() != "127.0.0.1" || ev.Group != GroupWANReject {
 			t.Fatalf("event = %+v packet = %+v", ev, ev.Packet)
 		}
 	case <-ctx.Done():

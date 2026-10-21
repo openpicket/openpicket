@@ -41,8 +41,10 @@ openpicket:
   local_nets: []                         # inside networks beyond HOME_NET and interface addresses
   allowlist: [controller]                # never blocked ("controller": both manager hosts)
   nflog:
-    enabled: true                        # DNAT-miss logging (fw4 snippet on OpenWrt)
+    enabled: true                        # log WAN connections the firewall refuses (scan detection)
     install_rule: auto                   # auto | fw4 | nftables | none
+    fw4_zone: wan                        # OpenWrt: the rule goes into this zone's input chain
+    ignore_ports: []                     # never logged; e.g. services open on the WAN without nft_socket
   enforcer:
     enabled: true                        # CrowdSec bans in nftables
     egress_block: true                   # BOTH bans also block outbound

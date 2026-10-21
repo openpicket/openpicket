@@ -1,4 +1,4 @@
-# nflog records (DNAT-MISS, POLICY-DROP, BAN-EGRESS) from openpicket-agent
+# nflog records (WAN-REJECT, POLICY-DROP, BAN-EGRESS) from openpicket-agent
 # (docs/ARCHITECTURE.md §4.5).
 onsuccess: next_stage
 filter: |

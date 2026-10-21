@@ -26,9 +26,9 @@ records="$(mktemp)"
   echo "{\"timestamp\":\"2026-10-20T10:59:02.000000+0900\",\"event_type\":\"alert\",\"src_ip\":\"198.51.100.9\",\"src_port\":443,\"dest_ip\":\"192.168.1.60\",\"dest_port\":51000,\"proto\":\"TCP\",\"direction\":\"to_client\",\"flow\":{\"src_ip\":\"192.168.1.60\",\"dest_ip\":\"198.51.100.9\"},\"alert\":{\"signature_id\":2000002,\"rev\":1,\"signature\":\"ET MALWARE test C2\",\"category\":\"A Network Trojan was detected\",\"severity\":1},\"openpicket\":{\"rid\":\"r2\",\"direction\":\"outbound\",\"direction_confidence\":\"high\",\"remote_ip\":\"198.51.100.9\",\"local_ip\":\"192.168.1.60\"},$(meta edge-01 RU)}"
   # Lateral movement: never a decision.
   echo "{\"timestamp\":\"2026-10-20T10:59:03.000000+0900\",\"event_type\":\"alert\",\"src_ip\":\"192.168.1.70\",\"dest_ip\":\"192.168.1.71\",\"dest_port\":445,\"proto\":\"TCP\",\"alert\":{\"signature_id\":2000003,\"signature\":\"ET EXPLOIT lateral\",\"category\":\"Attempted Administrator Privilege Gain\",\"severity\":1},\"openpicket\":{\"rid\":\"r3\",\"direction\":\"internal\",\"direction_confidence\":\"high\"},$(meta edge-01 '')}"
-  # DNAT-miss port scan: 10 distinct closed ports -> ban 198.51.100.77.
+  # Refused WAN connections: 10 distinct closed ports -> ban 198.51.100.77.
   for p in 21 22 23 25 80 110 135 139 445 3389; do
-    echo "{\"timestamp\":\"2026-10-20T10:59:04.000000+0900\",\"event_type\":\"nflog\",\"prefix\":\"DNAT-MISS\",\"group\":100,\"in_iface\":\"wan\",\"ip_version\":4,\"proto\":\"TCP\",\"src_ip\":\"198.51.100.77\",\"src_port\":40000,\"dest_ip\":\"203.0.113.10\",\"dest_port\":$p,\"tcp_flags\":\"S\",\"ttl\":50,\"pkt_len\":60,\"openpicket\":{\"rid\":\"n$p\",\"direction\":\"inbound\",\"direction_confidence\":\"high\",\"remote_ip\":\"198.51.100.77\",\"local_ip\":\"203.0.113.10\"},$(meta edge-02 US)}"
+    echo "{\"timestamp\":\"2026-10-20T10:59:04.000000+0900\",\"event_type\":\"nflog\",\"prefix\":\"WAN-REJECT\",\"group\":100,\"in_iface\":\"wan\",\"ip_version\":4,\"proto\":\"TCP\",\"src_ip\":\"198.51.100.77\",\"src_port\":40000,\"dest_ip\":\"203.0.113.10\",\"dest_port\":$p,\"tcp_flags\":\"S\",\"ttl\":50,\"pkt_len\":60,\"openpicket\":{\"rid\":\"n$p\",\"direction\":\"inbound\",\"direction_confidence\":\"high\",\"remote_ip\":\"198.51.100.77\",\"local_ip\":\"203.0.113.10\"},$(meta edge-02 US)}"
   done
 } > "$records"
 docker cp "$records" "$name:/tmp/records.ndjson" >/dev/null
@@ -52,12 +52,12 @@ d='[.[]?.decisions[]?]'
 check "inbound attacker banned 4h" "$decisions" "$d | map(select(.value==\"198.51.100.4\")) | .[0].scenario" "openpicket/suricata-inbound-major"
 check "C2 server banned 24h" "$decisions" "$d | map(select(.value==\"198.51.100.9\")) | .[0].duration | test(\"^2[34]h\")" "true"
 check "C2 decision scenario" "$decisions" "$d | map(select(.value==\"198.51.100.9\")) | .[0].scenario" "openpicket/suricata-outbound-c2"
-check "port scanner banned" "$decisions" "$d | map(select(.value==\"198.51.100.77\")) | .[0].scenario" "openpicket/dnat-miss-portscan"
+check "port scanner banned" "$decisions" "$d | map(select(.value==\"198.51.100.77\")) | .[0].scenario" "openpicket/wan-reject-portscan"
 check "no decision on inside hosts" "$decisions" "$d | map(select(.value | startswith(\"192.168.\"))) | length" "0"
 check "compromised host alerted" "$alerts" "map(select(.scenario==\"openpicket/compromised-host\")) | .[0].source.value" "192.168.1.60"
 check "compromised host scope" "$alerts" "map(select(.scenario==\"openpicket/compromised-host\")) | .[0].source.scope" "openpicket_host"
 check "alert context has dst_ip" "$alerts" "map(select(.scenario==\"openpicket/suricata-outbound-c2\")) | .[0].meta | map(select(.key==\"dst_ip\")) | .[0].value" '["192.168.1.60"]'
-check "alert context has node_id" "$alerts" "map(select(.scenario==\"openpicket/dnat-miss-portscan\")) | .[0].meta | map(select(.key==\"node_id\")) | .[0].value" '["edge-02"]'
+check "alert context has node_id" "$alerts" "map(select(.scenario==\"openpicket/wan-reject-portscan\")) | .[0].meta | map(select(.key==\"node_id\")) | .[0].value" '["edge-02"]'
 check "remote geo on alert source" "$alerts" "map(select(.scenario==\"openpicket/suricata-outbound-c2\")) | .[0].source.cn" "RU"
 check "no alert from lateral traffic" "$alerts" "map(select(.source.value==\"192.168.1.70\")) | length" "0"
 if [ "$fail" != 0 ]; then

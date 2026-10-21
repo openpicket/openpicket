@@ -8,7 +8,7 @@ services:
     cap_add: [NET_ADMIN, NET_RAW, SYS_NICE, IPC_LOCK]
     volumes:
       - /:/host:ro                            # host tools (nft, uci, fw4) run via chroot
-      - /usr/share/nftables.d:/host/usr/share/nftables.d  # fw4 DNAT-miss snippet
+      - /usr/share/nftables.d:/host/usr/share/nftables.d  # fw4 WAN-REJECT snippet
       - ./etc:/etc/suri-agent                 # agent.yaml and the agent key
       - ./suricata:/etc/suricata              # suricata.yaml and local rules
       - ./data:/var/lib/suri-agent            # applied state, restored at boot

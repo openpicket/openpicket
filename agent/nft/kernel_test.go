@@ -38,11 +38,15 @@ func nftCheck(t *testing.T, script string) {
 	}
 }
 
-func TestKernelAcceptsDNATMiss(t *testing.T) {
-	d := &DNATMiss{WAN: []string{"eth0", "pppoe-wan"}, Rate: "30/minute", Burst: 10, Group: 100}
-	nftCheck(t, d.Table())
-	// The fw4 snippet goes into fw4's nat dstnat chain.
-	nftCheck(t, "table inet fw4 {\n\tchain dstnat {\n\t\ttype nat hook prerouting priority dstnat; policy accept;\n\t\t"+d.Fw4Snippet()+"\t}\n}\n")
+func TestKernelAcceptsWANReject(t *testing.T) {
+	w := &WANReject{WAN: []string{"eth0", "pppoe-wan"}, Rate: "30/minute", Burst: 10, Group: 100, IgnorePorts: []uint16{22, 51820}}
+	nftCheck(t, w.Table())
+	w.noSocket = true
+	nftCheck(t, w.Table())
+	// The fw4 snippet goes into the zone's input chain (a regular chain
+	// jumped to from the input hook).
+	nftCheck(t, "table inet fw4 {\n\tchain input_wan {\n\t\t"+w.Fw4Snippet()+"\t}\n"+
+		"\tchain input {\n\t\ttype filter hook input priority filter; policy drop;\n\t\tjump input_wan\n\t}\n}\n")
 }
 
 func TestKernelAcceptsBanTable(t *testing.T) {

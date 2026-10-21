@@ -76,7 +76,7 @@ func TestApproveBlockRevoke(t *testing.T) {
 	// (1) A repeated attacker is proposed to MISP.
 	for i := 1; i <= 3; i++ {
 		if _, err := pool.Exec(ctx, `INSERT INTO openpicket.alerts (instance, id, scenario, source_scope, source_value, node_id, created_at)
-			VALUES ('default', $1, 'openpicket/dnat-miss-portscan', 'Ip', '198.51.100.7', 'edge-01', $2)`, i, clk.Now()); err != nil {
+			VALUES ('default', $1, 'openpicket/wan-reject-portscan', 'Ip', '198.51.100.7', 'edge-01', $2)`, i, clk.Now()); err != nil {
 			t.Fatal(err)
 		}
 	}

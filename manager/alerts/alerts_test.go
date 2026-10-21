@@ -63,7 +63,7 @@ func TestSyncAndQuery(t *testing.T) {
 	}
 	// 250 new alerts: more than the first page, the limit grows.
 	for i := range 250 {
-		fake.Add("openpicket/dnat-miss-portscan", fmt.Sprintf("203.0.%d.%d", i/200, i%200), "KR", "edge-02", 0, now)
+		fake.Add("openpicket/wan-reject-portscan", fmt.Sprintf("203.0.%d.%d", i/200, i%200), "KR", "edge-02", 0, now)
 	}
 	if err := syncer.SyncOnce(ctx, fence{pool}, false, false); err != nil {
 		t.Fatal(err)

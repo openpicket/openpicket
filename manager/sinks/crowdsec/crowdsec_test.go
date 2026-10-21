@@ -130,7 +130,7 @@ func TestNflogPrefixFilter(t *testing.T) {
 	a := newLP(t)
 	s, _ := New(Config{Endpoints: []string{a.srv.URL}, AuthValue: "secret"})
 	batch := &pipeline.Batch{NodeID: "r1", Type: "nflog", Node: &registry.Node{ID: "r1"}, Records: []*pipeline.Record{
-		rec(t, `{"event_type":"nflog","prefix":"DNAT-MISS","src_ip":"198.51.100.4"}`),
+		rec(t, `{"event_type":"nflog","prefix":"WAN-REJECT","src_ip":"198.51.100.4"}`),
 		rec(t, `{"event_type":"nflog","prefix":"BAN-EGRESS","src_ip":"192.168.1.5"}`),
 	}}
 	if err := s.Deliver(context.Background(), batch); err != nil {

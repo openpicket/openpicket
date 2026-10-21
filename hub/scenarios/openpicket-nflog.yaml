@@ -1,13 +1,14 @@
-# DNAT-miss scenarios (docs/ARCHITECTURE.md §4.5): new WAN connections no
-# port forward took. Sources of such packets can be spoofed, so UDP never
-# leads to a decision and TCP decisions stay short.
+# WAN-REJECT scenarios (docs/ARCHITECTURE.md §4.5): new WAN connections the
+# node's firewall refused (closed or filtered ports; accepted services and
+# port forwards are not logged). Sources of such packets can be spoofed, so
+# UDP never leads to a decision and TCP decisions stay short.
 
 # One source probing many closed ports of one node.
 type: leaky
-name: openpicket/dnat-miss-portscan
+name: openpicket/wan-reject-portscan
 description: "Port scan of a node (10 distinct closed TCP ports)"
 filter: |
-  evt.Meta.log_type == "openpicket_nflog" && evt.Meta.nflog_prefix == "DNAT-MISS" && evt.Meta.source_ip != "" && evt.Parsed.proto == "TCP"
+  evt.Meta.log_type == "openpicket_nflog" && evt.Meta.nflog_prefix == "WAN-REJECT" && evt.Meta.source_ip != "" && evt.Parsed.proto == "TCP"
 groupby: evt.Meta.source_ip + "/" + evt.Meta.node_id
 distinct: evt.Meta.dest_port
 capacity: 9
@@ -21,14 +22,14 @@ labels:
   classification:
     - attack.T1046
   behavior: "tcp:scan"
-  label: "Port scan (DNAT miss)"
+  label: "Port scan (refused WAN connections)"
 ---
 # The same source seen by several nodes: only a central detector sees this.
 type: leaky
-name: openpicket/dnat-miss-distributed
+name: openpicket/wan-reject-distributed
 description: "Scanning several OpenPicket nodes (3 distinct nodes)"
 filter: |
-  evt.Meta.log_type == "openpicket_nflog" && evt.Meta.nflog_prefix == "DNAT-MISS" && evt.Meta.source_ip != "" && evt.Parsed.proto == "TCP"
+  evt.Meta.log_type == "openpicket_nflog" && evt.Meta.nflog_prefix == "WAN-REJECT" && evt.Meta.source_ip != "" && evt.Parsed.proto == "TCP"
 groupby: evt.Meta.source_ip
 distinct: evt.Meta.node_id
 capacity: 2
@@ -42,14 +43,14 @@ labels:
   classification:
     - attack.T1046
   behavior: "tcp:scan"
-  label: "Distributed scan (DNAT miss)"
+  label: "Distributed scan (refused WAN connections)"
 ---
 # Repeated attempts on remote administration and file sharing ports.
 type: leaky
-name: openpicket/dnat-miss-sensitive-port
+name: openpicket/wan-reject-sensitive-port
 description: "Repeated attempts on sensitive closed ports (3 attempts)"
 filter: |
-  evt.Meta.log_type == "openpicket_nflog" && evt.Meta.nflog_prefix == "DNAT-MISS" && evt.Meta.source_ip != "" && evt.Parsed.proto == "TCP" &&
+  evt.Meta.log_type == "openpicket_nflog" && evt.Meta.nflog_prefix == "WAN-REJECT" && evt.Meta.source_ip != "" && evt.Parsed.proto == "TCP" &&
   evt.Meta.dest_port in ["22", "23", "445", "1433", "3306", "3389", "5432", "5900", "6379"]
 groupby: evt.Meta.source_ip
 capacity: 2
@@ -63,14 +64,14 @@ labels:
   classification:
     - attack.T1110
   behavior: "tcp:scan"
-  label: "Sensitive port probing (DNAT miss)"
+  label: "Sensitive port probing (refused WAN connections)"
 ---
 # UDP: alert only.
 type: leaky
-name: openpicket/dnat-miss-udp-scan
+name: openpicket/wan-reject-udp-scan
 description: "UDP port scan of a node (alert only: UDP sources are spoofable)"
 filter: |
-  evt.Meta.log_type == "openpicket_nflog" && evt.Meta.nflog_prefix == "DNAT-MISS" && evt.Meta.source_ip != "" && evt.Parsed.proto == "UDP"
+  evt.Meta.log_type == "openpicket_nflog" && evt.Meta.nflog_prefix == "WAN-REJECT" && evt.Meta.source_ip != "" && evt.Parsed.proto == "UDP"
 groupby: evt.Meta.source_ip + "/" + evt.Meta.node_id
 distinct: evt.Meta.dest_port
 capacity: 9
@@ -84,4 +85,4 @@ labels:
   classification:
     - attack.T1046
   behavior: "udp:scan"
-  label: "UDP scan (DNAT miss)"
+  label: "UDP scan (refused WAN connections)"

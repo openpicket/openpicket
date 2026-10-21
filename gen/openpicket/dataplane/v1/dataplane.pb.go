@@ -1255,7 +1255,7 @@ func (x *PolicyStatus) GetPackets() map[string]uint64 {
 type NflogStatus struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Enabled bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// Records per prefix (DNAT-MISS, POLICY-DROP, BAN-EGRESS).
+	// Records per prefix (WAN-REJECT, POLICY-DROP, BAN-EGRESS).
 	Records       map[string]uint64 `protobuf:"bytes,2,rep,name=records,proto3" json:"records,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	LastError     string            `protobuf:"bytes,3,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
 	unknownFields protoimpl.UnknownFields

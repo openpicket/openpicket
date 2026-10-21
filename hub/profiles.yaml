@@ -3,7 +3,7 @@
 
 name: openpicket_long_ip_remediation
 filters:
- - Alert.Remediation == true && Alert.GetScope() == "Ip" && Alert.GetScenario() in ["openpicket/dnat-miss-distributed", "openpicket/suricata-outbound-c2", "openpicket/suricata-outbound-c2-udp"]
+ - Alert.Remediation == true && Alert.GetScope() == "Ip" && Alert.GetScenario() in ["openpicket/wan-reject-distributed", "openpicket/suricata-outbound-c2", "openpicket/suricata-outbound-c2-udp"]
 decisions:
  - type: ban
    duration: 24h

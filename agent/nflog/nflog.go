@@ -1,5 +1,5 @@
 // Package nflog receives packets the node's nftables rules log to NFLOG
-// groups (DNAT-MISS, POLICY-DROP, BAN-EGRESS; docs/ARCHITECTURE.md §4.5)
+// groups (WAN-REJECT, POLICY-DROP, BAN-EGRESS; docs/ARCHITECTURE.md §4.5)
 // and turns them into "nflog" records for the data plane.
 package nflog
 
@@ -23,14 +23,14 @@ import (
 
 // Groups used by OpenPicket rules.
 const (
-	GroupDNATMiss   = 100
+	GroupWANReject  = 100
 	GroupPolicyDrop = 101
 	GroupBanEgress  = 102
 )
 
 // Prefixes (the rule prefix without the trailing ": ").
 const (
-	PrefixDNATMiss   = "DNAT-MISS"
+	PrefixWANReject  = "WAN-REJECT"
 	PrefixPolicyDrop = "POLICY-DROP"
 	PrefixBanEgress  = "BAN-EGRESS"
 )
@@ -79,7 +79,7 @@ func SplitPrefix(p string) (kind, detail string) {
 }
 
 // BuildRecord renders an event. The connection initiator is the packet
-// source for every OpenPicket log rule: DNAT misses and policy drops are
+// source for every OpenPicket log rule: refused WAN connections and policy drops are
 // new inbound connections, egress logs are new outbound ones.
 func BuildRecord(ev Event, rid string, nets *direction.Nets) []byte {
 	p := ev.Packet

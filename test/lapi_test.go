@@ -59,7 +59,7 @@ func TestLAPIWatcher(t *testing.T) {
 	var body bytes.Buffer
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000000Z")
 	for i, p := range []int{21, 22, 23, 25, 80, 110, 135, 139, 445, 3389} {
-		fmt.Fprintf(&body, `{"timestamp":%q,"event_type":"nflog","prefix":"DNAT-MISS","group":100,"in_iface":"wan","ip_version":4,"proto":"TCP",`+
+		fmt.Fprintf(&body, `{"timestamp":%q,"event_type":"nflog","prefix":"WAN-REJECT","group":100,"in_iface":"wan","ip_version":4,"proto":"TCP",`+
 			`"src_ip":"198.51.100.77","src_port":40000,"dest_ip":"203.0.113.10","dest_port":%d,"tcp_flags":"S","ttl":50,"pkt_len":60,`+
 			`"openpicket":{"rid":"n%d","direction":"inbound","direction_confidence":"high","remote_ip":"198.51.100.77","local_ip":"203.0.113.10"},`+
 			`"openpicket_meta":{"ts":%q,"node_id":"edge-02","site":"seoul","remote_geo":{"cc":"US","asn":64500,"as_org":"TEST-AS"}}}`+"\n", now, p, i, now)
@@ -82,7 +82,7 @@ func TestLAPIWatcher(t *testing.T) {
 		if err := syncer.SyncOnce(ctx, txFence{pool}, true, i == 0); err != nil {
 			t.Fatal(err)
 		}
-		list, _, err := q.Search(ctx, alerts.Filter{Query: "scenario:dnat-miss-portscan"}, 10, 0, "", false)
+		list, _, err := q.Search(ctx, alerts.Filter{Query: "scenario:wan-reject-portscan"}, 10, 0, "", false)
 		if err != nil {
 			t.Fatal(err)
 		}

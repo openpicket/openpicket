@@ -32,7 +32,7 @@ meta() { echo "\"openpicket_meta\":{\"ts\":\"$now\",\"node_id\":\"$1\",\"site\":
   for src in "203.0.113.77 KR 4766 KORNET" "192.0.2.150 BR 28573 CLARO" "198.51.100.200 DE 24940 HETZNER"; do
     set -- $src
     for p in 21 22 23 25 80 110 135 139 445 3389; do
-      echo "{\"timestamp\":\"$now\",\"event_type\":\"nflog\",\"prefix\":\"DNAT-MISS\",\"group\":100,\"in_iface\":\"wan\",\"ip_version\":4,\"proto\":\"TCP\",\"src_ip\":\"$1\",\"src_port\":40000,\"dest_ip\":\"203.0.113.10\",\"dest_port\":$p,\"tcp_flags\":\"S\",\"ttl\":50,\"pkt_len\":60,\"openpicket\":{\"rid\":\"n$1$p\",\"direction\":\"inbound\",\"direction_confidence\":\"high\",\"remote_ip\":\"$1\",\"local_ip\":\"203.0.113.10\"},$(meta edge-02 busan "$2" "$3" "$4")}"
+      echo "{\"timestamp\":\"$now\",\"event_type\":\"nflog\",\"prefix\":\"WAN-REJECT\",\"group\":100,\"in_iface\":\"wan\",\"ip_version\":4,\"proto\":\"TCP\",\"src_ip\":\"$1\",\"src_port\":40000,\"dest_ip\":\"203.0.113.10\",\"dest_port\":$p,\"tcp_flags\":\"S\",\"ttl\":50,\"pkt_len\":60,\"openpicket\":{\"rid\":\"n$1$p\",\"direction\":\"inbound\",\"direction_confidence\":\"high\",\"remote_ip\":\"$1\",\"local_ip\":\"203.0.113.10\"},$(meta edge-02 busan "$2" "$3" "$4")}"
     done
   done
 } | curl -fsS -o /dev/null -H "X-OpenPicket-Token: dev-token" -H "Content-Type: application/x-ndjson" --data-binary @- "$URL"

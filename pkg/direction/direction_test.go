@@ -26,7 +26,7 @@ func TestJudge(t *testing.T) {
 			Result{Inbound, Low, c2, pc}},
 		{"captured after SNAT on the WAN", Packet{SrcIP: wan, DestIP: c2, FlowSrcIP: wan},
 			Result{Outbound, High, c2, wan}},
-		{"DNAT miss (nflog)", Packet{SrcIP: scanner, DestIP: wan, SrcIsInitiator: true},
+		{"refused WAN connection (nflog)", Packet{SrcIP: scanner, DestIP: wan, SrcIsInitiator: true},
 			Result{Inbound, High, scanner, wan}},
 		{"lateral movement", Packet{SrcIP: pc, DestIP: "192.168.1.7", FlowSrcIP: pc},
 			Result{Internal, High, "", ""}},

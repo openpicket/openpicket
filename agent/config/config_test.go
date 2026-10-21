@@ -37,8 +37,13 @@ func TestParse(t *testing.T) {
 		t.Fatalf("suri = %+v", c.Suri.Platform)
 	}
 	o := c.OpenPicket
-	if len(o.WANInterfaces) != 2 || !o.Nflog.Enabled || o.Nflog.Rate != "30/minute" || o.Logs.InflightMaxBytes != 4<<20 || !o.Enforcer.EgressBlock {
+	if len(o.WANInterfaces) != 2 || !o.Nflog.Enabled || o.Nflog.Rate != "30/minute" || o.Logs.InflightMaxBytes != 4<<20 || !o.Enforcer.EgressBlock ||
+		o.Nflog.Fw4Zone != "wan" {
 		t.Fatalf("openpicket = %+v", o)
+	}
+	c, err = Parse([]byte(sample("", "  nflog: {fw4_zone: wan_pppoe, ignore_ports: [22, 51820]}")))
+	if err != nil || c.OpenPicket.Nflog.Fw4Zone != "wan_pppoe" || len(c.OpenPicket.Nflog.IgnorePorts) != 2 {
+		t.Fatalf("nflog options: %+v %v", c.OpenPicket.Nflog, err)
 	}
 }
 
@@ -64,6 +69,9 @@ func TestValidation(t *testing.T) {
 		"  local_nets: [not-a-net]",
 		"  nflog: {rate: fast}",
 		"  nflog: {install_rule: iptables}",
+		"  nflog: {fw4_zone: \"wan; drop\"}",
+		"  nflog: {ignore_ports: [0]}",
+		"  nflog: {ignore_ports: [70000]}",
 	} {
 		if _, err := Parse([]byte(sample("", extra))); err == nil {
 			t.Errorf("accepted %q", extra)

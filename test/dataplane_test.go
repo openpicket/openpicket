@@ -126,7 +126,7 @@ func startReplica(t *testing.T, pool *pgxpool.Pool, key *sshkey.PrivateKey, loki
 	m, err := manager.New(manager.Options{
 		DB: pool, HostKey: key, ReplicaID: name,
 		Loki:              loki.Config{URL: lokiURL},
-		CrowdSec:          crowdsec.Config{Endpoints: []string{lpURL}, NflogPrefixes: []string{"DNAT-MISS"}},
+		CrowdSec:          crowdsec.Config{Endpoints: []string{lpURL}, NflogPrefixes: []string{"WAN-REJECT"}},
 		PipelineOpenAfter: time.Hour,
 		Logger:            slog.New(slog.DiscardHandler),
 	})
@@ -148,7 +148,7 @@ func (r *replica) stop() {
 
 func nflogRecord(s *dataplane.Shipper, i int) *dataplanev1.Record {
 	rid := s.NextMemoryRID()
-	line := record.AppendTag([]byte(fmt.Sprintf(`{"timestamp":"%s","event_type":"nflog","prefix":"DNAT-MISS","src_ip":"198.51.100.%d","dest_ip":"203.0.113.1","dest_port":3389}`,
+	line := record.AppendTag([]byte(fmt.Sprintf(`{"timestamp":"%s","event_type":"nflog","prefix":"WAN-REJECT","src_ip":"198.51.100.%d","dest_ip":"203.0.113.1","dest_port":3389}`,
 		time.Now().UTC().Format(time.RFC3339Nano), i%250)), record.Tag{RID: rid, Direction: "inbound", RemoteIP: fmt.Sprintf("198.51.100.%d", i%250)})
 	return &dataplanev1.Record{Line: line, Rid: rid, TimeUnixNano: time.Now().UnixNano()}
 }

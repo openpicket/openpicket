@@ -446,7 +446,7 @@ export type NflogStatus = Message<"openpicket.dataplane.v1.NflogStatus"> & {
   enabled: boolean;
 
   /**
-   * Records per prefix (DNAT-MISS, POLICY-DROP, BAN-EGRESS).
+   * Records per prefix (WAN-REJECT, POLICY-DROP, BAN-EGRESS).
    *
    * @generated from field: map<string, uint64> records = 2;
    */

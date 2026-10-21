@@ -77,7 +77,7 @@ func TestApplyBuildsTheEdgeView(t *testing.T) {
 	pool, r, now := setup(t)
 	s := &lapi.Stream{ReceivedAt: *now, New: []*lapi.Decision{
 		dec(1, "ban", "Ip", "198.51.100.4", "openpicket/suricata-inbound-major", "4h"),
-		dec(2, "ban", "Ip", "198.51.100.4", "openpicket/dnat-miss-portscan", "1h"), // same value, shorter
+		dec(2, "ban", "Ip", "198.51.100.4", "openpicket/wan-reject-portscan", "1h"), // same value, shorter
 		dec(3, "ban", "Ip", "198.51.100.9", "openpicket/suricata-outbound-c2", "24h"),
 		dec(4, "captcha", "Ip", "198.51.100.10", "crowdsecurity/http-bf", "4h"),     // L7 only
 		dec(5, "ban", "Range", "203.0.113.77/24", "manual/web-ui", "1h"),            // normalized
@@ -105,7 +105,7 @@ func TestApplyBuildsTheEdgeView(t *testing.T) {
 	*now = now.Add(5 * time.Second)
 	s2 := &lapi.Stream{ReceivedAt: *now, New: []*lapi.Decision{
 		dec(1, "ban", "Ip", "198.51.100.4", "openpicket/suricata-inbound-major", "3h59m56s"),
-		dec(2, "ban", "Ip", "198.51.100.4", "openpicket/dnat-miss-portscan", "59m55s"),
+		dec(2, "ban", "Ip", "198.51.100.4", "openpicket/wan-reject-portscan", "59m55s"),
 		dec(3, "ban", "Ip", "198.51.100.9", "openpicket/suricata-outbound-c2", "23h59m55s"),
 		dec(5, "ban", "Range", "203.0.113.0/24", "manual/web-ui", "59m55s"),
 		dec(7, "ban", "Ip", "198.51.100.20", "openpicket/manual-both", "1h59m55s"),
@@ -126,7 +126,7 @@ func TestApplyBuildsTheEdgeView(t *testing.T) {
 	// A full resync without decision 3 tombstones its value.
 	before := edges(t, pool)["198.51.100.9"].version
 	if n := apply(t, pool, r, &lapi.Stream{ReceivedAt: *now, New: []*lapi.Decision{
-		dec(2, "ban", "Ip", "198.51.100.4", "openpicket/dnat-miss-portscan", "59m55s"),
+		dec(2, "ban", "Ip", "198.51.100.4", "openpicket/wan-reject-portscan", "59m55s"),
 		dec(5, "ban", "Range", "203.0.113.0/24", "manual/web-ui", "59m55s"),
 		dec(7, "ban", "Ip", "198.51.100.20", "openpicket/manual-both", "1h59m55s"),
 	}}, true); n != 1 {

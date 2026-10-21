@@ -54,7 +54,7 @@ func (r *fakeReceiver) Receive(ctx context.Context, fn func(Event)) error {
 func (r *fakeReceiver) Close() error { return nil }
 
 func tcpEvent(prefix, src, dst string, dport int) Event {
-	return Event{Time: time.Date(2026, 10, 20, 1, 59, 1, 0, time.UTC), Group: GroupDNATMiss, Prefix: prefix, InIface: "wan",
+	return Event{Time: time.Date(2026, 10, 20, 1, 59, 1, 0, time.UTC), Group: GroupWANReject, Prefix: prefix, InIface: "wan",
 		Packet: &Packet{IPVersion: 4, Proto: "TCP", Src: netip.MustParseAddr(src), Dst: netip.MustParseAddr(dst), SrcPort: 40000, DstPort: dport, TCPFlags: "S", TTL: 50, Length: 60}}
 }
 
@@ -62,7 +62,7 @@ func run(t *testing.T, cfg Config, events ...Event) []*dataplanev1.Record {
 	t.Helper()
 	out := &fakeOutput{}
 	cfg.Output = out
-	cfg.Groups = []uint16{GroupDNATMiss}
+	cfg.Groups = []uint16{GroupWANReject}
 	cfg.Open = func(uint16) (Receiver, error) { return &fakeReceiver{events: events}, nil }
 	s := New(cfg)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -81,7 +81,7 @@ func run(t *testing.T, cfg Config, events ...Event) []*dataplanev1.Record {
 func TestRecords(t *testing.T) {
 	nets, _ := direction.NewNets([]string{"203.0.113.10", "192.168.1.0/24"})
 	recs := run(t, Config{Nets: func() *direction.Nets { return nets }},
-		tcpEvent("DNAT-MISS: ", "198.51.100.4", "203.0.113.10", 3389),
+		tcpEvent("WAN-REJECT: ", "198.51.100.4", "203.0.113.10", 3389),
 		tcpEvent("BAN-EGRESS: ", "192.168.1.50", "198.51.100.9", 443))
 	if len(recs) != 2 {
 		t.Fatalf("records = %d", len(recs))
@@ -90,7 +90,7 @@ func TestRecords(t *testing.T) {
 	if err := json.Unmarshal(recs[0].Line, &e); err != nil {
 		t.Fatal(err)
 	}
-	if e.EventType != "nflog" || e.Prefix != "DNAT-MISS" || e.DestPort != 3389 || e.OpenPicket.RID != recs[0].Rid ||
+	if e.EventType != "nflog" || e.Prefix != "WAN-REJECT" || e.DestPort != 3389 || e.OpenPicket.RID != recs[0].Rid ||
 		e.OpenPicket.Direction != direction.Inbound || e.OpenPicket.RemoteIP != "198.51.100.4" {
 		t.Fatalf("record = %s", recs[0].Line)
 	}
@@ -106,9 +106,9 @@ func TestRecords(t *testing.T) {
 func TestAggregation(t *testing.T) {
 	var evs []Event
 	for i := 0; i < 5; i++ {
-		evs = append(evs, tcpEvent("DNAT-MISS: ", "198.51.100.4", "203.0.113.10", 22))
+		evs = append(evs, tcpEvent("WAN-REJECT: ", "198.51.100.4", "203.0.113.10", 22))
 	}
-	evs = append(evs, tcpEvent("DNAT-MISS: ", "198.51.100.4", "203.0.113.10", 23))
+	evs = append(evs, tcpEvent("WAN-REJECT: ", "198.51.100.4", "203.0.113.10", 23))
 	recs := run(t, Config{AggregateWindow: 10 * time.Millisecond}, evs...)
 	counts := map[int]int{}
 	for _, r := range recs {

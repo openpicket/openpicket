@@ -62,7 +62,7 @@ type Agent struct {
 	bootID  string
 	host    *nft.Host
 	nflog   *nflog.Source
-	miss    *nft.DNATMiss
+	reject  *nft.WANReject
 	allow   *allowlist
 	enf     *enforcer.Enforcer
 	pol     *policy.Sink
@@ -118,7 +118,7 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 		fw4 = *opts.Fw4
 	}
 	if n := cfg.OpenPicket.Nflog; n.Enabled {
-		groups := []uint16{nflog.GroupDNATMiss}
+		groups := []uint16{nflog.GroupWANReject}
 		if cfg.OpenPicket.Policy.Enabled {
 			groups = append(groups, nflog.GroupPolicyDrop)
 		}
@@ -135,7 +135,8 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 			}
 		}
 		if mode != "none" {
-			a.miss = &nft.DNATMiss{Host: a.host, Mode: mode, WAN: cfg.OpenPicket.WANInterfaces, Rate: n.Rate, Burst: n.Burst, Group: nflog.GroupDNATMiss}
+			a.reject = &nft.WANReject{Host: a.host, Mode: mode, WAN: cfg.OpenPicket.WANInterfaces, Zone: n.Fw4Zone, Rate: n.Rate, Burst: n.Burst,
+				Group: nflog.GroupWANReject, IgnorePorts: n.IgnorePorts}
 		}
 	}
 	a.allow = newAllowlist(cfg.OpenPicket.Allowlist, []string{cfg.Suri.Controller.URL, cfg.OpenPicket.URL}, log)
@@ -234,8 +235,8 @@ func (a *Agent) Run(ctx context.Context) error {
 	if a.nflog != nil {
 		workers = append(workers, a.nflog.Run)
 	}
-	if a.miss != nil {
-		workers = append(workers, a.keepDNATMiss)
+	if a.reject != nil {
+		workers = append(workers, a.keepWANReject)
 	}
 	if a.enf != nil || a.pol != nil {
 		workers = append(workers, a.allow.run)
@@ -257,14 +258,14 @@ func (a *Agent) Run(ctx context.Context) error {
 	return nil
 }
 
-// keepDNATMiss installs the DNAT-miss log rule and puts it back when it
+// keepWANReject installs the WAN-REJECT log rule and puts it back when it
 // disappears (fw4 reload, manual flush).
-func (a *Agent) keepDNATMiss(ctx context.Context) {
+func (a *Agent) keepWANReject(ctx context.Context) {
 	t := time.NewTicker(time.Minute)
 	defer t.Stop()
 	for {
-		if err := a.miss.Ensure(ctx); err != nil && ctx.Err() == nil {
-			a.log.Warn("install DNAT-miss log rule", "mode", a.miss.Mode, "err", err)
+		if err := a.reject.Ensure(ctx); err != nil && ctx.Err() == nil {
+			a.log.Warn("install WAN-REJECT log rule", "mode", a.reject.Mode, "err", err)
 		}
 		select {
 		case <-ctx.Done():

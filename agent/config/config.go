@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -57,9 +58,15 @@ type OpenPicket struct {
 		Enabled bool `yaml:"enabled"`
 		// InstallRule: auto | fw4 | nftables | none (rule managed by the user).
 		InstallRule string `yaml:"install_rule"`
-		// Rate is the nftables limit of the DNAT-miss log rule ("30/minute").
+		// Rate is the nftables limit of the WAN-REJECT log rule ("30/minute").
 		Rate  string `yaml:"rate"`
 		Burst int    `yaml:"burst"`
+		// Fw4Zone is the fw4 zone of the WAN (default "wan"): the rule is
+		// appended to its input chain.
+		Fw4Zone string `yaml:"fw4_zone"`
+		// IgnorePorts are destination ports never logged, e.g. services
+		// open on the WAN when nft_socket is unavailable.
+		IgnorePorts []uint16 `yaml:"ignore_ports"`
 		// AggregateWindow merges (src_ip, dest_port) repeats; 0 disables.
 		AggregateWindow time.Duration `yaml:"aggregate_window"`
 	} `yaml:"nflog"`
@@ -85,6 +92,7 @@ func defaults() OpenPicket {
 	o.Nflog.InstallRule = "auto"
 	o.Nflog.Rate = "30/minute"
 	o.Nflog.Burst = 10
+	o.Nflog.Fw4Zone = "wan"
 	o.Enforcer.Enabled = true
 	o.Enforcer.EgressBlock = true
 	o.Enforcer.MaxElements = 100000
@@ -229,6 +237,12 @@ func (c *Config) validate() error {
 	if o.Nflog.Burst < 1 {
 		errs = append(errs, errors.New("openpicket.nflog.burst must be at least 1"))
 	}
+	if !zoneRe.MatchString(o.Nflog.Fw4Zone) {
+		errs = append(errs, fmt.Errorf("openpicket.nflog.fw4_zone: invalid zone name %q", o.Nflog.Fw4Zone))
+	}
+	if slices.Contains(o.Nflog.IgnorePorts, 0) {
+		errs = append(errs, errors.New("openpicket.nflog.ignore_ports: ports are 1-65535"))
+	}
 	if o.Enforcer.MaxElements < 1 || o.Policy.MaxElements < 1 {
 		errs = append(errs, errors.New("openpicket: max_elements must be positive"))
 	}
@@ -239,6 +253,9 @@ func (c *Config) validate() error {
 }
 
 var rateRe = regexp.MustCompile(`^[0-9]{1,6}/(second|minute|hour|day)$`)
+
+// zoneRe matches fw4 zone names.
+var zoneRe = regexp.MustCompile(`^[A-Za-z0-9_]{1,11}$`)
 
 func validNet(s string) bool {
 	if _, err := netip.ParsePrefix(s); err == nil {

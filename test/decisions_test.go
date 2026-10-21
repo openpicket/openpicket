@@ -108,7 +108,7 @@ func TestDecisionsReachTheEdge(t *testing.T) {
 	fl := &fakeLAPI{}
 	fl.add(1, "198.51.100.4", "manual/web-ui", 4*time.Hour)
 	fl.add(2, "198.51.100.9", "openpicket/suricata-outbound-c2", 24*time.Hour)
-	fl.add(3, "192.168.1.77", "openpicket/dnat-miss-portscan", time.Hour) // inside: refused by the node
+	fl.add(3, "192.168.1.77", "openpicket/wan-reject-portscan", time.Hour) // inside: refused by the node
 	lapiSrv := httptest.NewServer(fl)
 	defer lapiSrv.Close()
 	sink := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }))
@@ -174,7 +174,7 @@ func TestDecisionsReachTheEdge(t *testing.T) {
 	// 192.168.1.77 is inside the node: refused locally.
 	waitUntil("initial decisions", func(s *dataplanev1.EnforcerStatus) bool { return s.BanInV4 == 1 && s.BanBothV4 == 1 && s.Rejected >= 1 })
 
-	fl.add(4, "198.51.100.30", "openpicket/dnat-miss-portscan", time.Hour)
+	fl.add(4, "198.51.100.30", "openpicket/wan-reject-portscan", time.Hour)
 	fl.expire(1)
 	v := enf.Version()
 	waitUntil("delta applied", func(s *dataplanev1.EnforcerStatus) bool { return s.BanInV4 == 1 && s.DecisionsVersion > v })

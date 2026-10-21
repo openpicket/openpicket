@@ -117,7 +117,7 @@ func TestEngine(t *testing.T) {
 		t.Fatalf("history notified: %v", n)
 	}
 	addAlert(t, pool, "crowdsecurity/ssh-bf", "203.0.113.5", "Ip", now, true)
-	addAlert(t, pool, "openpicket/dnat-miss-portscan", "198.51.100.9", "Ip", now, true)
+	addAlert(t, pool, "openpicket/wan-reject-portscan", "198.51.100.9", "Ip", now, true)
 	addAlert(t, pool, "openpicket/compromised-host", "192.168.1.60", "openpicket_host", now, false)
 	if err := e.Evaluate(ctx, fence{pool}); err != nil {
 		t.Fatal(err)

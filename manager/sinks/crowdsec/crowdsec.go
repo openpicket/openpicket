@@ -49,7 +49,7 @@ type Config struct {
 	AuthValue  string
 	// EveTypes are the eve event types sent (default alert, anomaly).
 	EveTypes []string
-	// NflogPrefixes are the nflog prefixes sent (default DNAT-MISS).
+	// NflogPrefixes are the nflog prefixes sent (default WAN-REJECT).
 	NflogPrefixes []string
 	// DownFor is how long a failed endpoint is skipped (default 30s).
 	DownFor    time.Duration
@@ -90,7 +90,7 @@ func New(cfg Config) (*Sink, error) {
 		cfg.EveTypes = []string{"alert", "anomaly"}
 	}
 	if len(cfg.NflogPrefixes) == 0 {
-		cfg.NflogPrefixes = []string{"DNAT-MISS"}
+		cfg.NflogPrefixes = []string{"WAN-REJECT"}
 	}
 	if cfg.DownFor <= 0 {
 		cfg.DownFor = 30 * time.Second

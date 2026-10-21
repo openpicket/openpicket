@@ -146,7 +146,7 @@ message PolicyStatus {
 
 message NflogStatus {
   bool enabled = 1;
-  // Records per prefix (DNAT-MISS, POLICY-DROP, BAN-EGRESS).
+  // Records per prefix (WAN-REJECT, POLICY-DROP, BAN-EGRESS).
   map<string, uint64> records = 2;
   string last_error = 3;
 }
