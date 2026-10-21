@@ -28,6 +28,14 @@ func (h *Host) Apply(ctx context.Context, script string) error {
 	return nil
 }
 
+// Check validates an nft script without applying it (nft -c).
+func (h *Host) Check(ctx context.Context, script string) error {
+	if _, err := h.Exec.Run(ctx, "nft", []string{"-c", "-f", "-"}, []byte(script)); err != nil {
+		return fmt.Errorf("nft: %w", err)
+	}
+	return nil
+}
+
 // Output runs nft with arguments and returns its output.
 func (h *Host) Output(ctx context.Context, args ...string) ([]byte, error) {
 	return h.Exec.Run(ctx, "nft", args, nil)

@@ -255,6 +255,11 @@ function StatusPanel(props: { node: Node }) {
         </Section>
         <Section title={t("NFLOG")} right={<Badge color={st.nflog?.enabled ? "teal" : "gray"}>{st.nflog?.enabled ? t("enabled") : t("disabled")}</Badge>}>
           <CountersTable counters={st.nflog?.records} keyLabel={t("Prefix")} />
+          {st.nflog?.ruleError && (
+            <Alert color="orange" mt="xs" title={t("WAN-REJECT rule")}>
+              {st.nflog.ruleError}
+            </Alert>
+          )}
           {st.nflog?.lastError && (
             <Alert color="red" mt="xs" title={t("Last error")}>
               {st.nflog.lastError}

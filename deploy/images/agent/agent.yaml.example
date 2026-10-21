@@ -49,6 +49,7 @@ openpicket:
     enabled: true                        # log WAN connections the firewall refuses (scan detection)
     install_rule: auto                   # auto | fw4 | nftables | none
     ignore_ports: []                     # never logged; e.g. services open on the WAN without nft_socket
+    without_socket_check: false          # no nft_socket: log anyway (open services too, unless in ignore_ports)
   enforcer:
     enabled: true                        # CrowdSec bans in nftables
     egress_block: true                   # BOTH bans also block outbound

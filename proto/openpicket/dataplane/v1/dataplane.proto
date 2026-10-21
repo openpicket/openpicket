@@ -157,6 +157,9 @@ message NflogStatus {
   // Records per prefix (WAN-REJECT, POLICY-DROP, BAN-EGRESS).
   map<string, uint64> records = 2;
   string last_error = 3;
+  // Why the WAN-REJECT rule is not installed (or not in every zone): no
+  // nft_socket, a zone accepting all input, an unknown zone.
+  string rule_error = 4;
 }
 
 message Status {

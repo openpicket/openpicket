@@ -2,6 +2,7 @@ package nft
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -19,6 +20,17 @@ func run(t *testing.T, args ...string) {
 	if out, err := exec.Command(args[0], args[1:]...).CombinedOutput(); err != nil {
 		t.Fatalf("%s: %v\n%s", strings.Join(args, " "), err, out)
 	}
+}
+
+// noSocketExec refuses scripts using nft_socket, like a kernel without
+// the module.
+type noSocketExec struct{ platform.Exec }
+
+func (n noSocketExec) Run(ctx context.Context, name string, args []string, stdin []byte) ([]byte, error) {
+	if strings.Contains(string(stdin), "socket transparent") {
+		return nil, errors.New("Error: Could not process rule: No such file or directory")
+	}
+	return n.Exec.Run(ctx, name, args, stdin)
 }
 
 // probe connects from the "inet" namespace with source src to the router.
@@ -105,6 +117,42 @@ func TestNetnsWANReject(t *testing.T) {
 		}
 		if n := logged(t, "inet", NflogTable); n != before+1 {
 			t.Fatalf("closed port: counter %d -> %d", before, n)
+		}
+		if err := w.Remove(ctx); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	// A kernel without nft_socket (the module is refused): by default no
+	// rule, so a working SSH connection is never reported as a probe; with
+	// without_socket_check it is logged unless its port is ignored.
+	t.Run("nftables without nft_socket", func(t *testing.T) {
+		noSock := &Host{Exec: noSocketExec{platform.LocalExec{}}}
+		w := &WANReject{Host: noSock, Mode: "nftables", WAN: NewWAN("wan"), Rate: "100/second", Burst: 100, Group: 100}
+		if err := w.Ensure(ctx); !errors.Is(err, ErrNoSocket) {
+			t.Fatalf("ensure: %v", err)
+		}
+		if exec.Command("nft", "list", "table", "inet", NflogTable).Run() == nil {
+			t.Fatal("a rule without the listener check was installed")
+		}
+		if !probe(other, 2222) {
+			t.Fatal("open service unreachable")
+		}
+		w.WithoutSocketCheck = true
+		if err := w.Ensure(ctx); err != nil {
+			t.Fatal(err)
+		}
+		before := logged(t, "inet", NflogTable)
+		if !probe(other, 2222) || logged(t, "inet", NflogTable) != before+1 {
+			t.Fatal("opted in: a connection to an open service is expected to be logged")
+		}
+		w.IgnorePorts = []uint16{2222}
+		if err := w.Ensure(ctx); err != nil {
+			t.Fatal(err)
+		}
+		before = logged(t, "inet", NflogTable)
+		if !probe(other, 2222) || logged(t, "inet", NflogTable) != before {
+			t.Fatal("an ignored port was logged")
 		}
 		if err := w.Remove(ctx); err != nil {
 			t.Fatal(err)

@@ -1318,8 +1318,11 @@ type NflogStatus struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Enabled bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	// Records per prefix (WAN-REJECT, POLICY-DROP, BAN-EGRESS).
-	Records       map[string]uint64 `protobuf:"bytes,2,rep,name=records,proto3" json:"records,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
-	LastError     string            `protobuf:"bytes,3,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	Records   map[string]uint64 `protobuf:"bytes,2,rep,name=records,proto3" json:"records,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	LastError string            `protobuf:"bytes,3,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	// Why the WAN-REJECT rule is not installed (or not in every zone): no
+	// nft_socket, a zone accepting all input, an unknown zone.
+	RuleError     string `protobuf:"bytes,4,opt,name=rule_error,json=ruleError,proto3" json:"rule_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1371,6 +1374,13 @@ func (x *NflogStatus) GetRecords() map[string]uint64 {
 func (x *NflogStatus) GetLastError() string {
 	if x != nil {
 		return x.LastError
+	}
+	return ""
+}
+
+func (x *NflogStatus) GetRuleError() string {
+	if x != nil {
+		return x.RuleError
 	}
 	return ""
 }
@@ -2797,12 +2807,14 @@ const file_openpicket_dataplane_v1_dataplane_proto_rawDesc = "" +
 	"\apackets\x18\x04 \x03(\v22.openpicket.dataplane.v1.PolicyStatus.PacketsEntryR\apackets\x1a:\n" +
 	"\fPacketsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xcf\x01\n" +
+	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xee\x01\n" +
 	"\vNflogStatus\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12K\n" +
 	"\arecords\x18\x02 \x03(\v21.openpicket.dataplane.v1.NflogStatus.RecordsEntryR\arecords\x12\x1d\n" +
 	"\n" +
-	"last_error\x18\x03 \x01(\tR\tlastError\x1a:\n" +
+	"last_error\x18\x03 \x01(\tR\tlastError\x12\x1d\n" +
+	"\n" +
+	"rule_error\x18\x04 \x01(\tR\truleError\x1a:\n" +
 	"\fRecordsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xce\x03\n" +

@@ -19,6 +19,8 @@ type fakeExec struct {
 	calls   []string
 	scripts []string
 	listing map[string]string // args joined -> output; missing = error
+	// noSocket: a kernel without nft_socket rejects socket expressions.
+	noSocket bool
 }
 
 func (f *fakeExec) Run(_ context.Context, name string, args []string, stdin []byte) ([]byte, error) {
@@ -26,6 +28,9 @@ func (f *fakeExec) Run(_ context.Context, name string, args []string, stdin []by
 	defer f.mu.Unlock()
 	cmd := name + " " + strings.Join(args, " ")
 	f.calls = append(f.calls, cmd)
+	if f.noSocket && strings.Contains(string(stdin), "socket transparent") {
+		return nil, errors.New("Error: Could not process rule: No such file or directory")
+	}
 	if len(stdin) > 0 {
 		f.scripts = append(f.scripts, string(stdin))
 	}
@@ -160,6 +165,45 @@ func TestWANRejectFw4Zones(t *testing.T) {
 	if ex.count("fw4 reload") != 2 {
 		t.Fatalf("reloads %d", ex.count("fw4 reload"))
 	}
+}
+
+// TestWANRejectNoSocket: without nft_socket the rule cannot tell open
+// services from closed ports, so it is left out unless the operator opts
+// in; the reason is kept for the status report.
+func TestWANRejectNoSocket(t *testing.T) {
+	ctx := context.Background()
+	ex := &fakeExec{listing: map[string]string{}, noSocket: true}
+	w := &WANReject{Host: &Host{Exec: ex}, Mode: "nftables", WAN: NewWAN("eth0"), Rate: "30/minute", Burst: 10, Group: 100}
+	if err := w.Ensure(ctx); !errors.Is(err, ErrNoSocket) || !strings.Contains(w.Err(), "without_socket_check") {
+		t.Fatalf("default: %v", err)
+	}
+	if last := ex.scripts[len(ex.scripts)-1]; !strings.Contains(last, "delete table inet openpicket_nflog") || strings.Contains(last, "log group") {
+		t.Fatalf("rule left in place:\n%s", last)
+	}
+	ex.scripts = nil
+	w.WithoutSocketCheck = true
+	if err := w.Ensure(ctx); err != nil || w.Err() != "" {
+		t.Fatalf("opted in: %v", err)
+	}
+	if len(ex.scripts) != 2 || !strings.Contains(ex.scripts[1], "log group 100") || strings.Contains(ex.scripts[1], "socket") {
+		t.Fatalf("opted in: %q", ex.scripts)
+	}
+	// A failure unrelated to nft_socket is reported as is.
+	ex = &fakeExec{listing: map[string]string{}}
+	w = &WANReject{Host: &Host{Exec: &failingExec{ex}}, Mode: "nftables", WAN: NewWAN("eth0"), Rate: "30/minute", Burst: 10, Group: 100}
+	if err := w.Ensure(ctx); err == nil || errors.Is(err, ErrNoSocket) || !strings.Contains(err.Error(), "netlink") {
+		t.Fatalf("other failure: %v", err)
+	}
+}
+
+// failingExec fails every script.
+type failingExec struct{ *fakeExec }
+
+func (f *failingExec) Run(ctx context.Context, name string, args []string, stdin []byte) ([]byte, error) {
+	if len(stdin) > 0 {
+		return nil, errors.New("netlink: Error: Could not process rule: Operation not permitted")
+	}
+	return f.fakeExec.Run(ctx, name, args, stdin)
 }
 
 func TestParseFw4Zones(t *testing.T) {

@@ -70,6 +70,11 @@ type OpenPicket struct {
 		// IgnorePorts are destination ports never logged, e.g. services
 		// open on the WAN when nft_socket is unavailable.
 		IgnorePorts []uint16 `yaml:"ignore_ports"`
+		// WithoutSocketCheck keeps WAN-REJECT logging (nftables mode) on a
+		// kernel without nft_socket: connections to services open on the
+		// WAN are logged too unless listed in IgnorePorts. Off by default:
+		// the rule is then left out.
+		WithoutSocketCheck bool `yaml:"without_socket_check"`
 		// AggregateWindow merges (src_ip, dest_port) repeats; 0 disables.
 		AggregateWindow time.Duration `yaml:"aggregate_window"`
 	} `yaml:"nflog"`

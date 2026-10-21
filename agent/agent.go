@@ -151,7 +151,7 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 		}
 		if mode != "none" {
 			a.reject = &nft.WANReject{Host: a.host, Mode: mode, WAN: a.wan, Zones: cfg.OpenPicket.Fw4Zones, Rate: n.Rate, Burst: n.Burst,
-				Group: nflog.GroupWANReject, IgnorePorts: n.IgnorePorts}
+				Group: nflog.GroupWANReject, IgnorePorts: n.IgnorePorts, WithoutSocketCheck: n.WithoutSocketCheck}
 		}
 	}
 	a.allow = newAllowlist(cfg.OpenPicket.Allowlist, []string{cfg.Suri.Controller.URL, cfg.OpenPicket.URL}, log)
@@ -358,6 +358,9 @@ func (a *Agent) status(ctx context.Context) *dataplanev1.Status {
 	}
 	if a.nflog != nil {
 		st.Nflog = a.nflog.Status()
+		if a.reject != nil {
+			st.Nflog.RuleError = a.reject.Err()
+		}
 	}
 	if a.enf != nil {
 		st.Enforcer = a.enf.Status()

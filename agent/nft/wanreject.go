@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 )
 
 // WANRejectPrefix is the NFLOG prefix of the rule (without ": ").
@@ -51,10 +52,22 @@ type WANReject struct {
 	Group int
 	// IgnorePorts are destination ports never logged (TCP and UDP).
 	IgnorePorts []uint16
+	// WithoutSocketCheck allows the nftables rule without its listener
+	// check when the kernel lacks nft_socket. Connections to services open
+	// on the WAN are then logged unless their ports are in IgnorePorts, and
+	// the scenarios would ban their users; the rule is left out otherwise.
+	WithoutSocketCheck bool
 
 	// noSocket is set when the kernel lacks nft_socket (nftables mode).
 	noSocket bool
+
+	mu      sync.Mutex
+	lastErr string
 }
+
+// ErrNoSocket: the kernel lacks nft_socket and WithoutSocketCheck is off.
+var ErrNoSocket = errors.New("nft_socket unavailable: WAN-REJECT logging is off, since it would also log connections to services open on the WAN " +
+	"(load the nft_socket module, or set openpicket.nflog.without_socket_check and list those services in ignore_ports)")
 
 // rule is the log rule; match goes before the protocol check.
 func (w *WANReject) rule(match string) string {
@@ -109,28 +122,58 @@ func (w *WANReject) Table() string {
 	return replaceTable("inet", NflogTable, b.String())
 }
 
-// Ensure installs the rule if it is missing or outdated.
+// Ensure installs the rule if it is missing or outdated. Its error is
+// also kept for the status report (Err).
 func (w *WANReject) Ensure(ctx context.Context) error {
+	var err error
 	switch w.Mode {
 	case "fw4":
-		return w.ensureFw4(ctx)
+		err = w.ensureFw4(ctx)
 	case "nftables":
-		out, err := w.Host.Output(ctx, "list", "table", "inet", NflogTable)
-		if err == nil && strings.Contains(string(out), w.tag()) {
-			return nil
-		}
-		err = w.Host.Apply(ctx, w.Table())
-		if err != nil && !w.noSocket {
-			// Kernels without nft_socket: log without the listener check.
-			w.noSocket = true
-			if err2 := w.Host.Apply(ctx, w.Table()); err2 == nil {
-				return fmt.Errorf("nft_socket unavailable (%v): connections to services open on the WAN are logged too; list them in openpicket.nflog.ignore_ports", err)
-			}
-			w.noSocket = false
-		}
+		err = w.ensureTable(ctx)
+	default:
+		err = fmt.Errorf("nflog rule: unknown mode %q", w.Mode)
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.lastErr = ""
+	if err != nil {
+		w.lastErr = err.Error()
+	}
+	return err
+}
+
+// Err is why the rule is not installed (or not everywhere), "" when it is.
+func (w *WANReject) Err() string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.lastErr
+}
+
+func (w *WANReject) ensureTable(ctx context.Context) error {
+	out, err := w.Host.Output(ctx, "list", "table", "inet", NflogTable)
+	if err == nil && strings.Contains(string(out), w.tag()) {
+		return nil
+	}
+	w.noSocket = false
+	err = w.Host.Apply(ctx, w.Table())
+	if err == nil {
+		return nil
+	}
+	// Is nft_socket the problem? The rule without it must then be valid.
+	w.noSocket = true
+	if w.Host.Check(ctx, w.Table()) != nil {
+		w.noSocket = false
 		return err
 	}
-	return fmt.Errorf("nflog rule: unknown mode %q", w.Mode)
+	if !w.WithoutSocketCheck {
+		w.noSocket = false
+		if rerr := w.Host.Apply(ctx, deleteTable("inet", NflogTable)); rerr != nil {
+			return errors.Join(ErrNoSocket, rerr)
+		}
+		return ErrNoSocket
+	}
+	return w.Host.Apply(ctx, w.Table())
 }
 
 func (w *WANReject) ensureFw4(ctx context.Context) error {

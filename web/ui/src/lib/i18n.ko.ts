@@ -598,6 +598,7 @@ export const ko: Record<string, string> = {
   "Version": "버전",
   "Visible to every user (operators and admins can share)": "모든 사용자에게 보임",
   "WAN interfaces": "WAN 인터페이스",
+  "WAN-REJECT rule": "WAN-REJECT 규칙",
   "Waiting for new lines…": "새 로그를 기다리는 중…",
   "Warnings": "경고",
   "Webhook": "웹훅",
