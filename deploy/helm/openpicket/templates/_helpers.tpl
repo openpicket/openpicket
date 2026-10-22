@@ -52,6 +52,17 @@ imagePullSecrets:
 {{- end }}
 {{- end -}}
 
+{{/*
+storageClassName of a PVC: the component's storageClass, else
+global.defaultStorageClass, else empty (cluster default). "-" gives ""
+(no dynamic provisioning).
+include "openpicket.storageClass" (list . .Values.loki.builtin.persistence)
+*/}}
+{{- define "openpicket.storageClass" -}}
+{{- $class := (index . 1).storageClass | default (index . 0).Values.global.defaultStorageClass -}}
+{{- if eq $class "-" -}}""{{- else -}}{{ $class }}{{- end -}}
+{{- end -}}
+
 {{/* Name of the generated secret. */}}
 {{- define "openpicket.secret" -}}{{ include "openpicket.fullname" . }}-secrets{{- end -}}
 

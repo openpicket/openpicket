@@ -107,7 +107,7 @@ spec:
         name: data
       spec:
         accessModes: [ReadWriteOnce]
-        {{- with .Values.loki.builtin.persistence.storageClass }}
+        {{- with include "openpicket.storageClass" (list $ .Values.loki.builtin.persistence) }}
         storageClassName: {{ . }}
         {{- end }}
         resources:

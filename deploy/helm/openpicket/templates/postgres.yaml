@@ -88,7 +88,7 @@ spec:
         name: data
       spec:
         accessModes: [ReadWriteOnce]
-        {{- with .Values.database.builtin.persistence.storageClass }}
+        {{- with include "openpicket.storageClass" (list $ .Values.database.builtin.persistence) }}
         storageClassName: {{ . }}
         {{- end }}
         resources:

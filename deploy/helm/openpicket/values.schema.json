@@ -14,6 +14,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "defaultStorageClass": {
+          "type": "string"
         }
       },
       "additionalProperties": false

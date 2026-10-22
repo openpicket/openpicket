@@ -104,7 +104,7 @@ spec:
         name: data
       spec:
         accessModes: [ReadWriteOnce]
-        {{- with $s.persistence.storageClass }}
+        {{- with include "openpicket.storageClass" (list $ $s.persistence) }}
         storageClassName: {{ . }}
         {{- end }}
         resources:

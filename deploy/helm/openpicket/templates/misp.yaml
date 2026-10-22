@@ -146,7 +146,7 @@ spec:
         name: data
       spec:
         accessModes: [ReadWriteOnce]
-        {{- with $b.persistence.storageClass }}
+        {{- with include "openpicket.storageClass" (list $ $b.persistence) }}
         storageClassName: {{ . }}
         {{- end }}
         resources:
@@ -213,7 +213,7 @@ spec:
         name: data
       spec:
         accessModes: [ReadWriteOnce]
-        {{- with $b.mariadb.persistence.storageClass }}
+        {{- with include "openpicket.storageClass" (list $ $b.mariadb.persistence) }}
         storageClassName: {{ . }}
         {{- end }}
         resources:
