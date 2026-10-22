@@ -15,6 +15,11 @@ openpicket-suricontroller (Suricata management) and channel B to the manager
 (logs, status, decisions, policies). Both run Noise IK over WebSocket, so
 TLS can terminate anywhere in between.
 
+## Installation
+
+- Management side: [Helm chart](deploy/helm/openpicket/README.md)
+- Agent on OpenWrt: [docs/openwrt.md](docs/openwrt.md)
+
 ## Layout
 
 | Path | Contents |
