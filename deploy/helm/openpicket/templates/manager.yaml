@@ -151,6 +151,10 @@ spec:
             {{- if .Values.suricontroller.enabled }}
             - name: OPENPICKET_SURICONTROLLER_URL
               value: http://{{ $full }}-suricontroller:8080
+            {{- with $m.agentControllerURL }}
+            - name: OPENPICKET_AGENT_CONTROLLER_URL
+              value: {{ . | quote }}
+            {{- end }}
             {{- end }}
             {{- if .Values.misp.enabled }}
             - name: OPENPICKET_MISP_URL

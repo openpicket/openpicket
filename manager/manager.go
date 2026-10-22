@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -81,6 +82,16 @@ type Options struct {
 	MISP *MISPOptions
 	// PublicURL is the external URL of the UI (links in notifications).
 	PublicURL string
+	// Suricontroller is the openpicket-suricontroller base URL. The
+	// manager reads its host key and agent path there and hands them to
+	// agents without a controller section (HelloAck.controller).
+	Suricontroller *url.URL
+	// AgentControllerURL overrides the URL in that endpoint: ws(s)://...,
+	// or a path agents resolve against their openpicket.url.
+	AgentControllerURL string
+	// ControllerPollInterval overrides how often that endpoint is read
+	// (default 1m; tests).
+	ControllerPollInterval time.Duration
 	// CrowdSecMetrics lists CrowdSec Prometheus endpoints shown in the UI.
 	CrowdSecMetrics csmetrics.Config
 	// EdgeRules select and orient the decisions sent to nodes; zero value
@@ -139,6 +150,7 @@ type Manager struct {
 	search     *opensearch.Client
 	misp       *misp.Service
 	lapis      []api.LAPI
+	controller *controllerEndpoint
 
 	runOnce sync.Once
 }
@@ -260,6 +272,13 @@ func New(opts Options) (*Manager, error) {
 		})
 	}
 	m.listener.OnResync(func() { m.nodes.Resync(context.Background()) })
+	if opts.Suricontroller != nil {
+		keys, err := DeriveKeys(opts.HostKey)
+		if err != nil {
+			return nil, err
+		}
+		m.controller = newControllerEndpoint(opts.Suricontroller, keys.Principal, opts.AgentControllerURL, opts.ControllerPollInterval, opts.Logger)
+	}
 	m.settings.OnChange = func(key string) {
 		if key == settings.KeyLogPolicy {
 			m.pushLogPolicy()
@@ -375,6 +394,11 @@ func (m *Manager) Run(ctx context.Context) error {
 		},
 		func(ctx context.Context) { m.presence.run(ctx, 30*time.Second) },
 		func(ctx context.Context) {
+			if m.controller != nil {
+				m.controller.run(ctx, m.pushController)
+			}
+		},
+		func(ctx context.Context) {
 			if m.search != nil {
 				db.RunLeader(ctx, m.opts.DB, "opensearch", m.opts.ReplicaID, m.log, func(ctx context.Context, _ *db.Leadership) {
 					m.search.RunLeader(ctx, m.opts.DB, m.log.With("component", "opensearch"), 30*time.Second)
@@ -457,6 +481,14 @@ func (m *Manager) pushLogPolicy() {
 	}
 }
 
+func (m *Manager) pushController(ep *dataplanev1.ControllerEndpoint) {
+	for _, s := range m.gw.Sessions() {
+		if err := s.SendControl(&dataplanev1.ControlDown{Body: &dataplanev1.ControlDown_Controller{Controller: ep}}); err != nil {
+			m.log.Debug("push controller endpoint", "node", s.NodeID, "err", err)
+		}
+	}
+}
+
 // handler adapts the manager to gateway.Handler.
 type handler Manager
 
@@ -464,12 +496,16 @@ func (h *handler) OnConnect(ctx context.Context, s *gateway.Session) (*dataplane
 	m := (*Manager)(h)
 	m.presence.connected(ctx, s)
 	m.watermarks.Forget(s.NodeID, s.BootID())
-	return &dataplanev1.HelloAck{
+	ack := &dataplanev1.HelloAck{
 		ServerTimeUnixMs:      time.Now().UnixMilli(),
 		ManagerVersion:        version.Version,
 		StatusIntervalSeconds: uint32(m.opts.StatusInterval / time.Second),
 		LogPolicy:             m.settings.LogPolicy(ctx),
-	}, nil
+	}
+	if m.controller != nil {
+		ack.Controller = m.controller.Get()
+	}
+	return ack, nil
 }
 
 func (h *handler) OnDisconnect(s *gateway.Session) {

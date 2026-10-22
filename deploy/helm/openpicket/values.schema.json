@@ -219,6 +219,10 @@
         "extraLAPIs": {
           "type": "string"
         },
+        "agentControllerURL": {
+          "type": "string",
+          "pattern": "^($|/|wss?://)"
+        },
         "logLevel": {
           "enum": [
             "debug",

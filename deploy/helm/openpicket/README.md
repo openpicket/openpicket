@@ -30,6 +30,11 @@ One host serves everything: `/agent/v1/connect` goes to openpicket-suricontrolle
 `/suricata/` proxy and `/agent/data/v1/connect`). Agents keep WebSocket
 connections open: raise the proxy read timeout of the ingress controller.
 
+Agents only need the manager's URL and host key: the manager hands them the
+channel A endpoint (`/agent/v1/connect` on the same host, and the
+suricontroller host key). When agents reach suricontroller through another
+host, set `manager.agentControllerURL`.
+
 ## Authentication
 
 `manager.auth.config` holds the provider chain (header, jwt, forward) and the

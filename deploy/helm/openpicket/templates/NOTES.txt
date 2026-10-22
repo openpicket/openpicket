@@ -12,12 +12,11 @@ OpenPicket is being deployed.
 2. Agents (agent.yaml, openpicket section):
    url:      {{ regexReplaceAll "^http" .Values.publicURL "ws" }}/agent/data/v1/connect
    host_key: kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "openpicket.fullname" . }}-manager -- openpicket-manager pubkey
-{{- if .Values.suricontroller.enabled }}
-   Channel A (controller section):
-   url:      {{ regexReplaceAll "^http" .Values.publicURL "ws" }}/agent/v1/connect
-   host_key: kubectl -n {{ .Release.Namespace }} exec sts/{{ include "openpicket.fullname" . }}-suricontroller -- openpicket-suricontroller hostkey
-{{- end }}
    The Nodes page shows the same values and registers the agents' keys.
+{{- if .Values.suricontroller.enabled }}
+   The controller section (channel A) is not needed: the manager hands
+   agents the openpicket-suricontroller endpoint.
+{{- end }}
 
 3. Upload MaxMind GeoLite2/GeoIP2 Country and ASN databases on the GeoIP
    page: country and AS policies and the geo of records need them.

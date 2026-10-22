@@ -186,6 +186,17 @@ func check(configPath string) error {
 	} else {
 		report("manager", err, "")
 	}
+	switch {
+	case !cfg.ControllerFromManager():
+		report("controller", nil, cfg.Suri.Controller.URL+" (agent.yaml)")
+	case err != nil:
+		report("controller", errors.New("from the manager, which is unreachable"), "")
+	case sess.HelloAck().GetController() == nil:
+		report("controller", errors.New("the manager sent no endpoint (OPENPICKET_SURICONTROLLER_URL unset, or openpicket-suricontroller unreachable)"), "")
+	default:
+		ep := sess.HelloAck().GetController()
+		report("controller", nil, ep.GetUrl()+" (from the manager)")
+	}
 	if !ok {
 		return errors.New("some checks failed; run suri-node-agent-style checks for Suricata with the same configuration")
 	}

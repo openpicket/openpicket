@@ -3,9 +3,13 @@
 node_id: edge-01                         # must match the key comment registered in OpenPicket
 key_file: /etc/suri-agent/agent_ed25519  # `openpicket-agent keygen` prints the public key to register
 
-controller:                              # openpicket-suricontroller (Suricata management)
-  url: wss://suricata.openpicket.example.com/agent/v1/connect
-  host_key: "ssh-ed25519 AAAA... suricontroller"   # `openpicket-suricontroller hostkey`
+# openpicket-suricontroller (Suricata management): left out, the manager
+# hands out its endpoint (Helm: manager.agentControllerURL). Set both to
+# pin another one; headers, ca_file and tls_insecure_skip_verify default
+# to the openpicket section's.
+# controller:
+#   url: wss://suricata.openpicket.example.com/agent/v1/connect
+#   host_key: "ssh-ed25519 AAAA... suricontroller"   # `openpicket-suricontroller hostkey`
 
 platform:
   profile: docker                        # docker | openwrt-native | systemd-native

@@ -164,7 +164,10 @@ type Handlers struct {
 	Status func(ctx context.Context) *dataplanev1.Status
 	// LogPolicy receives the collection policy from the manager.
 	LogPolicy func(*agentv1.LogCollectionPolicy)
-	Shipper   *Shipper
+	// Controller receives the controller endpoint (channel A) the manager
+	// hands out, from the HelloAck and on changes.
+	Controller func(*dataplanev1.ControllerEndpoint)
+	Shipper    *Shipper
 	// Decisions and Policy may be nil (feature disabled on the node).
 	Decisions DecisionSink
 	Policy    PolicySink
@@ -274,6 +277,9 @@ func (c *Client) serve(ctx context.Context, sess *Session) {
 	if p := sess.HelloAck().GetLogPolicy(); p != nil && c.h.LogPolicy != nil {
 		c.h.LogPolicy(p)
 	}
+	if ep := sess.HelloAck().GetController(); ep != nil && c.h.Controller != nil {
+		c.h.Controller(ep)
+	}
 	var wg sync.WaitGroup
 	run := func(name string, fn func(context.Context) error) {
 		wg.Add(1)
@@ -327,6 +333,9 @@ func (c *Client) control(ctx context.Context, sess *Session) error {
 			}
 			if p := down.GetLogPolicy(); p != nil && c.h.LogPolicy != nil {
 				c.h.LogPolicy(p)
+			}
+			if ep := down.GetController(); ep != nil && c.h.Controller != nil {
+				c.h.Controller(ep)
 			}
 		}
 	}()

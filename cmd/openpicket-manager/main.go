@@ -70,6 +70,8 @@ type config struct {
 	ReadOnly          bool
 	AllowedOrigins    []string
 	SuricontrollerURL string
+	// AgentControllerURL overrides the controller URL handed to agents.
+	AgentControllerURL string
 }
 
 func loadConfig() (*config, error) {
@@ -136,6 +138,7 @@ func loadConfig() (*config, error) {
 	e.Bool("READ_ONLY", &c.ReadOnly)
 	e.List("ALLOWED_ORIGINS", &c.AllowedOrigins)
 	e.String("SURICONTROLLER_URL", &c.SuricontrollerURL)
+	e.String("AGENT_CONTROLLER_URL", &c.AgentControllerURL)
 	if err := e.Err(); err != nil {
 		return nil, err
 	}
@@ -332,10 +335,16 @@ func serve() error {
 	if err != nil {
 		return err
 	}
+	var suri *url.URL
+	if cfg.SuricontrollerURL != "" {
+		if suri, err = url.Parse(cfg.SuricontrollerURL); err != nil {
+			return fmt.Errorf("OPENPICKET_SURICONTROLLER_URL: %w", err)
+		}
+	}
 	m, err := manager.New(manager.Options{
 		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
 		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, OpenSearch: &cfg.OpenSearch, MISP: &cfg.MISP, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
-		TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
+		Suricontroller: suri, AgentControllerURL: cfg.AgentControllerURL, TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
 	})
 	if err != nil {
 		return err
@@ -349,12 +358,7 @@ func serve() error {
 		return err
 	}
 	apiCfg := api.Config{Auth: chain, ReadOnly: cfg.ReadOnly, AllowedOrigins: cfg.AllowedOrigins, TrustProxyHeaders: cfg.TrustProxyHeaders,
-		PrincipalKey: keys.Principal.Key}
-	if cfg.SuricontrollerURL != "" {
-		if apiCfg.Suricontroller, err = url.Parse(cfg.SuricontrollerURL); err != nil {
-			return fmt.Errorf("OPENPICKET_SURICONTROLLER_URL: %w", err)
-		}
-	}
+		PrincipalKey: keys.Principal.Key, Suricontroller: suri}
 	apiSrv, err := m.API(apiCfg)
 	if err != nil {
 		return err

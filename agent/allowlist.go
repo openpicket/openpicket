@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"net/url"
 	"slices"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -16,8 +17,12 @@ import (
 // suricontroller and manager hosts (so a decision cannot cut the node off
 // its management).
 type allowlist struct {
-	static  []netip.Prefix
-	hosts   []string
+	static     []netip.Prefix
+	hosts      []string
+	controller bool
+	// learned is the host of the controller URL from the manager (mu).
+	mu      sync.Mutex
+	learned string
 	log     *slog.Logger
 	current atomic.Pointer[[]netip.Prefix]
 	lookup  func(ctx context.Context, host string) ([]netip.Addr, error)
@@ -27,10 +32,9 @@ func newAllowlist(entries []string, urls []string, log *slog.Logger) *allowlist 
 	a := &allowlist{log: log, lookup: func(ctx context.Context, host string) ([]netip.Addr, error) {
 		return net.DefaultResolver.LookupNetIP(ctx, "ip", host)
 	}}
-	controller := false
 	for _, e := range entries {
 		if e == "controller" {
-			controller = true
+			a.controller = true
 			continue
 		}
 		if p, err := netip.ParsePrefix(e); err == nil {
@@ -40,7 +44,7 @@ func newAllowlist(entries []string, urls []string, log *slog.Logger) *allowlist 
 			a.static = append(a.static, netip.PrefixFrom(ad, ad.BitLen()))
 		}
 	}
-	if controller {
+	if a.controller {
 		for _, u := range urls {
 			if pu, err := url.Parse(u); err == nil && pu.Hostname() != "" {
 				a.hosts = append(a.hosts, pu.Hostname())
@@ -52,12 +56,37 @@ func newAllowlist(entries []string, urls []string, log *slog.Logger) *allowlist 
 	return a
 }
 
+// learn adds the host of the controller URL from the manager to the
+// "controller" entry; it reports a change (refresh to apply it).
+func (a *allowlist) learn(u string) bool {
+	pu, err := url.Parse(u)
+	if !a.controller || err != nil || pu.Hostname() == "" {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.learned == pu.Hostname() {
+		return false
+	}
+	a.learned = pu.Hostname()
+	return true
+}
+
+func (a *allowlist) hostList() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.learned == "" || slices.Contains(a.hosts, a.learned) {
+		return a.hosts
+	}
+	return append(slices.Clone(a.hosts), a.learned)
+}
+
 // Prefixes returns the current allowlist.
 func (a *allowlist) Prefixes() []netip.Prefix { return *a.current.Load() }
 
 func (a *allowlist) refresh(ctx context.Context) {
 	out := slices.Clone(a.static)
-	for _, h := range a.hosts {
+	for _, h := range a.hostList() {
 		if ad, err := netip.ParseAddr(h); err == nil {
 			ad = ad.Unmap()
 			out = append(out, netip.PrefixFrom(ad, ad.BitLen()))

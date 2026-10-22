@@ -66,6 +66,9 @@ type Agent struct {
 	allow   *allowlist
 	enf     *enforcer.Enforcer
 	pol     *policy.Sink
+	// ctl is the controller endpoint from the manager (nil: agent.yaml
+	// names the controller).
+	ctl *controllerSource
 
 	// fw4: OpenWrt, the WAN follows the fw4 zones (wan.go).
 	fw4        bool
@@ -95,6 +98,12 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 	so := opts.SuriOptions
 	so.Logger, so.LogTee, so.LogOutput = log, opts.LogTee, a.shipper
 	var err error
+	if cfg.ControllerFromManager() {
+		if a.ctl, err = newControllerSource(cfg.OpenPicket.URL, filepath.Join(cfg.Suri.StateDir, "openpicket", "controller.json"), log); err != nil {
+			return nil, err
+		}
+		so.Controller = a.ctl
+	}
 	if a.suri, err = suriagent.New(ctx, cfg.Suri, so); err != nil {
 		return nil, err
 	}
@@ -155,6 +164,14 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 		}
 	}
 	a.allow = newAllowlist(cfg.OpenPicket.Allowlist, []string{cfg.Suri.Controller.URL, cfg.OpenPicket.URL}, log)
+	if a.ctl != nil {
+		a.allow.learn(a.ctl.URL())
+		a.ctl.onChange = func(u string) {
+			if a.allow.learn(u) {
+				go a.allow.refresh(context.Background())
+			}
+		}
+	}
 	a.allow.refresh(ctx)
 	if e := cfg.OpenPicket.Enforcer; e.Enabled {
 		a.enf = enforcer.New(enforcer.Config{
@@ -170,6 +187,9 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 		})
 	}
 	handlers := dataplane.Handlers{Hello: a.hello, Status: a.status, LogPolicy: a.shipper.SetPolicy, Shipper: a.shipper}
+	if a.ctl != nil {
+		handlers.Controller = a.ctl.Set
+	}
 	if a.enf != nil {
 		handlers.Decisions = a.enf
 	}

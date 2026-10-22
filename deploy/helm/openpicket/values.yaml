@@ -98,6 +98,10 @@ manager:
   alertRetention: 720h
   # Extra LAPI instances shown in the UI (JSON list, see docs).
   extraLAPIs: ""
+  # Controller URL handed to agents whose agent.yaml has no controller
+  # section. Empty: /agent/v1/connect on the host agents reach the manager
+  # through (this chart's ingress routes it). Or wss://... for another host.
+  agentControllerURL: ""
   logLevel: info
   extraEnv: []
   resources:

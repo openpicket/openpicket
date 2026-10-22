@@ -79,6 +79,8 @@ message ControlDown {
     // types). nflog records are collected whenever nflog is enabled on the
     // node.
     suricontroller.agent.v1.LogCollectionPolicy log_policy = 2;
+    // The controller endpoint changed (key rotation, new address).
+    ControllerEndpoint controller = 3;
   }
 }
 
@@ -112,6 +114,20 @@ message HelloAck {
   string manager_version = 2;
   uint32 status_interval_seconds = 3;
   suricontroller.agent.v1.LogCollectionPolicy log_policy = 4;
+  // Unset when the manager does not know it (no suricontroller, or it
+  // was unreachable): agents keep the endpoint they have.
+  ControllerEndpoint controller = 5;
+}
+
+// ControllerEndpoint is where agents reach openpicket-suricontroller
+// (channel A). Agents whose agent.yaml has no controller section use it,
+// trusting it as they trust the manager.
+message ControllerEndpoint {
+  // ws:// or wss:// URL, or a path resolved against the agent's
+  // openpicket.url (same host, e.g. "/agent/v1/connect").
+  string url = 1;
+  // Controller host public key line ("ssh-ed25519 AAAA... suri-controller").
+  string host_key = 2;
 }
 
 message LogStats {

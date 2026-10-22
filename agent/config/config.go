@@ -165,12 +165,30 @@ func Parse(b []byte) (*Config, error) {
 	default:
 		return nil, fmt.Errorf("platform.firewall: %q is not supported by OpenPicket (nftables or none)", fw.Platform.Firewall)
 	}
-	suri, err := suricfg.Parse(rest)
+	// Without a controller section the manager hands out the endpoint.
+	suri, err := suricfg.ParseWith(rest, suricfg.ParseOptions{ExternalController: true})
 	if err != nil {
 		return nil, err
 	}
 	c := &Config{Suri: suri, OpenPicket: op}
+	if c.ControllerFromManager() {
+		// Channel A then goes the way of channel B (same host by default).
+		sc := &c.Suri.Controller
+		if sc.Headers == nil {
+			sc.Headers = op.Headers
+		}
+		if sc.CAFile == "" {
+			sc.CAFile = op.CAFile
+		}
+		sc.TLSInsecureSkipVerify = sc.TLSInsecureSkipVerify || op.TLSInsecureSkipVerify
+	}
 	return c, c.validate()
+}
+
+// ControllerFromManager reports an agent.yaml without controller url and
+// host_key: the manager hands out the endpoint.
+func (c *Config) ControllerFromManager() bool {
+	return c.Suri.Controller.URL == "" && c.Suri.Controller.HostKey == ""
 }
 
 func setFirewall(b []byte, value string) ([]byte, error) {

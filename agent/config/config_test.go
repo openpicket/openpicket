@@ -94,3 +94,27 @@ func TestValidation(t *testing.T) {
 		t.Errorf("wildcard: %v", err)
 	}
 }
+
+func TestControllerFromManager(t *testing.T) {
+	c, err := Parse([]byte(sample("", "")))
+	if err != nil || c.ControllerFromManager() {
+		t.Fatalf("controller section: %v", err)
+	}
+	// Without a controller section the manager hands out the endpoint, and
+	// channel A goes the way of channel B.
+	s := sample("", "  headers: {CF-Access-Client-Id: abc}\n  tls_insecure_skip_verify: true")
+	start := strings.Index(s, "controller:\n")
+	end := strings.Index(s, "platform:")
+	c, err = Parse([]byte(s[:start] + s[end:]))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.ControllerFromManager() || c.Suri.Controller.Headers["CF-Access-Client-Id"] != "abc" || !c.Suri.Controller.TLSInsecureSkipVerify {
+		t.Fatalf("controller = %+v", c.Suri.Controller)
+	}
+	// Half a controller section is an error.
+	half := s[:start] + "controller:\n  url: wss://picket.example.com/agent/v1/connect\n" + s[end:]
+	if _, err := Parse([]byte(half)); err == nil || !strings.Contains(err.Error(), "controller.host_key") {
+		t.Fatalf("half controller section: %v", err)
+	}
+}
