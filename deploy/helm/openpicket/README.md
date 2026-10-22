@@ -54,6 +54,15 @@ Every PVC (PostgreSQL, Loki, suricontroller, MISP and its MariaDB) uses its
 `persistence.storageClass`, else `global.defaultStorageClass`, else the
 cluster default. `-` sets `storageClassName: ""` (pre-provisioned volumes).
 
+## Database connections
+
+`database.maxConnections` caps the pool of each pod (manager 6, suricontroller
+4, CrowdSec LAPI 10). Each manager replica also keeps two dedicated
+connections (LISTEN, one for all leader locks). With the defaults the chart
+opens at most 2 x (6 + 2) + 4 + 2 x 10 = 40. Behind pgpool, keep
+`num_init_children` above that (plus other clients), and
+`num_init_children x max_pool` within PostgreSQL `max_connections`.
+
 ## Air-gapped installation
 
 `scripts/airgap-bundle.sh <version>` saves every image and the packaged chart;

@@ -381,41 +381,34 @@ func (m *Manager) Run(ctx context.Context) error {
 	if err := m.geo.Load(ctx); err != nil {
 		m.log.Warn("load geo databases", "err", err)
 	}
+	// One lock connection for every leader task of this replica.
+	el := db.NewElector(m.opts.DB, m.opts.ReplicaID, m.log)
+	if m.relay != nil {
+		el.Add("relay", func(ctx context.Context, l *db.Leadership) { m.relay.Run(ctx, l) })
+	}
+	if m.search != nil {
+		el.Add("opensearch", func(ctx context.Context, _ *db.Leadership) {
+			m.search.RunLeader(ctx, m.opts.DB, m.log.With("component", "opensearch"), 30*time.Second)
+		})
+	}
+	if m.misp != nil {
+		el.Add("misp", func(ctx context.Context, l *db.Leadership) { m.misp.Run(ctx, l) })
+	}
+	el.Add("notify", func(ctx context.Context, l *db.Leadership) { m.notify.Run(ctx, l) })
+	if m.alerts != nil {
+		el.Add("alerts", func(ctx context.Context, l *db.Leadership) { m.alerts.Run(ctx, l) })
+	}
 	var wg sync.WaitGroup
 	for _, fn := range []func(context.Context){
 		m.listener.Run,
 		m.pipe.Run,
 		m.watermarks.Run,
 		m.cs.Run,
-		func(ctx context.Context) {
-			if m.relay != nil {
-				db.RunLeader(ctx, m.opts.DB, "relay", m.opts.ReplicaID, m.log, func(ctx context.Context, l *db.Leadership) { m.relay.Run(ctx, l) })
-			}
-		},
+		el.Run,
 		func(ctx context.Context) { m.presence.run(ctx, 30*time.Second) },
 		func(ctx context.Context) {
 			if m.controller != nil {
 				m.controller.run(ctx, m.pushController)
-			}
-		},
-		func(ctx context.Context) {
-			if m.search != nil {
-				db.RunLeader(ctx, m.opts.DB, "opensearch", m.opts.ReplicaID, m.log, func(ctx context.Context, _ *db.Leadership) {
-					m.search.RunLeader(ctx, m.opts.DB, m.log.With("component", "opensearch"), 30*time.Second)
-				})
-			}
-		},
-		func(ctx context.Context) {
-			if m.misp != nil {
-				db.RunLeader(ctx, m.opts.DB, "misp", m.opts.ReplicaID, m.log, func(ctx context.Context, l *db.Leadership) { m.misp.Run(ctx, l) })
-			}
-		},
-		func(ctx context.Context) {
-			db.RunLeader(ctx, m.opts.DB, "notify", m.opts.ReplicaID, m.log, func(ctx context.Context, l *db.Leadership) { m.notify.Run(ctx, l) })
-		},
-		func(ctx context.Context) {
-			if m.alerts != nil {
-				db.RunLeader(ctx, m.opts.DB, "alerts", m.opts.ReplicaID, m.log, func(ctx context.Context, l *db.Leadership) { m.alerts.Run(ctx, l) })
 			}
 		},
 	} {

@@ -17,6 +17,7 @@ data:
       host: {{ include "openpicket.dbHost" . }}
       port: {{ include "openpicket.dbPort" . }}
       sslmode: {{ include "openpicket.dbSSLMode" . }}
+      max_open_conns: {{ .Values.database.maxConnections.crowdsecLAPI }}
     api:
       server:
         trusted_ips:

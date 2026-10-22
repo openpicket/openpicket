@@ -55,6 +55,24 @@
         "crowdsecDatabase": {
           "type": "string"
         },
+        "maxConnections": {
+          "type": "object",
+          "properties": {
+            "manager": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "suricontroller": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "crowdsecLAPI": {
+              "type": "integer",
+              "minimum": 2
+            }
+          },
+          "additionalProperties": false
+        },
         "builtin": {
           "type": "object",
           "properties": {

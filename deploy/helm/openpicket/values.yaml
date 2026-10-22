@@ -32,6 +32,14 @@ ingress:
 database:
   openpicketDatabase: openpicket
   crowdsecDatabase: crowdsec
+  # Connection pool size of each pod. Each manager replica also keeps two
+  # dedicated connections (LISTEN, leader locks). Size the server (or
+  # pgpool num_init_children) for: replicas x (manager + 2) +
+  # suricontroller + LAPI replicas x crowdsecLAPI.
+  maxConnections:
+    manager: 6
+    suricontroller: 4
+    crowdsecLAPI: 10
   builtin:
     # A single PostgreSQL instance. For production prefer an HA server
     # (CloudNativePG, managed service) through database.external.

@@ -58,7 +58,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: { drop: [ALL] }
           env:
-            {{- include "openpicket.dbEnv" . | nindent 12 }}
+            {{- include "openpicket.dbEnv" (list . .Values.database.maxConnections.manager) | nindent 12 }}
             - name: OPENPICKET_REPLICA_ID
               valueFrom:
                 fieldRef:

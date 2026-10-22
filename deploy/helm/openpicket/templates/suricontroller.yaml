@@ -66,7 +66,7 @@ spec:
             allowPrivilegeEscalation: false
             capabilities: { drop: [ALL] }
           env:
-            {{- include "openpicket.dbEnv" . | nindent 12 }}
+            {{- include "openpicket.dbEnv" (list . .Values.database.maxConnections.suricontroller) | nindent 12 }}
             - name: OPENPICKET_SURI_PRINCIPAL_PUBLIC_KEY_FILE
               value: /shared/principal.pub
             - name: OPENPICKET_SURI_UI_BASE

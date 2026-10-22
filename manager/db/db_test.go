@@ -105,3 +105,101 @@ func TestListenerDispatchesAndResyncs(t *testing.T) {
 		t.Fatal("notification not delivered")
 	}
 }
+
+// One connection holds every lock of a replica; the tasks of a stopped
+// replica move to another, and a task that returns lets go of its lock.
+func TestElectorSharesOneConnection(t *testing.T) {
+	pool := pgtest.Pool(t)
+	ctx := context.Background()
+	if err := schema.Migrate(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	tasks := []string{"relay", "notify", "alerts", "misp"}
+	var mu sync.Mutex
+	leading := map[string]string{} // task -> replica
+	double := ""
+	// stopOnce: the task returns once, in its first epoch.
+	start := func(name string, stopOnce string) (context.CancelFunc, chan struct{}) {
+		e := NewElector(pool, name, nil)
+		for _, task := range tasks {
+			e.Add(task, func(lctx context.Context, l *Leadership) {
+				mu.Lock()
+				if other, ok := leading[task]; ok {
+					double = task + " led by " + other + " and " + name
+				}
+				leading[task] = name
+				mu.Unlock()
+				var stop <-chan time.Time
+				if task == stopOnce && l.Epoch == 1 {
+					stop = time.After(200 * time.Millisecond)
+				}
+				select {
+				case <-lctx.Done():
+				case <-stop:
+				}
+				mu.Lock()
+				delete(leading, task)
+				mu.Unlock()
+			})
+		}
+		ectx, cancel := context.WithCancel(ctx)
+		done := make(chan struct{})
+		go func() { e.Run(ectx); close(done) }()
+		return cancel, done
+	}
+	waitUntil := func(what string, cond func() bool) {
+		t.Helper()
+		deadline := time.Now().Add(30 * time.Second)
+		for !cond() {
+			if time.Now().After(deadline) {
+				t.Fatalf("timeout: %s", what)
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+	lockHolders := func() int {
+		var n int
+		if err := pool.QueryRow(ctx, `SELECT count(DISTINCT pid) FROM pg_locks WHERE locktype = 'advisory' AND granted`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	ledBy := func(name string) int {
+		mu.Lock()
+		defer mu.Unlock()
+		n := 0
+		for _, r := range leading {
+			if r == name {
+				n++
+			}
+		}
+		return n
+	}
+
+	// a starts alone and leads everything on one connection; "notify"
+	// returns after a moment and is taken again.
+	stopA, doneA := start("a", "notify")
+	var epoch int64
+	waitUntil("notify taken again", func() bool {
+		_ = pool.QueryRow(ctx, `SELECT epoch FROM openpicket.leader_epochs WHERE task = 'notify'`).Scan(&epoch)
+		return epoch >= 2
+	})
+	waitUntil("a leads every task", func() bool { return ledBy("a") == len(tasks) })
+	if n := lockHolders(); n != 1 {
+		t.Fatalf("%d sessions hold the locks", n)
+	}
+
+	stopB, doneB := start("b", "")
+	defer func() { stopB(); <-doneB }()
+	stopA()
+	<-doneA
+	waitUntil("b takes over", func() bool { return ledBy("b") == len(tasks) })
+	if n := lockHolders(); n != 1 {
+		t.Fatalf("%d sessions hold the locks after the takeover", n)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if double != "" {
+		t.Fatal(double)
+	}
+}
