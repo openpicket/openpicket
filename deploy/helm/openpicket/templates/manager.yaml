@@ -41,6 +41,7 @@ spec:
         checksum/auth: {{ toYaml $m.auth | sha256sum | trunc 16 }}
     spec:
       {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      enableServiceLinks: false
       # Agents move to another replica; the replica saves its watermarks
       # first (graceful drain).
       terminationGracePeriodSeconds: 45

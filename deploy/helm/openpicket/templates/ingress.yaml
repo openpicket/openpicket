@@ -6,10 +6,9 @@ metadata:
   name: {{ $full }}
   labels:
     {{- include "openpicket.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    # ingress-nginx defaults to 1m; a geo database upload takes up to 257m.
+    {{- toYaml (merge (dict) .Values.ingress.annotations (dict "nginx.ingress.kubernetes.io/proxy-body-size" "257m")) | nindent 4 }}
 spec:
   {{- with .Values.ingress.className }}
   ingressClassName: {{ . }}

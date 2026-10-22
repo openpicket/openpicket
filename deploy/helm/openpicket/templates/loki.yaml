@@ -75,6 +75,7 @@ spec:
         {{- include "openpicket.componentLabels" (list . "loki") | nindent 8 }}
     spec:
       {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      enableServiceLinks: false
       securityContext:
         fsGroup: 10001
         runAsUser: 10001
@@ -107,7 +108,7 @@ spec:
         name: data
       spec:
         accessModes: [ReadWriteOnce]
-        {{- with .Values.loki.builtin.persistence.storageClass }}
+        {{- with include "openpicket.storageClass" (list $ .Values.loki.builtin.persistence) }}
         storageClassName: {{ . }}
         {{- end }}
         resources:

@@ -44,6 +44,9 @@ spec:
         {{- include "openpicket.componentLabels" (list . "misp") | nindent 8 }}
     spec:
       {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      # Service links: a "redis" or "mysql" Service in the namespace would
+      # set REDIS_PORT/MYSQL_PORT to tcp://<ip>:<port> (misp-core reads them).
+      enableServiceLinks: false
       containers:
         - name: misp-core
           image: {{ include "openpicket.image" (list . $b.image) }}
@@ -107,9 +110,9 @@ spec:
               readOnly: true
         - name: misp-nginx
           image: {{ include "openpicket.image" (list . $b.nginxImage) }}
+          # No BASE_URL: TLS ends at the ingress, and misp-nginx refuses an
+          # https:// BASE_URL without its own certificate.
           env:
-            - name: BASE_URL
-              value: {{ $b.baseURL | quote }}
             - name: FASTCGI_LISTEN
               value: 127.0.0.1:9002
             - name: FASTCGI_LISTEN_STATUS
@@ -146,7 +149,7 @@ spec:
         name: data
       spec:
         accessModes: [ReadWriteOnce]
-        {{- with $b.persistence.storageClass }}
+        {{- with include "openpicket.storageClass" (list $ $b.persistence) }}
         storageClassName: {{ . }}
         {{- end }}
         resources:
@@ -185,6 +188,7 @@ spec:
         {{- include "openpicket.componentLabels" (list . "misp-db") | nindent 8 }}
     spec:
       {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      enableServiceLinks: false
       containers:
         - name: mariadb
           image: {{ include "openpicket.image" (list . $b.mariadb.image) }}
@@ -213,7 +217,7 @@ spec:
         name: data
       spec:
         accessModes: [ReadWriteOnce]
-        {{- with $b.mariadb.persistence.storageClass }}
+        {{- with include "openpicket.storageClass" (list $ $b.mariadb.persistence) }}
         storageClassName: {{ . }}
         {{- end }}
         resources:
@@ -251,6 +255,7 @@ spec:
         {{- include "openpicket.componentLabels" (list . "misp-valkey") | nindent 8 }}
     spec:
       {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      enableServiceLinks: false
       containers:
         - name: valkey
           image: {{ include "openpicket.image" (list . $b.valkey.image) }}
@@ -265,10 +270,9 @@ metadata:
   name: {{ $full }}-misp
   labels:
     {{- include "openpicket.componentLabels" (list . "misp") | nindent 4 }}
-  {{- with $b.ingress.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    # ingress-nginx defaults to 1m; misp-nginx accepts 50M.
+    {{- toYaml (merge (dict) $b.ingress.annotations (dict "nginx.ingress.kubernetes.io/proxy-body-size" "50m")) | nindent 4 }}
 spec:
   {{- with .Values.ingress.className }}
   ingressClassName: {{ . }}

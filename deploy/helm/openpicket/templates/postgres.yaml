@@ -43,6 +43,7 @@ spec:
         {{- include "openpicket.componentLabels" (list . "postgres") | nindent 8 }}
     spec:
       {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      enableServiceLinks: false
       securityContext:
         fsGroup: 70
       containers:
@@ -88,7 +89,7 @@ spec:
         name: data
       spec:
         accessModes: [ReadWriteOnce]
-        {{- with .Values.database.builtin.persistence.storageClass }}
+        {{- with include "openpicket.storageClass" (list $ .Values.database.builtin.persistence) }}
         storageClassName: {{ . }}
         {{- end }}
         resources:

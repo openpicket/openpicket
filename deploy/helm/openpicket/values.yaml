@@ -2,6 +2,10 @@ global:
   # Registry prefix for every image (air-gapped mirrors), e.g. registry.local:5000.
   imageRegistry: ""
   imagePullSecrets: []
+  # StorageClass of every PVC whose persistence.storageClass is empty
+  # (empty: the cluster default). A component's "-" disables dynamic
+  # provisioning (storageClassName: "").
+  defaultStorageClass: ""
 
 # External URL of the UI (links in notifications, agent.yaml snippets).
 publicURL: https://openpicket.example.com
@@ -10,6 +14,8 @@ ingress:
   enabled: false
   className: ""
   host: openpicket.example.com
+  # nginx.ingress.kubernetes.io/proxy-body-size defaults to 257m (geo
+  # database uploads); set it here to override.
   annotations: {}
   # Agents keep long-lived WebSocket connections on /agent/...: raise the
   # proxy read timeout of your controller, e.g. for ingress-nginx:

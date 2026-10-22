@@ -75,6 +75,7 @@ spec:
         checksum/config: {{ toYaml .Values.crowdsec.lapi | sha256sum | trunc 16 }}
     spec:
       {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      enableServiceLinks: false
       containers:
         - name: lapi
           image: {{ include "openpicket.image" (list . .Values.crowdsec.image) }}
@@ -182,6 +183,7 @@ spec:
         {{- include "openpicket.componentLabels" (list . "crowdsec-agent") | nindent 8 }}
     spec:
       {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      enableServiceLinks: false
       containers:
         - name: agent
           image: {{ include "openpicket.image" (list . .Values.crowdsec.image) }}
