@@ -70,8 +70,8 @@ github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo
 github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i6rXxKeerYnT8Nvf0QmHCRC1n8sfWVwXF2Frvo=
-github.com/jc-lab/suricontroller v0.0.3-0.20261022040959-07a0f8ed53a4 h1:PHSPKEKqyseUeLF9atVKiFnCkaTEpqXqBzgt0yjkElI=
-github.com/jc-lab/suricontroller v0.0.3-0.20261022040959-07a0f8ed53a4/go.mod h1:iRwslmzJyePMIKoVKENwzdL1cpDZWT4s3/uyEsHzNN4=
+github.com/jc-lab/suricontroller v0.0.3-0.20261022231444-15db942879ea h1:wXitPB4clmdbhQ3j0DwABgUKKjJVubbP088Vt0SqoHE=
+github.com/jc-lab/suricontroller v0.0.3-0.20261022231444-15db942879ea/go.mod h1:iRwslmzJyePMIKoVKENwzdL1cpDZWT4s3/uyEsHzNN4=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=
 github.com/kevinburke/ssh_config v1.2.0/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF4nAY/ojJ6r6mM=
 github.com/klauspost/compress v1.20.3 h1:zWNoFqq/lSuYQRim3dUXlXeA0IqwuZGicdG5ZTfY5j4=
