@@ -15,6 +15,16 @@ service HubService {
   rpc SetHubItemState(SetHubItemStateRequest) returns (SetHubItemStateResponse);
   // What the log processors run.
   rpc GetHubRollout(GetHubRolloutRequest) returns (GetHubRolloutResponse);
+  // The CrowdSec hub index.
+  rpc ListHubIndex(ListHubIndexRequest) returns (ListHubIndexResponse);
+  rpc RefreshHubIndex(RefreshHubIndexRequest) returns (RefreshHubIndexResponse);
+  // Downloads an item and what it brings, without installing.
+  rpc PreviewHubItem(PreviewHubItemRequest) returns (PreviewHubItemResponse);
+  // Installs (or updates to the index version) an item from the hub,
+  // with a collection's members and the data files they read.
+  rpc InstallHubItem(InstallHubItemRequest) returns (InstallHubItemResponse);
+  // Removes a hub or custom item (built-in items can only be turned off).
+  rpc RemoveHubItem(RemoveHubItemRequest) returns (RemoveHubItemResponse);
 }
 
 message HubRef {
@@ -44,6 +54,12 @@ message HubItem {
   string digest = 12;
   google.protobuf.Timestamp updated_at = 13;
   string updated_by = 14;
+  // Hub items: the index version when newer than the installed one.
+  string latest_version = 15;
+  // Scenarios: ok | missing (no enabled parser sets the log types it
+  // reads) | unknown (its filters name no log type).
+  string compat = 16;
+  repeated string missing_log_types = 17;
 }
 
 message ListHubItemsRequest {
@@ -92,3 +108,66 @@ message GetHubRolloutResponse {
   string failed_error = 4;
   repeated HubLogProcessor log_processors = 5;
 }
+
+message HubIndexEntry {
+  string type = 1;
+  string name = 2;
+  string description = 3;
+  string version = 4;
+  repeated string references = 5;
+  repeated HubRef members = 6;
+  // Installed: its source and version ("" when not installed).
+  string installed_source = 7;
+  string installed_version = 8;
+}
+
+message ListHubIndexRequest {
+  string type = 1;
+  // Matches names and descriptions.
+  string query = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message ListHubIndexResponse {
+  repeated HubIndexEntry entries = 1;
+  int32 total = 2;
+  // When the index was downloaded (unset: never).
+  google.protobuf.Timestamp fetched_at = 3;
+  string base_url = 4;
+}
+
+message RefreshHubIndexRequest {}
+
+message RefreshHubIndexResponse {
+  bool changed = 1;
+}
+
+message PreviewHubItemRequest {
+  HubRef ref = 1;
+}
+
+message PreviewHubItemResponse {
+  HubIndexEntry entry = 1;
+  string content = 2;
+  // Every item installing it brings (itself first).
+  repeated HubRef items = 3;
+  repeated string data_files = 4;
+  // Scenarios brought: compatibility with the enabled parsers.
+  string compat = 5;
+  repeated string missing_log_types = 6;
+}
+
+message InstallHubItemRequest {
+  HubRef ref = 1;
+}
+
+message InstallHubItemResponse {
+  repeated HubRef installed = 1;
+}
+
+message RemoveHubItemRequest {
+  HubRef ref = 1;
+}
+
+message RemoveHubItemResponse {}

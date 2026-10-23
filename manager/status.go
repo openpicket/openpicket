@@ -23,6 +23,7 @@ func (m *Manager) API(cfg api.Config) (*api.Server, error) {
 	cfg.Geo = m.geo
 	cfg.Policies = m.policies
 	cfg.Hub = m.hub
+	cfg.HubRemote = m.hubRemote
 	cfg.Settings = m.settings
 	cfg.HostKey = m.HostPublicKey()
 	cfg.Replica = m.opts.ReplicaID

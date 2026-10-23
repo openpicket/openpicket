@@ -3,12 +3,15 @@ package api
 import (
 	"context"
 	"errors"
+	"sort"
+	"strings"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	apiv1 "github.com/openpicket/openpicket/gen/openpicket/api/v1"
 	"github.com/openpicket/openpicket/manager/hub"
+	"github.com/openpicket/openpicket/pkg/hubitem"
 )
 
 type hubService struct{ s *Server }
@@ -43,9 +46,24 @@ func (h *hubService) ListHubItems(ctx context.Context, req *connect.Request[apiv
 	if err != nil {
 		return nil, toConnectError(err)
 	}
+	compat, err := st.Compatibilities(ctx)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	var idx hub.Index
+	if h.s.cfg.HubRemote != nil {
+		idx, _, _ = h.s.cfg.HubRemote.Index(ctx)
+	}
 	res := &apiv1.ListHubItemsResponse{}
 	for _, it := range items {
-		res.Items = append(res.Items, hubItemPB(it))
+		pb := hubItemPB(it)
+		if c, ok := compat[it.Name]; ok && it.Type == hubitem.Scenarios {
+			pb.Compat, pb.MissingLogTypes = c.Status, c.Missing
+		}
+		if e := idx[it.Type][it.Name]; e != nil && it.Source == hubitem.SourceHub && e.Version != it.Version {
+			pb.LatestVersion = e.Version
+		}
+		res.Items = append(res.Items, pb)
 	}
 	return connect.NewResponse(res), nil
 }
@@ -98,4 +116,156 @@ func (h *hubService) GetHubRollout(ctx context.Context, _ *connect.Request[apiv1
 			Error: l.Error, SeenAt: timestamppb.New(l.SeenAt)})
 	}
 	return connect.NewResponse(res), nil
+}
+
+func (h *hubService) remote() (*hub.Hub, error) {
+	if h.s.cfg.HubRemote == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("the CrowdSec hub is not configured"))
+	}
+	return h.s.cfg.HubRemote, nil
+}
+
+func indexEntryPB(typ, name string, e *hub.IndexEntry) *apiv1.HubIndexEntry {
+	out := &apiv1.HubIndexEntry{Type: typ, Name: name, Description: e.Description, Version: e.Version, References: e.References}
+	for _, m := range e.Members() {
+		out.Members = append(out.Members, &apiv1.HubRef{Type: m.Type, Name: m.Name})
+	}
+	return out
+}
+
+func (h *hubService) ListHubIndex(ctx context.Context, req *connect.Request[apiv1.ListHubIndexRequest]) (*connect.Response[apiv1.ListHubIndexResponse], error) {
+	rem, err := h.remote()
+	if err != nil {
+		return nil, err
+	}
+	idx, at, err := rem.Index(ctx)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	res := &apiv1.ListHubIndexResponse{BaseUrl: rem.Source.BaseURL}
+	if at.IsZero() {
+		return connect.NewResponse(res), nil
+	}
+	res.FetchedAt = timestamppb.New(at)
+	installed := map[hub.Ref]hub.Item{}
+	items, err := h.s.cfg.Hub.Items(ctx, req.Msg.GetType())
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	for _, it := range items {
+		installed[it.Ref] = it
+	}
+	q := strings.ToLower(strings.TrimSpace(req.Msg.GetQuery()))
+	var names []hub.Ref
+	for typ, entries := range idx {
+		if req.Msg.GetType() != "" && typ != req.Msg.GetType() || !hubitem.ValidType(typ) {
+			continue
+		}
+		for name, e := range entries {
+			if q == "" || strings.Contains(strings.ToLower(name), q) || strings.Contains(strings.ToLower(e.Description), q) {
+				names = append(names, hub.Ref{Type: typ, Name: name})
+			}
+		}
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if names[i].Type != names[j].Type {
+			return names[i].Type < names[j].Type
+		}
+		return names[i].Name < names[j].Name
+	})
+	res.Total = int32(len(names))
+	limit := int(req.Msg.GetLimit())
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	off := min(max(int(req.Msg.GetOffset()), 0), len(names))
+	for _, r := range names[off:min(off+limit, len(names))] {
+		pb := indexEntryPB(r.Type, r.Name, idx[r.Type][r.Name])
+		if it, ok := installed[r]; ok {
+			pb.InstalledSource, pb.InstalledVersion = it.Source, it.Version
+		}
+		res.Entries = append(res.Entries, pb)
+	}
+	return connect.NewResponse(res), nil
+}
+
+func (h *hubService) RefreshHubIndex(ctx context.Context, _ *connect.Request[apiv1.RefreshHubIndexRequest]) (*connect.Response[apiv1.RefreshHubIndexResponse], error) {
+	rem, err := h.remote()
+	if err != nil {
+		return nil, err
+	}
+	changed, err := rem.RefreshIndex(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	return connect.NewResponse(&apiv1.RefreshHubIndexResponse{Changed: changed}), nil
+}
+
+func (h *hubService) PreviewHubItem(ctx context.Context, req *connect.Request[apiv1.PreviewHubItemRequest]) (*connect.Response[apiv1.PreviewHubItemResponse], error) {
+	rem, err := h.remote()
+	if err != nil {
+		return nil, err
+	}
+	p, err := rem.Preview(ctx, hubRef(req.Msg.GetRef()))
+	if err != nil {
+		return nil, hubFetchError(err)
+	}
+	res := &apiv1.PreviewHubItemResponse{Entry: indexEntryPB(p.Root.Type, p.Root.Name, p.Root.Entry), DataFiles: p.Data}
+	if p.Root.Type != hubitem.Collections {
+		res.Content = string(p.Root.Content)
+	}
+	produced, err := h.s.cfg.Hub.Produced(ctx)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	var required []string
+	for _, d := range p.Items {
+		res.Items = append(res.Items, &apiv1.HubRef{Type: d.Type, Name: d.Name})
+		switch d.Type {
+		case hubitem.Parsers:
+			produced = append(produced, d.Doc.Produces...)
+		case hubitem.Scenarios:
+			required = append(required, d.Doc.LogTypes...)
+		}
+	}
+	if len(required) > 0 {
+		res.Compat, res.MissingLogTypes = hubitem.Compat(required, produced)
+	}
+	return connect.NewResponse(res), nil
+}
+
+func (h *hubService) InstallHubItem(ctx context.Context, req *connect.Request[apiv1.InstallHubItemRequest]) (*connect.Response[apiv1.InstallHubItemResponse], error) {
+	rem, err := h.remote()
+	if err != nil {
+		return nil, err
+	}
+	installed, err := rem.Install(ctx, hubRef(req.Msg.GetRef()), by(ctx))
+	if err != nil {
+		return nil, hubFetchError(err)
+	}
+	res := &apiv1.InstallHubItemResponse{}
+	for _, r := range installed {
+		res.Installed = append(res.Installed, &apiv1.HubRef{Type: r.Type, Name: r.Name})
+	}
+	return connect.NewResponse(res), nil
+}
+
+func (h *hubService) RemoveHubItem(ctx context.Context, req *connect.Request[apiv1.RemoveHubItemRequest]) (*connect.Response[apiv1.RemoveHubItemResponse], error) {
+	st, err := h.store()
+	if err != nil {
+		return nil, err
+	}
+	if err := st.Remove(ctx, hubRef(req.Msg.GetRef()), by(ctx)); err != nil {
+		return nil, toConnectError(err)
+	}
+	return connect.NewResponse(&apiv1.RemoveHubItemResponse{}), nil
+}
+
+// hubFetchError maps download failures (the hub unreachable, a digest
+// mismatch) to Unavailable; validation and lookups as usual.
+func hubFetchError(err error) error {
+	if errors.Is(err, hub.ErrNotFound) || errors.Is(err, hub.ErrInvalid) {
+		return toConnectError(err)
+	}
+	return connect.NewError(connect.CodeUnavailable, err)
 }

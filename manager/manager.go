@@ -69,6 +69,8 @@ type Options struct {
 	// CrowdSecSync locates the log processors' content sync
 	// (openpicket-crowdsec-sync).
 	CrowdSecSync CrowdSecSync
+	// Hub is the CrowdSec hub items are downloaded from.
+	Hub hub.Source
 	// LAPI is the primary CrowdSec Local API (decision relay). An empty URL
 	// disables decision distribution.
 	LAPI lapi.Config
@@ -159,6 +161,7 @@ type Manager struct {
 	dist       *relay.Distributor
 	geo        *geo.Store
 	hub        *hub.Store
+	hubRemote  *hub.Hub
 	rollout    *hub.Rollout
 	policies   *policy.Service
 	alerts     *alerts.Syncer
@@ -222,6 +225,7 @@ func New(opts Options) (*Manager, error) {
 	ack = append(ack, m.cs)
 	m.geo = geo.New(opts.DB, opts.Logger)
 	m.hub = hub.NewStore(opts.DB, opts.Logger)
+	m.hubRemote = hub.NewHub(m.hub, opts.Hub)
 	header, token := m.cs.Auth()
 	m.rollout = &hub.Rollout{Store: m.hub, Targets: m.syncTargets, Header: header, Token: token, Logger: opts.Logger}
 	m.rollout.Init()
@@ -423,7 +427,10 @@ func (m *Manager) Run(ctx context.Context) error {
 		el.Add("misp", func(ctx context.Context, l *db.Leadership) { m.misp.Run(ctx, l) })
 	}
 	el.Add("notify", func(ctx context.Context, l *db.Leadership) { m.notify.Run(ctx, l) })
-	el.Add("hub", func(ctx context.Context, l *db.Leadership) { m.rollout.Run(ctx, l) })
+	el.Add("hub", func(ctx context.Context, l *db.Leadership) {
+		go m.hubRemote.RunRefresh(ctx)
+		m.rollout.Run(ctx, l)
+	})
 	if m.alerts != nil {
 		el.Add("alerts", func(ctx context.Context, l *db.Leadership) { m.alerts.Run(ctx, l) })
 	}

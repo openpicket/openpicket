@@ -93,12 +93,18 @@ type HubItem struct {
 	// Data files it reads.
 	Data []string `protobuf:"bytes,10,rep,name=data,proto3" json:"data,omitempty"`
 	// Installed on its own (not only as a collection member).
-	Explicit      bool                   `protobuf:"varint,11,opt,name=explicit,proto3" json:"explicit,omitempty"`
-	Digest        string                 `protobuf:"bytes,12,opt,name=digest,proto3" json:"digest,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	UpdatedBy     string                 `protobuf:"bytes,14,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Explicit  bool                   `protobuf:"varint,11,opt,name=explicit,proto3" json:"explicit,omitempty"`
+	Digest    string                 `protobuf:"bytes,12,opt,name=digest,proto3" json:"digest,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	UpdatedBy string                 `protobuf:"bytes,14,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
+	// Hub items: the index version when newer than the installed one.
+	LatestVersion string `protobuf:"bytes,15,opt,name=latest_version,json=latestVersion,proto3" json:"latest_version,omitempty"`
+	// Scenarios: ok | missing (no enabled parser sets the log types it
+	// reads) | unknown (its filters name no log type).
+	Compat          string   `protobuf:"bytes,16,opt,name=compat,proto3" json:"compat,omitempty"`
+	MissingLogTypes []string `protobuf:"bytes,17,rep,name=missing_log_types,json=missingLogTypes,proto3" json:"missing_log_types,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *HubItem) Reset() {
@@ -227,6 +233,27 @@ func (x *HubItem) GetUpdatedBy() string {
 		return x.UpdatedBy
 	}
 	return ""
+}
+
+func (x *HubItem) GetLatestVersion() string {
+	if x != nil {
+		return x.LatestVersion
+	}
+	return ""
+}
+
+func (x *HubItem) GetCompat() string {
+	if x != nil {
+		return x.Compat
+	}
+	return ""
+}
+
+func (x *HubItem) GetMissingLogTypes() []string {
+	if x != nil {
+		return x.MissingLogTypes
+	}
+	return nil
 }
 
 type ListHubItemsRequest struct {
@@ -694,6 +721,623 @@ func (x *GetHubRolloutResponse) GetLogProcessors() []*HubLogProcessor {
 	return nil
 }
 
+type HubIndexEntry struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Type        string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Version     string                 `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
+	References  []string               `protobuf:"bytes,5,rep,name=references,proto3" json:"references,omitempty"`
+	Members     []*HubRef              `protobuf:"bytes,6,rep,name=members,proto3" json:"members,omitempty"`
+	// Installed: its source and version ("" when not installed).
+	InstalledSource  string `protobuf:"bytes,7,opt,name=installed_source,json=installedSource,proto3" json:"installed_source,omitempty"`
+	InstalledVersion string `protobuf:"bytes,8,opt,name=installed_version,json=installedVersion,proto3" json:"installed_version,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *HubIndexEntry) Reset() {
+	*x = HubIndexEntry{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HubIndexEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HubIndexEntry) ProtoMessage() {}
+
+func (x *HubIndexEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HubIndexEntry.ProtoReflect.Descriptor instead.
+func (*HubIndexEntry) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *HubIndexEntry) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *HubIndexEntry) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *HubIndexEntry) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *HubIndexEntry) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *HubIndexEntry) GetReferences() []string {
+	if x != nil {
+		return x.References
+	}
+	return nil
+}
+
+func (x *HubIndexEntry) GetMembers() []*HubRef {
+	if x != nil {
+		return x.Members
+	}
+	return nil
+}
+
+func (x *HubIndexEntry) GetInstalledSource() string {
+	if x != nil {
+		return x.InstalledSource
+	}
+	return ""
+}
+
+func (x *HubIndexEntry) GetInstalledVersion() string {
+	if x != nil {
+		return x.InstalledVersion
+	}
+	return ""
+}
+
+type ListHubIndexRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Type  string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// Matches names and descriptions.
+	Query         string `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
+	Limit         int32  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListHubIndexRequest) Reset() {
+	*x = ListHubIndexRequest{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListHubIndexRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListHubIndexRequest) ProtoMessage() {}
+
+func (x *ListHubIndexRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListHubIndexRequest.ProtoReflect.Descriptor instead.
+func (*ListHubIndexRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ListHubIndexRequest) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *ListHubIndexRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *ListHubIndexRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListHubIndexRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+type ListHubIndexResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Entries []*HubIndexEntry       `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	Total   int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	// When the index was downloaded (unset: never).
+	FetchedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=fetched_at,json=fetchedAt,proto3" json:"fetched_at,omitempty"`
+	BaseUrl       string                 `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListHubIndexResponse) Reset() {
+	*x = ListHubIndexResponse{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListHubIndexResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListHubIndexResponse) ProtoMessage() {}
+
+func (x *ListHubIndexResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListHubIndexResponse.ProtoReflect.Descriptor instead.
+func (*ListHubIndexResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ListHubIndexResponse) GetEntries() []*HubIndexEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+func (x *ListHubIndexResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *ListHubIndexResponse) GetFetchedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FetchedAt
+	}
+	return nil
+}
+
+func (x *ListHubIndexResponse) GetBaseUrl() string {
+	if x != nil {
+		return x.BaseUrl
+	}
+	return ""
+}
+
+type RefreshHubIndexRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RefreshHubIndexRequest) Reset() {
+	*x = RefreshHubIndexRequest{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RefreshHubIndexRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RefreshHubIndexRequest) ProtoMessage() {}
+
+func (x *RefreshHubIndexRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RefreshHubIndexRequest.ProtoReflect.Descriptor instead.
+func (*RefreshHubIndexRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{14}
+}
+
+type RefreshHubIndexResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Changed       bool                   `protobuf:"varint,1,opt,name=changed,proto3" json:"changed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RefreshHubIndexResponse) Reset() {
+	*x = RefreshHubIndexResponse{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RefreshHubIndexResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RefreshHubIndexResponse) ProtoMessage() {}
+
+func (x *RefreshHubIndexResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RefreshHubIndexResponse.ProtoReflect.Descriptor instead.
+func (*RefreshHubIndexResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *RefreshHubIndexResponse) GetChanged() bool {
+	if x != nil {
+		return x.Changed
+	}
+	return false
+}
+
+type PreviewHubItemRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ref           *HubRef                `protobuf:"bytes,1,opt,name=ref,proto3" json:"ref,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewHubItemRequest) Reset() {
+	*x = PreviewHubItemRequest{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewHubItemRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewHubItemRequest) ProtoMessage() {}
+
+func (x *PreviewHubItemRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewHubItemRequest.ProtoReflect.Descriptor instead.
+func (*PreviewHubItemRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *PreviewHubItemRequest) GetRef() *HubRef {
+	if x != nil {
+		return x.Ref
+	}
+	return nil
+}
+
+type PreviewHubItemResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Entry   *HubIndexEntry         `protobuf:"bytes,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	Content string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	// Every item installing it brings (itself first).
+	Items     []*HubRef `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty"`
+	DataFiles []string  `protobuf:"bytes,4,rep,name=data_files,json=dataFiles,proto3" json:"data_files,omitempty"`
+	// Scenarios brought: compatibility with the enabled parsers.
+	Compat          string   `protobuf:"bytes,5,opt,name=compat,proto3" json:"compat,omitempty"`
+	MissingLogTypes []string `protobuf:"bytes,6,rep,name=missing_log_types,json=missingLogTypes,proto3" json:"missing_log_types,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *PreviewHubItemResponse) Reset() {
+	*x = PreviewHubItemResponse{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewHubItemResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewHubItemResponse) ProtoMessage() {}
+
+func (x *PreviewHubItemResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewHubItemResponse.ProtoReflect.Descriptor instead.
+func (*PreviewHubItemResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *PreviewHubItemResponse) GetEntry() *HubIndexEntry {
+	if x != nil {
+		return x.Entry
+	}
+	return nil
+}
+
+func (x *PreviewHubItemResponse) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *PreviewHubItemResponse) GetItems() []*HubRef {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *PreviewHubItemResponse) GetDataFiles() []string {
+	if x != nil {
+		return x.DataFiles
+	}
+	return nil
+}
+
+func (x *PreviewHubItemResponse) GetCompat() string {
+	if x != nil {
+		return x.Compat
+	}
+	return ""
+}
+
+func (x *PreviewHubItemResponse) GetMissingLogTypes() []string {
+	if x != nil {
+		return x.MissingLogTypes
+	}
+	return nil
+}
+
+type InstallHubItemRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ref           *HubRef                `protobuf:"bytes,1,opt,name=ref,proto3" json:"ref,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InstallHubItemRequest) Reset() {
+	*x = InstallHubItemRequest{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstallHubItemRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstallHubItemRequest) ProtoMessage() {}
+
+func (x *InstallHubItemRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstallHubItemRequest.ProtoReflect.Descriptor instead.
+func (*InstallHubItemRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *InstallHubItemRequest) GetRef() *HubRef {
+	if x != nil {
+		return x.Ref
+	}
+	return nil
+}
+
+type InstallHubItemResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Installed     []*HubRef              `protobuf:"bytes,1,rep,name=installed,proto3" json:"installed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InstallHubItemResponse) Reset() {
+	*x = InstallHubItemResponse{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstallHubItemResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstallHubItemResponse) ProtoMessage() {}
+
+func (x *InstallHubItemResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstallHubItemResponse.ProtoReflect.Descriptor instead.
+func (*InstallHubItemResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *InstallHubItemResponse) GetInstalled() []*HubRef {
+	if x != nil {
+		return x.Installed
+	}
+	return nil
+}
+
+type RemoveHubItemRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ref           *HubRef                `protobuf:"bytes,1,opt,name=ref,proto3" json:"ref,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveHubItemRequest) Reset() {
+	*x = RemoveHubItemRequest{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveHubItemRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveHubItemRequest) ProtoMessage() {}
+
+func (x *RemoveHubItemRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveHubItemRequest.ProtoReflect.Descriptor instead.
+func (*RemoveHubItemRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *RemoveHubItemRequest) GetRef() *HubRef {
+	if x != nil {
+		return x.Ref
+	}
+	return nil
+}
+
+type RemoveHubItemResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveHubItemResponse) Reset() {
+	*x = RemoveHubItemResponse{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveHubItemResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveHubItemResponse) ProtoMessage() {}
+
+func (x *RemoveHubItemResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveHubItemResponse.ProtoReflect.Descriptor instead.
+func (*RemoveHubItemResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{21}
+}
+
 var File_openpicket_api_v1_hub_proto protoreflect.FileDescriptor
 
 const file_openpicket_api_v1_hub_proto_rawDesc = "" +
@@ -701,7 +1345,7 @@ const file_openpicket_api_v1_hub_proto_rawDesc = "" +
 	"\x1bopenpicket/api/v1/hub.proto\x12\x11openpicket.api.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"0\n" +
 	"\x06HubRef\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\xa5\x03\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\x90\x04\n" +
 	"\aHubItem\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -719,7 +1363,10 @@ const file_openpicket_api_v1_hub_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_by\x18\x0e \x01(\tR\tupdatedBy\")\n" +
+	"updated_by\x18\x0e \x01(\tR\tupdatedBy\x12%\n" +
+	"\x0elatest_version\x18\x0f \x01(\tR\rlatestVersion\x12\x16\n" +
+	"\x06compat\x18\x10 \x01(\tR\x06compat\x12*\n" +
+	"\x11missing_log_types\x18\x11 \x03(\tR\x0fmissingLogTypes\")\n" +
 	"\x13ListHubItemsRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\"H\n" +
 	"\x14ListHubItemsResponse\x120\n" +
@@ -745,14 +1392,61 @@ const file_openpicket_api_v1_hub_proto_rawDesc = "" +
 	"\rgood_revision\x18\x02 \x01(\x03R\fgoodRevision\x12'\n" +
 	"\x0ffailed_revision\x18\x03 \x01(\x03R\x0efailedRevision\x12!\n" +
 	"\ffailed_error\x18\x04 \x01(\tR\vfailedError\x12I\n" +
-	"\x0elog_processors\x18\x05 \x03(\v2\".openpicket.api.v1.HubLogProcessorR\rlogProcessors2\x96\x03\n" +
+	"\x0elog_processors\x18\x05 \x03(\v2\".openpicket.api.v1.HubLogProcessorR\rlogProcessors\"\xa0\x02\n" +
+	"\rHubIndexEntry\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x18\n" +
+	"\aversion\x18\x04 \x01(\tR\aversion\x12\x1e\n" +
+	"\n" +
+	"references\x18\x05 \x03(\tR\n" +
+	"references\x123\n" +
+	"\amembers\x18\x06 \x03(\v2\x19.openpicket.api.v1.HubRefR\amembers\x12)\n" +
+	"\x10installed_source\x18\a \x01(\tR\x0finstalledSource\x12+\n" +
+	"\x11installed_version\x18\b \x01(\tR\x10installedVersion\"m\n" +
+	"\x13ListHubIndexRequest\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x14\n" +
+	"\x05query\x18\x02 \x01(\tR\x05query\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x05R\x06offset\"\xbe\x01\n" +
+	"\x14ListHubIndexResponse\x12:\n" +
+	"\aentries\x18\x01 \x03(\v2 .openpicket.api.v1.HubIndexEntryR\aentries\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\x129\n" +
+	"\n" +
+	"fetched_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tfetchedAt\x12\x19\n" +
+	"\bbase_url\x18\x04 \x01(\tR\abaseUrl\"\x18\n" +
+	"\x16RefreshHubIndexRequest\"3\n" +
+	"\x17RefreshHubIndexResponse\x12\x18\n" +
+	"\achanged\x18\x01 \x01(\bR\achanged\"D\n" +
+	"\x15PreviewHubItemRequest\x12+\n" +
+	"\x03ref\x18\x01 \x01(\v2\x19.openpicket.api.v1.HubRefR\x03ref\"\xfe\x01\n" +
+	"\x16PreviewHubItemResponse\x126\n" +
+	"\x05entry\x18\x01 \x01(\v2 .openpicket.api.v1.HubIndexEntryR\x05entry\x12\x18\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\x12/\n" +
+	"\x05items\x18\x03 \x03(\v2\x19.openpicket.api.v1.HubRefR\x05items\x12\x1d\n" +
+	"\n" +
+	"data_files\x18\x04 \x03(\tR\tdataFiles\x12\x16\n" +
+	"\x06compat\x18\x05 \x01(\tR\x06compat\x12*\n" +
+	"\x11missing_log_types\x18\x06 \x03(\tR\x0fmissingLogTypes\"D\n" +
+	"\x15InstallHubItemRequest\x12+\n" +
+	"\x03ref\x18\x01 \x01(\v2\x19.openpicket.api.v1.HubRefR\x03ref\"Q\n" +
+	"\x16InstallHubItemResponse\x127\n" +
+	"\tinstalled\x18\x01 \x03(\v2\x19.openpicket.api.v1.HubRefR\tinstalled\"C\n" +
+	"\x14RemoveHubItemRequest\x12+\n" +
+	"\x03ref\x18\x01 \x01(\v2\x19.openpicket.api.v1.HubRefR\x03ref\"\x17\n" +
+	"\x15RemoveHubItemResponse2\x93\a\n" +
 	"\n" +
 	"HubService\x12_\n" +
 	"\fListHubItems\x12&.openpicket.api.v1.ListHubItemsRequest\x1a'.openpicket.api.v1.ListHubItemsResponse\x12Y\n" +
 	"\n" +
 	"GetHubItem\x12$.openpicket.api.v1.GetHubItemRequest\x1a%.openpicket.api.v1.GetHubItemResponse\x12h\n" +
 	"\x0fSetHubItemState\x12).openpicket.api.v1.SetHubItemStateRequest\x1a*.openpicket.api.v1.SetHubItemStateResponse\x12b\n" +
-	"\rGetHubRollout\x12'.openpicket.api.v1.GetHubRolloutRequest\x1a(.openpicket.api.v1.GetHubRolloutResponseB>Z<github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1b\x06proto3"
+	"\rGetHubRollout\x12'.openpicket.api.v1.GetHubRolloutRequest\x1a(.openpicket.api.v1.GetHubRolloutResponse\x12_\n" +
+	"\fListHubIndex\x12&.openpicket.api.v1.ListHubIndexRequest\x1a'.openpicket.api.v1.ListHubIndexResponse\x12h\n" +
+	"\x0fRefreshHubIndex\x12).openpicket.api.v1.RefreshHubIndexRequest\x1a*.openpicket.api.v1.RefreshHubIndexResponse\x12e\n" +
+	"\x0ePreviewHubItem\x12(.openpicket.api.v1.PreviewHubItemRequest\x1a).openpicket.api.v1.PreviewHubItemResponse\x12e\n" +
+	"\x0eInstallHubItem\x12(.openpicket.api.v1.InstallHubItemRequest\x1a).openpicket.api.v1.InstallHubItemResponse\x12b\n" +
+	"\rRemoveHubItem\x12'.openpicket.api.v1.RemoveHubItemRequest\x1a(.openpicket.api.v1.RemoveHubItemResponseB>Z<github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1b\x06proto3"
 
 var (
 	file_openpicket_api_v1_hub_proto_rawDescOnce sync.Once
@@ -766,7 +1460,7 @@ func file_openpicket_api_v1_hub_proto_rawDescGZIP() []byte {
 	return file_openpicket_api_v1_hub_proto_rawDescData
 }
 
-var file_openpicket_api_v1_hub_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_openpicket_api_v1_hub_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_openpicket_api_v1_hub_proto_goTypes = []any{
 	(*HubRef)(nil),                  // 0: openpicket.api.v1.HubRef
 	(*HubItem)(nil),                 // 1: openpicket.api.v1.HubItem
@@ -779,30 +1473,60 @@ var file_openpicket_api_v1_hub_proto_goTypes = []any{
 	(*GetHubRolloutRequest)(nil),    // 8: openpicket.api.v1.GetHubRolloutRequest
 	(*HubLogProcessor)(nil),         // 9: openpicket.api.v1.HubLogProcessor
 	(*GetHubRolloutResponse)(nil),   // 10: openpicket.api.v1.GetHubRolloutResponse
-	(*timestamppb.Timestamp)(nil),   // 11: google.protobuf.Timestamp
+	(*HubIndexEntry)(nil),           // 11: openpicket.api.v1.HubIndexEntry
+	(*ListHubIndexRequest)(nil),     // 12: openpicket.api.v1.ListHubIndexRequest
+	(*ListHubIndexResponse)(nil),    // 13: openpicket.api.v1.ListHubIndexResponse
+	(*RefreshHubIndexRequest)(nil),  // 14: openpicket.api.v1.RefreshHubIndexRequest
+	(*RefreshHubIndexResponse)(nil), // 15: openpicket.api.v1.RefreshHubIndexResponse
+	(*PreviewHubItemRequest)(nil),   // 16: openpicket.api.v1.PreviewHubItemRequest
+	(*PreviewHubItemResponse)(nil),  // 17: openpicket.api.v1.PreviewHubItemResponse
+	(*InstallHubItemRequest)(nil),   // 18: openpicket.api.v1.InstallHubItemRequest
+	(*InstallHubItemResponse)(nil),  // 19: openpicket.api.v1.InstallHubItemResponse
+	(*RemoveHubItemRequest)(nil),    // 20: openpicket.api.v1.RemoveHubItemRequest
+	(*RemoveHubItemResponse)(nil),   // 21: openpicket.api.v1.RemoveHubItemResponse
+	(*timestamppb.Timestamp)(nil),   // 22: google.protobuf.Timestamp
 }
 var file_openpicket_api_v1_hub_proto_depIdxs = []int32{
 	0,  // 0: openpicket.api.v1.HubItem.members:type_name -> openpicket.api.v1.HubRef
-	11, // 1: openpicket.api.v1.HubItem.updated_at:type_name -> google.protobuf.Timestamp
+	22, // 1: openpicket.api.v1.HubItem.updated_at:type_name -> google.protobuf.Timestamp
 	1,  // 2: openpicket.api.v1.ListHubItemsResponse.items:type_name -> openpicket.api.v1.HubItem
 	0,  // 3: openpicket.api.v1.GetHubItemRequest.ref:type_name -> openpicket.api.v1.HubRef
 	1,  // 4: openpicket.api.v1.GetHubItemResponse.item:type_name -> openpicket.api.v1.HubItem
 	0,  // 5: openpicket.api.v1.SetHubItemStateRequest.ref:type_name -> openpicket.api.v1.HubRef
-	11, // 6: openpicket.api.v1.HubLogProcessor.seen_at:type_name -> google.protobuf.Timestamp
+	22, // 6: openpicket.api.v1.HubLogProcessor.seen_at:type_name -> google.protobuf.Timestamp
 	9,  // 7: openpicket.api.v1.GetHubRolloutResponse.log_processors:type_name -> openpicket.api.v1.HubLogProcessor
-	2,  // 8: openpicket.api.v1.HubService.ListHubItems:input_type -> openpicket.api.v1.ListHubItemsRequest
-	4,  // 9: openpicket.api.v1.HubService.GetHubItem:input_type -> openpicket.api.v1.GetHubItemRequest
-	6,  // 10: openpicket.api.v1.HubService.SetHubItemState:input_type -> openpicket.api.v1.SetHubItemStateRequest
-	8,  // 11: openpicket.api.v1.HubService.GetHubRollout:input_type -> openpicket.api.v1.GetHubRolloutRequest
-	3,  // 12: openpicket.api.v1.HubService.ListHubItems:output_type -> openpicket.api.v1.ListHubItemsResponse
-	5,  // 13: openpicket.api.v1.HubService.GetHubItem:output_type -> openpicket.api.v1.GetHubItemResponse
-	7,  // 14: openpicket.api.v1.HubService.SetHubItemState:output_type -> openpicket.api.v1.SetHubItemStateResponse
-	10, // 15: openpicket.api.v1.HubService.GetHubRollout:output_type -> openpicket.api.v1.GetHubRolloutResponse
-	12, // [12:16] is the sub-list for method output_type
-	8,  // [8:12] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	0,  // 8: openpicket.api.v1.HubIndexEntry.members:type_name -> openpicket.api.v1.HubRef
+	11, // 9: openpicket.api.v1.ListHubIndexResponse.entries:type_name -> openpicket.api.v1.HubIndexEntry
+	22, // 10: openpicket.api.v1.ListHubIndexResponse.fetched_at:type_name -> google.protobuf.Timestamp
+	0,  // 11: openpicket.api.v1.PreviewHubItemRequest.ref:type_name -> openpicket.api.v1.HubRef
+	11, // 12: openpicket.api.v1.PreviewHubItemResponse.entry:type_name -> openpicket.api.v1.HubIndexEntry
+	0,  // 13: openpicket.api.v1.PreviewHubItemResponse.items:type_name -> openpicket.api.v1.HubRef
+	0,  // 14: openpicket.api.v1.InstallHubItemRequest.ref:type_name -> openpicket.api.v1.HubRef
+	0,  // 15: openpicket.api.v1.InstallHubItemResponse.installed:type_name -> openpicket.api.v1.HubRef
+	0,  // 16: openpicket.api.v1.RemoveHubItemRequest.ref:type_name -> openpicket.api.v1.HubRef
+	2,  // 17: openpicket.api.v1.HubService.ListHubItems:input_type -> openpicket.api.v1.ListHubItemsRequest
+	4,  // 18: openpicket.api.v1.HubService.GetHubItem:input_type -> openpicket.api.v1.GetHubItemRequest
+	6,  // 19: openpicket.api.v1.HubService.SetHubItemState:input_type -> openpicket.api.v1.SetHubItemStateRequest
+	8,  // 20: openpicket.api.v1.HubService.GetHubRollout:input_type -> openpicket.api.v1.GetHubRolloutRequest
+	12, // 21: openpicket.api.v1.HubService.ListHubIndex:input_type -> openpicket.api.v1.ListHubIndexRequest
+	14, // 22: openpicket.api.v1.HubService.RefreshHubIndex:input_type -> openpicket.api.v1.RefreshHubIndexRequest
+	16, // 23: openpicket.api.v1.HubService.PreviewHubItem:input_type -> openpicket.api.v1.PreviewHubItemRequest
+	18, // 24: openpicket.api.v1.HubService.InstallHubItem:input_type -> openpicket.api.v1.InstallHubItemRequest
+	20, // 25: openpicket.api.v1.HubService.RemoveHubItem:input_type -> openpicket.api.v1.RemoveHubItemRequest
+	3,  // 26: openpicket.api.v1.HubService.ListHubItems:output_type -> openpicket.api.v1.ListHubItemsResponse
+	5,  // 27: openpicket.api.v1.HubService.GetHubItem:output_type -> openpicket.api.v1.GetHubItemResponse
+	7,  // 28: openpicket.api.v1.HubService.SetHubItemState:output_type -> openpicket.api.v1.SetHubItemStateResponse
+	10, // 29: openpicket.api.v1.HubService.GetHubRollout:output_type -> openpicket.api.v1.GetHubRolloutResponse
+	13, // 30: openpicket.api.v1.HubService.ListHubIndex:output_type -> openpicket.api.v1.ListHubIndexResponse
+	15, // 31: openpicket.api.v1.HubService.RefreshHubIndex:output_type -> openpicket.api.v1.RefreshHubIndexResponse
+	17, // 32: openpicket.api.v1.HubService.PreviewHubItem:output_type -> openpicket.api.v1.PreviewHubItemResponse
+	19, // 33: openpicket.api.v1.HubService.InstallHubItem:output_type -> openpicket.api.v1.InstallHubItemResponse
+	21, // 34: openpicket.api.v1.HubService.RemoveHubItem:output_type -> openpicket.api.v1.RemoveHubItemResponse
+	26, // [26:35] is the sub-list for method output_type
+	17, // [17:26] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_openpicket_api_v1_hub_proto_init() }
@@ -816,7 +1540,7 @@ func file_openpicket_api_v1_hub_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_openpicket_api_v1_hub_proto_rawDesc), len(file_openpicket_api_v1_hub_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

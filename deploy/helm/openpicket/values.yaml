@@ -163,6 +163,17 @@ crowdsec:
       limits: { memory: 2Gi }
   # Extra bouncers (Traefik, nginx...): name -> key; empty key generates one.
   bouncers: {}
+  # The CrowdSec hub the manager downloads parsers, scenarios and
+  # collections from (UI "CrowdSec content"). The log processors never
+  # reach it: the manager pushes them their content.
+  hub:
+    # Empty: https://cdn-hub.crowdsec.net/crowdsecurity/master (a mirror
+    # works the same).
+    url: ""
+    # Hosts data files may come from (https); empty: hub-data.crowdsec.net.
+    dataHosts: []
+    # Index refresh period ("24h" when empty; "-1s" disables).
+    refresh: ""
 
 # ---------------------------------------------------------------------------
 # Loki: raw log archive (eve, NFLOG, Suricata and agent logs).
