@@ -197,13 +197,17 @@ message Status {
 
 message LogSourceStatus {
   string program = 1;
-  // The configured path (a glob takes several files).
+  // The configured path (a glob takes several files), "journal [matches]"
+  // or "udp://host:port" (listener).
   string path = 2;
+  // Files open; 1 for a running journal or a bound listener.
   uint32 files = 3;
   uint64 lines = 4;
   // Lines cut at 64 KiB.
   uint64 truncated = 5;
   string last_error = 6;
+  // Datagrams dropped by a listener (queue full).
+  uint64 dropped = 7;
 }
 
 // NAT lookup for Suricata alerts (conntrack events).

@@ -675,6 +675,39 @@
             },
             "resources": {
               "type": "object"
+            },
+            "programRetention": {
+              "type": "object",
+              "propertyNames": {
+                "pattern": "^[a-z0-9._-]{1,32}$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h|d|w|y))+$"
+              }
+            },
+            "retentionStreams": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "selector": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": "integer"
+                  },
+                  "period": {
+                    "type": "string",
+                    "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h|d|w|y))+$"
+                  }
+                },
+                "required": [
+                  "selector",
+                  "period"
+                ],
+                "additionalProperties": false
+              }
             }
           },
           "additionalProperties": false

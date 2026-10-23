@@ -178,7 +178,14 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 	if len(cfg.OpenPicket.LogSources) > 0 {
 		var srcs []logsrc.Source
 		for _, s := range cfg.OpenPicket.LogSources {
-			srcs = append(srcs, logsrc.Source{Program: s.Program, Path: s.Path})
+			src := logsrc.Source{Program: s.Program, Path: s.Path, Listen: s.Listen}
+			if s.Journal != nil {
+				src.Journal, src.Matches = true, s.Journal.Matches
+			}
+			if src.Path == "" && src.Program == "" {
+				src.Program = "syslog"
+			}
+			srcs = append(srcs, src)
 		}
 		root := ""
 		if cfg.Node.Docker() {
@@ -474,7 +481,7 @@ func (a *Agent) status(ctx context.Context) *dataplanev1.Status {
 	if a.logs != nil {
 		for _, s := range a.logs.Status() {
 			st.LogSources = append(st.LogSources, &dataplanev1.LogSourceStatus{Program: s.Program, Path: s.Path, Files: uint32(s.Files),
-				Lines: s.Lines, Truncated: s.Truncated, LastError: s.LastError})
+				Lines: s.Lines, Truncated: s.Truncated, Dropped: s.Dropped, LastError: s.LastError})
 		}
 	}
 	if a.nflog != nil {

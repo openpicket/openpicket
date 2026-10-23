@@ -317,6 +317,11 @@ function StatusPanel(props: { node: Node }) {
                           {t("{n} lines cut at 64 KiB", { n: formatNumber(s.truncated) })}
                         </Text>
                       )}
+                      {toNumber(s.dropped) > 0 && (
+                        <Text size="xs" c="orange">
+                          {t("{n} messages dropped (queue full)", { n: formatNumber(s.dropped) })}
+                        </Text>
+                      )}
                     </Table.Td>
                     <Table.Td ta="right">
                       <Text size="sm" c={s.files === 0 ? "orange" : undefined}>

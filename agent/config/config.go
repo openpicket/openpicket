@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -57,13 +58,81 @@ type Node struct {
 // Docker reports the docker profile: host files under HostRoot.
 func (n Node) Docker() bool { return n.Platform.Profile == suricfg.ProfileDocker }
 
-// LogSource is a generic log the agent tails.
+// LogSource is a generic log the agent ships: a file (path), the systemd
+// journal or a local syslog listener.
 type LogSource struct {
 	// Program wrote the lines (nginx, postgres); "syslog" for files in
-	// syslog format (auth.log), whose lines name their program.
+	// syslog format (auth.log), whose lines name their program. The
+	// journal and a listener are "syslog" (the default for them).
 	Program string `yaml:"program"`
 	// Path of the file; a glob takes every match (new files too).
 	Path string `yaml:"path"`
+	// Journal follows the systemd journal with journalctl, from the last
+	// acknowledged entry (new entries only the first time).
+	Journal *JournalSource `yaml:"journal"`
+	// Listen receives syslog datagrams on a UDP address, e.g. OpenWrt's
+	// system log (system.@system[0].log_ip/log_port). Nothing replays
+	// them: messages sent while the agent is down are lost.
+	Listen string `yaml:"listen"`
+}
+
+// JournalSource selects journal entries.
+type JournalSource struct {
+	// Matches are journalctl matches ("_SYSTEMD_UNIT=sshd.service",
+	// "SYSLOG_IDENTIFIER=sshd", "+" between alternatives); none: all.
+	Matches []string `yaml:"matches"`
+}
+
+// Kind names the source in errors.
+func (s LogSource) Kind() string {
+	switch {
+	case s.Journal != nil:
+		return "journal"
+	case s.Listen != "":
+		return "listen " + s.Listen
+	}
+	return s.Path
+}
+
+func validLogSource(s LogSource) error {
+	kinds := 0
+	for _, set := range []bool{s.Path != "", s.Journal != nil, s.Listen != ""} {
+		if set {
+			kinds++
+		}
+	}
+	if kinds != 1 {
+		return errors.New("set one of path, journal and listen")
+	}
+	if s.Path == "" {
+		// The journal and listeners give syslog lines.
+		if s.Program != "" && s.Program != "syslog" {
+			return fmt.Errorf("program %q: the journal and listeners give syslog lines (program syslog)", s.Program)
+		}
+	} else if record.NormalizeProgram(s.Program) != strings.ToLower(strings.TrimSpace(s.Program)) || s.Program == "" {
+		return fmt.Errorf("program %q: letters, digits, '.', '_', '-' only", s.Program)
+	}
+	switch {
+	case s.Path != "":
+		if !filepath.IsAbs(s.Path) {
+			return fmt.Errorf("path %q must be absolute", s.Path)
+		}
+		if _, err := filepath.Match(s.Path, ""); err != nil {
+			return err
+		}
+	case s.Journal != nil:
+		for _, m := range s.Journal.Matches {
+			// Matches go to journalctl as arguments: no options.
+			if m != "+" && (!strings.Contains(m, "=") || strings.HasPrefix(m, "-")) {
+				return fmt.Errorf("journal match %q: FIELD=value or +", m)
+			}
+		}
+	default:
+		if _, _, err := net.SplitHostPort(s.Listen); err != nil {
+			return fmt.Errorf("listen %q: host:port (UDP)", s.Listen)
+		}
+	}
+	return nil
 }
 
 // OpenPicket configures the OpenPicket parts of the agent.
@@ -323,18 +392,12 @@ func (c *Config) validate() error {
 	}
 	seen := map[string]bool{}
 	for _, s := range o.LogSources {
-		switch {
-		case record.NormalizeProgram(s.Program) != strings.ToLower(strings.TrimSpace(s.Program)) || s.Program == "":
-			errs = append(errs, fmt.Errorf("openpicket.log_sources: program %q: letters, digits, '.', '_', '-' only", s.Program))
-		case !filepath.IsAbs(s.Path):
-			errs = append(errs, fmt.Errorf("openpicket.log_sources: %s: path %q must be absolute", s.Program, s.Path))
-		case seen[s.Path]:
-			errs = append(errs, fmt.Errorf("openpicket.log_sources: %s listed twice", s.Path))
+		if err := validLogSource(s); err != nil {
+			errs = append(errs, fmt.Errorf("openpicket.log_sources: %s: %w", s.Kind(), err))
+		} else if seen[s.Kind()] {
+			errs = append(errs, fmt.Errorf("openpicket.log_sources: %s listed twice", s.Kind()))
 		}
-		if _, err := filepath.Match(s.Path, ""); err != nil {
-			errs = append(errs, fmt.Errorf("openpicket.log_sources: %s: %w", s.Path, err))
-		}
-		seen[s.Path] = true
+		seen[s.Kind()] = true
 	}
 	if o.URL == "" {
 		errs = append(errs, errors.New("openpicket.url is required"))

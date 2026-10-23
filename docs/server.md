@@ -31,6 +31,8 @@ openpicket-agent keygen -config /etc/openpicket-agent/agent.yaml
 - `program: syslog` is for files in syslog format, such as `/var/log/auth.log`: each line names its program (`sshd`, `sudo`), and the manager uses that one.
 - A glob (`/var/log/nginx/*access.log`) takes every match, including files created later. Files present at the first start are read from their end, so their backlog is not sent; files created later are read from their start.
 - Rotation (rename and create, or copytruncate) is followed. A line is acknowledged by the manager before its position is saved: after a restart, unacknowledged lines are sent again.
+- `journal: {}` follows the systemd journal with `journalctl` (servers without `/var/log/auth.log`, such as Debian 12 without rsyslog). Entries become syslog lines named after their `SYSLOG_IDENTIFIER` (`sshd`, `sudo`). `matches` narrow it down (`_SYSTEMD_UNIT=ssh.service`, `+` between alternatives). The first start reads new entries only; later the agent resumes after the last entry the manager acknowledged. The agent's user needs to read the journal (root, or the `systemd-journal` group).
+- `listen: "127.0.0.1:5140"` receives syslog datagrams from a local daemon (rsyslog `*.* @127.0.0.1:5140`). Nothing replays them.
 
 ## 3. Service
 
@@ -41,7 +43,7 @@ openpicket-agent check -config /etc/openpicket-agent/agent.yaml
 systemctl enable --now openpicket-agent
 ```
 
-`check` reports the files each log source matches, the key, and the manager connection.
+`check` reports the files each log source matches (journalctl for the journal), the key, and the manager connection.
 
 ## 4. CrowdSec parsers
 

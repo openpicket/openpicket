@@ -18,5 +18,10 @@ openpicket:
     - { program: nginx, path: "/var/log/nginx/*error.log" }
     - { program: syslog, path: /var/log/auth.log }
     # - { program: postgres, path: "/var/log/postgresql/*.log" }
+    # Without /var/log/auth.log (journald only): the journal, as syslog
+    # lines; matches narrow it ("+" between alternatives).
+    # - { journal: { matches: [_SYSTEMD_UNIT=ssh.service, +, SYSLOG_IDENTIFIER=sudo] } }
+    # Syslog datagrams from a local daemon (not replayed after a restart).
+    # - { listen: "127.0.0.1:5140" }
   local_nets: []                         # inside networks beyond the interface addresses
   # wan_interfaces: [eth0]               # set to also block CrowdSec bans on this host (nftables)
