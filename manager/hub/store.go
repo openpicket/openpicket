@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"strconv"
 	"time"
@@ -350,7 +351,16 @@ func (s *Store) Bundle(ctx context.Context) (*hubitem.Bundle, error) {
 		}
 		b.Items = append(b.Items, hubitem.File{Path: p, Content: content})
 		if typ == hubitem.Scenarios && state == hubitem.Simulation {
-			b.Simulation = append(b.Simulation, name)
+			// simulation.yaml names buckets: an item file can hold several.
+			names := []string{name}
+			if doc, err := hubitem.ParseDoc(typ, content); err == nil && len(doc.Names) > 0 {
+				names = doc.Names
+			}
+			for _, n := range names {
+				if hubitem.ValidName(n) && !slices.Contains(b.Simulation, n) {
+					b.Simulation = append(b.Simulation, n)
+				}
+			}
 		}
 		var files []string
 		_ = json.Unmarshal(data, &files)
@@ -386,6 +396,65 @@ func (s *Store) Bundle(ctx context.Context) (*hubitem.Bundle, error) {
 		}
 	}
 	return b, b.Check()
+}
+
+// Compatibility of a scenario with the parsers enabled.
+type Compatibility struct {
+	Status string
+	// Missing log types: read by the scenario, set by no enabled parser.
+	Missing []string
+}
+
+// Produced returns the log types the enabled parsers set.
+func (s *Store) Produced(ctx context.Context) ([]string, error) {
+	rows, err := s.db.Query(ctx, `SELECT i.content FROM openpicket.hub_items i LEFT JOIN openpicket.hub_item_state st ON st.type = i.type AND st.name = i.name
+		WHERE i.type = 'parsers' AND COALESCE(st.state, 'enabled') <> 'disabled'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var b []byte
+		if err := rows.Scan(&b); err != nil {
+			return nil, err
+		}
+		if doc, err := hubitem.ParseDoc(hubitem.Parsers, b); err == nil {
+			out = append(out, doc.Produces...)
+		}
+	}
+	slices.Sort(out)
+	return slices.Compact(out), rows.Err()
+}
+
+// Compatibilities judges every stored scenario.
+func (s *Store) Compatibilities(ctx context.Context) (map[string]Compatibility, error) {
+	produced, err := s.Produced(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.db.Query(ctx, `SELECT name, content FROM openpicket.hub_items WHERE type = 'scenarios'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]Compatibility{}
+	for rows.Next() {
+		var (
+			name string
+			b    []byte
+		)
+		if err := rows.Scan(&name, &b); err != nil {
+			return nil, err
+		}
+		var required []string
+		if doc, err := hubitem.ParseDoc(hubitem.Scenarios, b); err == nil {
+			required = doc.LogTypes
+		}
+		st, missing := hubitem.Compat(required, produced)
+		out[name] = Compatibility{Status: st, Missing: missing}
+	}
+	return out, rows.Err()
 }
 
 // Meta is the rollout state.

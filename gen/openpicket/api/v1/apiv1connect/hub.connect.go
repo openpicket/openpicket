@@ -43,6 +43,20 @@ const (
 	// HubServiceGetHubRolloutProcedure is the fully-qualified name of the HubService's GetHubRollout
 	// RPC.
 	HubServiceGetHubRolloutProcedure = "/openpicket.api.v1.HubService/GetHubRollout"
+	// HubServiceListHubIndexProcedure is the fully-qualified name of the HubService's ListHubIndex RPC.
+	HubServiceListHubIndexProcedure = "/openpicket.api.v1.HubService/ListHubIndex"
+	// HubServiceRefreshHubIndexProcedure is the fully-qualified name of the HubService's
+	// RefreshHubIndex RPC.
+	HubServiceRefreshHubIndexProcedure = "/openpicket.api.v1.HubService/RefreshHubIndex"
+	// HubServicePreviewHubItemProcedure is the fully-qualified name of the HubService's PreviewHubItem
+	// RPC.
+	HubServicePreviewHubItemProcedure = "/openpicket.api.v1.HubService/PreviewHubItem"
+	// HubServiceInstallHubItemProcedure is the fully-qualified name of the HubService's InstallHubItem
+	// RPC.
+	HubServiceInstallHubItemProcedure = "/openpicket.api.v1.HubService/InstallHubItem"
+	// HubServiceRemoveHubItemProcedure is the fully-qualified name of the HubService's RemoveHubItem
+	// RPC.
+	HubServiceRemoveHubItemProcedure = "/openpicket.api.v1.HubService/RemoveHubItem"
 )
 
 // HubServiceClient is a client for the openpicket.api.v1.HubService service.
@@ -53,6 +67,16 @@ type HubServiceClient interface {
 	SetHubItemState(context.Context, *connect.Request[v1.SetHubItemStateRequest]) (*connect.Response[v1.SetHubItemStateResponse], error)
 	// What the log processors run.
 	GetHubRollout(context.Context, *connect.Request[v1.GetHubRolloutRequest]) (*connect.Response[v1.GetHubRolloutResponse], error)
+	// The CrowdSec hub index.
+	ListHubIndex(context.Context, *connect.Request[v1.ListHubIndexRequest]) (*connect.Response[v1.ListHubIndexResponse], error)
+	RefreshHubIndex(context.Context, *connect.Request[v1.RefreshHubIndexRequest]) (*connect.Response[v1.RefreshHubIndexResponse], error)
+	// Downloads an item and what it brings, without installing.
+	PreviewHubItem(context.Context, *connect.Request[v1.PreviewHubItemRequest]) (*connect.Response[v1.PreviewHubItemResponse], error)
+	// Installs (or updates to the index version) an item from the hub,
+	// with a collection's members and the data files they read.
+	InstallHubItem(context.Context, *connect.Request[v1.InstallHubItemRequest]) (*connect.Response[v1.InstallHubItemResponse], error)
+	// Removes a hub or custom item (built-in items can only be turned off).
+	RemoveHubItem(context.Context, *connect.Request[v1.RemoveHubItemRequest]) (*connect.Response[v1.RemoveHubItemResponse], error)
 }
 
 // NewHubServiceClient constructs a client for the openpicket.api.v1.HubService service. By default,
@@ -90,6 +114,36 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(hubServiceMethods.ByName("GetHubRollout")),
 			connect.WithClientOptions(opts...),
 		),
+		listHubIndex: connect.NewClient[v1.ListHubIndexRequest, v1.ListHubIndexResponse](
+			httpClient,
+			baseURL+HubServiceListHubIndexProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("ListHubIndex")),
+			connect.WithClientOptions(opts...),
+		),
+		refreshHubIndex: connect.NewClient[v1.RefreshHubIndexRequest, v1.RefreshHubIndexResponse](
+			httpClient,
+			baseURL+HubServiceRefreshHubIndexProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("RefreshHubIndex")),
+			connect.WithClientOptions(opts...),
+		),
+		previewHubItem: connect.NewClient[v1.PreviewHubItemRequest, v1.PreviewHubItemResponse](
+			httpClient,
+			baseURL+HubServicePreviewHubItemProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("PreviewHubItem")),
+			connect.WithClientOptions(opts...),
+		),
+		installHubItem: connect.NewClient[v1.InstallHubItemRequest, v1.InstallHubItemResponse](
+			httpClient,
+			baseURL+HubServiceInstallHubItemProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("InstallHubItem")),
+			connect.WithClientOptions(opts...),
+		),
+		removeHubItem: connect.NewClient[v1.RemoveHubItemRequest, v1.RemoveHubItemResponse](
+			httpClient,
+			baseURL+HubServiceRemoveHubItemProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("RemoveHubItem")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -99,6 +153,11 @@ type hubServiceClient struct {
 	getHubItem      *connect.Client[v1.GetHubItemRequest, v1.GetHubItemResponse]
 	setHubItemState *connect.Client[v1.SetHubItemStateRequest, v1.SetHubItemStateResponse]
 	getHubRollout   *connect.Client[v1.GetHubRolloutRequest, v1.GetHubRolloutResponse]
+	listHubIndex    *connect.Client[v1.ListHubIndexRequest, v1.ListHubIndexResponse]
+	refreshHubIndex *connect.Client[v1.RefreshHubIndexRequest, v1.RefreshHubIndexResponse]
+	previewHubItem  *connect.Client[v1.PreviewHubItemRequest, v1.PreviewHubItemResponse]
+	installHubItem  *connect.Client[v1.InstallHubItemRequest, v1.InstallHubItemResponse]
+	removeHubItem   *connect.Client[v1.RemoveHubItemRequest, v1.RemoveHubItemResponse]
 }
 
 // ListHubItems calls openpicket.api.v1.HubService.ListHubItems.
@@ -121,6 +180,31 @@ func (c *hubServiceClient) GetHubRollout(ctx context.Context, req *connect.Reque
 	return c.getHubRollout.CallUnary(ctx, req)
 }
 
+// ListHubIndex calls openpicket.api.v1.HubService.ListHubIndex.
+func (c *hubServiceClient) ListHubIndex(ctx context.Context, req *connect.Request[v1.ListHubIndexRequest]) (*connect.Response[v1.ListHubIndexResponse], error) {
+	return c.listHubIndex.CallUnary(ctx, req)
+}
+
+// RefreshHubIndex calls openpicket.api.v1.HubService.RefreshHubIndex.
+func (c *hubServiceClient) RefreshHubIndex(ctx context.Context, req *connect.Request[v1.RefreshHubIndexRequest]) (*connect.Response[v1.RefreshHubIndexResponse], error) {
+	return c.refreshHubIndex.CallUnary(ctx, req)
+}
+
+// PreviewHubItem calls openpicket.api.v1.HubService.PreviewHubItem.
+func (c *hubServiceClient) PreviewHubItem(ctx context.Context, req *connect.Request[v1.PreviewHubItemRequest]) (*connect.Response[v1.PreviewHubItemResponse], error) {
+	return c.previewHubItem.CallUnary(ctx, req)
+}
+
+// InstallHubItem calls openpicket.api.v1.HubService.InstallHubItem.
+func (c *hubServiceClient) InstallHubItem(ctx context.Context, req *connect.Request[v1.InstallHubItemRequest]) (*connect.Response[v1.InstallHubItemResponse], error) {
+	return c.installHubItem.CallUnary(ctx, req)
+}
+
+// RemoveHubItem calls openpicket.api.v1.HubService.RemoveHubItem.
+func (c *hubServiceClient) RemoveHubItem(ctx context.Context, req *connect.Request[v1.RemoveHubItemRequest]) (*connect.Response[v1.RemoveHubItemResponse], error) {
+	return c.removeHubItem.CallUnary(ctx, req)
+}
+
 // HubServiceHandler is an implementation of the openpicket.api.v1.HubService service.
 type HubServiceHandler interface {
 	ListHubItems(context.Context, *connect.Request[v1.ListHubItemsRequest]) (*connect.Response[v1.ListHubItemsResponse], error)
@@ -129,6 +213,16 @@ type HubServiceHandler interface {
 	SetHubItemState(context.Context, *connect.Request[v1.SetHubItemStateRequest]) (*connect.Response[v1.SetHubItemStateResponse], error)
 	// What the log processors run.
 	GetHubRollout(context.Context, *connect.Request[v1.GetHubRolloutRequest]) (*connect.Response[v1.GetHubRolloutResponse], error)
+	// The CrowdSec hub index.
+	ListHubIndex(context.Context, *connect.Request[v1.ListHubIndexRequest]) (*connect.Response[v1.ListHubIndexResponse], error)
+	RefreshHubIndex(context.Context, *connect.Request[v1.RefreshHubIndexRequest]) (*connect.Response[v1.RefreshHubIndexResponse], error)
+	// Downloads an item and what it brings, without installing.
+	PreviewHubItem(context.Context, *connect.Request[v1.PreviewHubItemRequest]) (*connect.Response[v1.PreviewHubItemResponse], error)
+	// Installs (or updates to the index version) an item from the hub,
+	// with a collection's members and the data files they read.
+	InstallHubItem(context.Context, *connect.Request[v1.InstallHubItemRequest]) (*connect.Response[v1.InstallHubItemResponse], error)
+	// Removes a hub or custom item (built-in items can only be turned off).
+	RemoveHubItem(context.Context, *connect.Request[v1.RemoveHubItemRequest]) (*connect.Response[v1.RemoveHubItemResponse], error)
 }
 
 // NewHubServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -162,6 +256,36 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(hubServiceMethods.ByName("GetHubRollout")),
 		connect.WithHandlerOptions(opts...),
 	)
+	hubServiceListHubIndexHandler := connect.NewUnaryHandler(
+		HubServiceListHubIndexProcedure,
+		svc.ListHubIndex,
+		connect.WithSchema(hubServiceMethods.ByName("ListHubIndex")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceRefreshHubIndexHandler := connect.NewUnaryHandler(
+		HubServiceRefreshHubIndexProcedure,
+		svc.RefreshHubIndex,
+		connect.WithSchema(hubServiceMethods.ByName("RefreshHubIndex")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServicePreviewHubItemHandler := connect.NewUnaryHandler(
+		HubServicePreviewHubItemProcedure,
+		svc.PreviewHubItem,
+		connect.WithSchema(hubServiceMethods.ByName("PreviewHubItem")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceInstallHubItemHandler := connect.NewUnaryHandler(
+		HubServiceInstallHubItemProcedure,
+		svc.InstallHubItem,
+		connect.WithSchema(hubServiceMethods.ByName("InstallHubItem")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceRemoveHubItemHandler := connect.NewUnaryHandler(
+		HubServiceRemoveHubItemProcedure,
+		svc.RemoveHubItem,
+		connect.WithSchema(hubServiceMethods.ByName("RemoveHubItem")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/openpicket.api.v1.HubService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HubServiceListHubItemsProcedure:
@@ -172,6 +296,16 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceSetHubItemStateHandler.ServeHTTP(w, r)
 		case HubServiceGetHubRolloutProcedure:
 			hubServiceGetHubRolloutHandler.ServeHTTP(w, r)
+		case HubServiceListHubIndexProcedure:
+			hubServiceListHubIndexHandler.ServeHTTP(w, r)
+		case HubServiceRefreshHubIndexProcedure:
+			hubServiceRefreshHubIndexHandler.ServeHTTP(w, r)
+		case HubServicePreviewHubItemProcedure:
+			hubServicePreviewHubItemHandler.ServeHTTP(w, r)
+		case HubServiceInstallHubItemProcedure:
+			hubServiceInstallHubItemHandler.ServeHTTP(w, r)
+		case HubServiceRemoveHubItemProcedure:
+			hubServiceRemoveHubItemHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -195,4 +329,24 @@ func (UnimplementedHubServiceHandler) SetHubItemState(context.Context, *connect.
 
 func (UnimplementedHubServiceHandler) GetHubRollout(context.Context, *connect.Request[v1.GetHubRolloutRequest]) (*connect.Response[v1.GetHubRolloutResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.HubService.GetHubRollout is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) ListHubIndex(context.Context, *connect.Request[v1.ListHubIndexRequest]) (*connect.Response[v1.ListHubIndexResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.HubService.ListHubIndex is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) RefreshHubIndex(context.Context, *connect.Request[v1.RefreshHubIndexRequest]) (*connect.Response[v1.RefreshHubIndexResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.HubService.RefreshHubIndex is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) PreviewHubItem(context.Context, *connect.Request[v1.PreviewHubItemRequest]) (*connect.Response[v1.PreviewHubItemResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.HubService.PreviewHubItem is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) InstallHubItem(context.Context, *connect.Request[v1.InstallHubItemRequest]) (*connect.Response[v1.InstallHubItemResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.HubService.InstallHubItem is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) RemoveHubItem(context.Context, *connect.Request[v1.RemoveHubItemRequest]) (*connect.Response[v1.RemoveHubItemResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.HubService.RemoveHubItem is not implemented"))
 }

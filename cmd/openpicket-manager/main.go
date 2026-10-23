@@ -57,6 +57,7 @@ type config struct {
 	Metrics           csmetrics.Config
 	CrowdSec          crowdsec.Config
 	CrowdSecSync      manager.CrowdSecSync
+	Hub               hub.Source
 	LAPI              lapi.Config
 	LAPIName          string
 	LAPIExtra         string
@@ -118,6 +119,9 @@ func loadConfig() (*config, error) {
 	e.List("CROWDSEC_NFLOG_PREFIXES", &c.CrowdSec.NflogPrefixes)
 	e.List("CROWDSEC_SYNC_ENDPOINTS", &c.CrowdSecSync.Endpoints)
 	e.Int("CROWDSEC_SYNC_PORT", &c.CrowdSecSync.Port)
+	e.String("HUB_URL", &c.Hub.BaseURL)
+	e.List("HUB_DATA_HOSTS", &c.Hub.DataHosts)
+	e.Duration("HUB_REFRESH", &c.Hub.RefreshEvery)
 	e.String("LAPI_URL", &c.LAPI.URL)
 	e.Secret("LAPI_BOUNCER_KEY", &c.LAPI.BouncerKey)
 	e.String("LAPI_LOGIN", &c.LAPI.Login)
@@ -359,7 +363,7 @@ func serve() error {
 		}
 	}
 	m, err := manager.New(manager.Options{
-		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, CrowdSecSync: cfg.CrowdSecSync, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
+		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, CrowdSecSync: cfg.CrowdSecSync, Hub: cfg.Hub, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
 		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, OpenSearch: &cfg.OpenSearch, MISP: &cfg.MISP, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
 		Suricontroller: suri, AgentControllerURL: cfg.AgentControllerURL, TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
 	})
