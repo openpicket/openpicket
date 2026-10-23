@@ -5,6 +5,7 @@
 {{- $osCA := and .Values.opensearch.enabled .Values.opensearch.caSecret }}
 {{- $mispCA := and .Values.misp.enabled .Values.misp.external.url .Values.misp.external.caSecret }}
 {{- $volumes := or (not $split) $m.auth.config $osCA $mispCA }}
+{{- $syslog := and (not $split) .Values.syslog.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -188,6 +189,10 @@ spec:
             {{- end }}
             {{- end }}
             {{- include "openpicket.opensearchEnv" . | nindent 12 }}
+            {{- include "openpicket.syslogDefaultEnv" . | nindent 12 }}
+            {{- if $syslog }}
+            {{- include "openpicket.syslogEnv" . | nindent 12 }}
+            {{- end }}
             {{- with $m.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -196,6 +201,9 @@ spec:
               containerPort: 8080
             - name: metrics
               containerPort: 9090
+            {{- if $syslog }}
+            {{- include "openpicket.syslogPorts" . | nindent 12 }}
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /readyz
@@ -230,6 +238,9 @@ spec:
               mountPath: /secrets/misp-ca
               readOnly: true
             {{- end }}
+            {{- if $syslog }}
+            {{- include "openpicket.syslogMounts" . | nindent 12 }}
+            {{- end }}
           {{- end }}
       {{- if $volumes }}
       volumes:
@@ -254,6 +265,9 @@ spec:
         - name: misp-ca
           secret:
             secretName: {{ .Values.misp.external.caSecret }}
+        {{- end }}
+        {{- if $syslog }}
+        {{- include "openpicket.syslogVolumes" . | nindent 8 }}
         {{- end }}
       {{- end }}
       {{- with $m.nodeSelector }}

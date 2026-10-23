@@ -378,6 +378,130 @@
       },
       "additionalProperties": false
     },
+    "syslog": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "unregistered": {
+          "enum": [
+            "drop",
+            "accept"
+          ]
+        },
+        "udp": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "additionalProperties": false
+        },
+        "tcp": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "additionalProperties": false
+        },
+        "tls": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "secretName": {
+              "type": "string"
+            },
+            "clientCASecret": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "LoadBalancer",
+                "NodePort",
+                "ClusterIP"
+              ]
+            },
+            "externalTrafficPolicy": {
+              "enum": [
+                "Local",
+                "Cluster"
+              ]
+            },
+            "annotations": {
+              "type": "object"
+            },
+            "loadBalancerIP": {
+              "type": "string"
+            },
+            "loadBalancerSourceRanges": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nodePorts": {
+              "type": "object",
+              "properties": {
+                "udp": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 30000,
+                  "maximum": 32767
+                },
+                "tcp": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 30000,
+                  "maximum": 32767
+                },
+                "tls": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 30000,
+                  "maximum": 32767
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "suricontroller": {
       "type": "object",
       "properties": {

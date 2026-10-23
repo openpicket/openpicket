@@ -8,6 +8,7 @@ package manager
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -49,6 +50,7 @@ import (
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
 	"github.com/openpicket/openpicket/manager/sinks/loki"
 	"github.com/openpicket/openpicket/manager/sinks/opensearch"
+	"github.com/openpicket/openpicket/manager/syslog"
 	"github.com/openpicket/openpicket/pkg/dpwire"
 	"github.com/openpicket/openpicket/pkg/version"
 )
@@ -119,6 +121,9 @@ type Options struct {
 	// TrustProxyHeaders uses CF-Connecting-IP / X-Forwarded-For as the
 	// agent address in logs.
 	TrustProxyHeaders bool
+	// Syslog configures the gateways' syslog receiver (and the default
+	// for unregistered senders the API shows).
+	Syslog SyslogOptions
 	// Pipeline tuning (tests).
 	PipelineOpenAfter time.Duration
 	Logger            *slog.Logger
@@ -146,6 +151,20 @@ func (r Role) Gateway() bool { return r != RoleAPI }
 
 // API reports whether the role runs the UI, API and leader tasks.
 func (r Role) API() bool { return r != RoleGateway }
+
+// SyslogOptions configure the syslog receiver (docs/ARCHITECTURE.md
+// §4.10). Without a listen address there is none.
+type SyslogOptions struct {
+	// UDP, TCP and TLS listen addresses (":5514").
+	UDP, TCP, TLS string
+	// TLSConfig of the TLS listener (syslog.TLSFiles).
+	TLSConfig *tls.Config
+	// Unregistered applies to senders no device matches until the UI
+	// stores a choice: syslog.ModeDrop (default) or syslog.ModeAccept.
+	Unregistered string
+}
+
+func (o SyslogOptions) enabled() bool { return o.UDP != "" || o.TCP != "" || o.TLS != "" }
 
 // CrowdSecSync locates the content sync of the log processors.
 type CrowdSecSync struct {
@@ -204,6 +223,11 @@ type Manager struct {
 	// the API replicas in the settings (role gateway).
 	ctlEP    atomic.Pointer[dataplanev1.ControllerEndpoint]
 	ackSinks []pipeline.Sink
+	// syslog receives from devices without an agent (gateway); nil when
+	// no listener is configured.
+	syslog        *syslog.Server
+	syslogDevices *syslog.Devices
+	syslogSources *syslog.Sources
 
 	runOnce sync.Once
 }
@@ -296,6 +320,11 @@ func New(opts Options) (*Manager, error) {
 		m.pipe = pipeline.New(pipeline.Config{
 			AckSinks: m.ackSinks, AsyncSinks: async, Watermarks: m.watermarks, Geo: m.geo, Programs: m.programs, Logger: opts.Logger, Registerer: m.reg, OpenAfter: opts.PipelineOpenAfter,
 		})
+		if opts.Syslog.enabled() {
+			if err := m.setupSyslog(); err != nil {
+				return nil, err
+			}
+		}
 	}
 	m.listener.Handle(db.ChannelNodes, func(id string) {
 		m.nodes.Changed(context.Background(), id)
@@ -321,6 +350,10 @@ func New(opts Options) (*Manager, error) {
 		case keyControllerEndpoint:
 			if !opts.Role.API() {
 				m.loadControllerEndpoint(context.Background(), true)
+			}
+		case syslog.KeyUnregistered:
+			if m.syslogDevices != nil {
+				m.syslogDevices.LoadMode(context.Background())
 			}
 		}
 	}
@@ -394,6 +427,29 @@ func (m *Manager) setupGateway() error {
 	// After a reconnect notifications may have been missed: wake the
 	// decision streams so they compare versions.
 	m.listener.OnResync(func() { m.dist.Notified("") })
+	return nil
+}
+
+// setupSyslog opens the syslog listeners (role gateway).
+func (m *Manager) setupSyslog() error {
+	o := m.opts.Syslog
+	m.syslogDevices = syslog.NewDevices(m.opts.DB, m.settings, o.Unregistered, m.log)
+	m.syslogSources = syslog.NewSources(m.opts.DB, m.log)
+	srv, err := syslog.New(syslog.Config{UDP: o.UDP, TCP: o.TCP, TLS: o.TLS, TLSConfig: o.TLSConfig, Devices: m.syslogDevices, Sources: m.syslogSources,
+		Ingest: m.pipe.Ingest, Logger: m.log, Registerer: m.reg})
+	if err != nil {
+		return err
+	}
+	m.syslog = srv
+	reload := func(string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := m.syslogDevices.Load(ctx); err != nil {
+			m.log.Warn("load syslog devices", "err", err)
+		}
+	}
+	m.listener.Handle(db.ChannelSyslog, reload)
+	m.listener.OnResync(func() { reload("") })
 	return nil
 }
 
@@ -493,6 +549,9 @@ func (m *Manager) Policies() *policy.Service { return m.policies }
 // Pipeline returns the log pipeline.
 func (m *Manager) Pipeline() *pipeline.Pipeline { return m.pipe }
 
+// Syslog returns the syslog receiver; nil without listeners.
+func (m *Manager) Syslog() *syslog.Server { return m.syslog }
+
 // Run starts the background work and blocks until ctx is cancelled.
 func (m *Manager) Run(ctx context.Context) error {
 	started := false
@@ -547,6 +606,12 @@ func (m *Manager) Run(ctx context.Context) error {
 		}
 		workers = append(workers, m.pipe.Run, m.watermarks.Run, m.programs.Run, m.runGatewayInfo,
 			func(ctx context.Context) { m.presence.run(ctx, 30*time.Second) })
+		if m.syslog != nil {
+			if err := m.syslogDevices.Load(ctx); err != nil {
+				m.log.Warn("load syslog devices", "err", err)
+			}
+			workers = append(workers, m.syslog.Run, m.syslogSources.Run)
+		}
 	}
 	var wg sync.WaitGroup
 	for _, fn := range workers {

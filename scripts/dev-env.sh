@@ -71,5 +71,8 @@ export OPENPICKET_ADMIN_USERNAME=admin
 export OPENPICKET_ADMIN_PASSWORD=openpicket-dev
 export OPENPICKET_INSECURE_COOKIES=true
 export OPENPICKET_PUBLIC_URL="http://127.0.0.1:${PORT}"
+# Syslog devices: logger -n 127.0.0.1 -P 15514 -d "test" (UDP).
+export OPENPICKET_SYSLOG_UDP_LISTEN="127.0.0.1:15514"
+export OPENPICKET_SYSLOG_TCP_LISTEN="127.0.0.1:15514"
 echo "openpicket-manager on http://127.0.0.1:${PORT} (admin / openpicket-dev); 'scripts/dev-env.sh down' removes the dependencies"
 exec go run ./cmd/openpicket-manager serve

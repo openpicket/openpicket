@@ -120,6 +120,7 @@ type clients struct {
 	system apiv1connect.SystemServiceClient
 	geo    apiv1connect.GeoServiceClient
 	hub    apiv1connect.HubServiceClient
+	syslog apiv1connect.SyslogServiceClient
 }
 
 type headerRT struct {
@@ -147,7 +148,8 @@ func (e *env) clients(h http.Header) *clients {
 		dash: apiv1connect.NewDashboardServiceClient(hc, base),
 		auth: apiv1connect.NewAuthServiceClient(hc, base), nodes: apiv1connect.NewNodeServiceClient(hc, base),
 		pol: apiv1connect.NewPolicyServiceClient(hc, base), system: apiv1connect.NewSystemServiceClient(hc, base),
-		geo: apiv1connect.NewGeoServiceClient(hc, base), hub: apiv1connect.NewHubServiceClient(hc, base)}
+		geo: apiv1connect.NewGeoServiceClient(hc, base), hub: apiv1connect.NewHubServiceClient(hc, base),
+		syslog: apiv1connect.NewSyslogServiceClient(hc, base)}
 }
 
 func code(err error) connect.Code {
