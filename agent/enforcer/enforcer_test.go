@@ -473,9 +473,10 @@ func TestSamePieceInTwoSets(t *testing.T) {
 			t.Fatalf("%s: %v", k, en)
 		}
 	}
-	for _, line := range []string{"in4r { 203.0.113.128/25 timeout 3600s", "both4r { 203.0.113.128/25 timeout 2s"} {
-		if !strings.Contains(ex.last(), line) {
-			t.Fatalf("script lacks %q:\n%s", line, ex.last())
+	// Elements of a set share one line, in no particular order.
+	for set, el := range map[string]string{"in4r": "203.0.113.128/25 timeout 3600s", "both4r": "203.0.113.128/25 timeout 2s"} {
+		if !strings.Contains(setLine(ex.last(), set), el) {
+			t.Fatalf("%s lacks %q:\n%s", set, el, ex.last())
 		}
 	}
 	// An address changing direction moves between its sets.
@@ -601,4 +602,14 @@ func appliedValue(e *Enforcer, v string) (Entry, bool) {
 		}
 	}
 	return Entry{}, false
+}
+
+// setLine returns the "add element" line of a set in an nft script.
+func setLine(script, set string) string {
+	for _, l := range strings.Split(script, "\n") {
+		if strings.HasPrefix(l, "add element inet openpicket_ban "+set+" {") {
+			return l
+		}
+	}
+	return ""
 }
