@@ -100,6 +100,9 @@ func (s *Service) compileAll(ctx context.Context, snap *snapshot, prev map[strin
 }
 
 func (s *Service) storeCompiled(ctx context.Context, version uint64, id string, raw []byte) {
+	if s.ReadOnly {
+		return
+	}
 	if _, err := s.db.Exec(ctx, `INSERT INTO openpicket.policy_compiled (policy_id, version, compiled, compiled_at, last_error, error_at)
 		VALUES ($1,$2,$3,now(),'',NULL)
 		ON CONFLICT (policy_id) DO UPDATE SET version=excluded.version, compiled=excluded.compiled, compiled_at=excluded.compiled_at,
@@ -110,6 +113,9 @@ func (s *Service) storeCompiled(ctx context.Context, version uint64, id string, 
 }
 
 func (s *Service) storeError(ctx context.Context, version uint64, id, msg string) {
+	if s.ReadOnly {
+		return
+	}
 	if _, err := s.db.Exec(ctx, `INSERT INTO openpicket.policy_compiled (policy_id, version, last_error, error_at)
 		VALUES ($1,$2,$3,now())
 		ON CONFLICT (policy_id) DO UPDATE SET version=excluded.version, last_error=excluded.last_error,

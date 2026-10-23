@@ -42,6 +42,27 @@
         },
         "tls": {
           "type": "array"
+        },
+        "ui": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "className": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "annotations": {
+              "type": "object"
+            },
+            "tls": {
+              "type": "array"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -67,6 +88,10 @@
               "minimum": 2
             },
             "crowdsecLAPI": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "gateway": {
               "type": "integer",
               "minimum": 2
             }
@@ -243,6 +268,77 @@
         },
         "logLevel": {
           "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ]
+        },
+        "extraEnv": {
+          "type": "array"
+        },
+        "resources": {
+          "type": "object"
+        },
+        "podDisruptionBudget": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "minAvailable": {
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "nodeSelector": {
+          "type": "object"
+        },
+        "tolerations": {
+          "type": "array"
+        },
+        "affinity": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "gateway": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "database": {
+          "type": "object",
+          "properties": {
+            "user": {
+              "type": "string",
+              "pattern": "^($|[a-z_][a-z0-9_]{0,62}$)"
+            },
+            "password": {
+              "type": "string"
+            },
+            "existingSecret": {
+              "type": "string"
+            },
+            "passwordKey": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "logLevel": {
+          "enum": [
+            "",
             "debug",
             "info",
             "warn",
@@ -546,6 +642,12 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        },
+        "gatewayEgress": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
         }
       },
       "additionalProperties": false

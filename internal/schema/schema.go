@@ -10,9 +10,11 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -103,4 +105,24 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 	}
 	return nil
+}
+
+// Wait blocks until the database has this binary's schema (a gateway,
+// whose account cannot migrate, waits for the API replicas). A newer
+// schema is fine: migrations only add.
+func Wait(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) error {
+	want := Latest()
+	for {
+		var v int
+		err := pool.QueryRow(ctx, "SELECT COALESCE(max(version), 0) FROM public.openpicket_schema_migrations").Scan(&v)
+		if err == nil && v >= want {
+			return nil
+		}
+		log.Info("waiting for the database schema (migrated by the API replicas)", "have", v, "want", want, "err", err)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(5 * time.Second):
+		}
+	}
 }

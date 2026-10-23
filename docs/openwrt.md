@@ -57,7 +57,7 @@ opkg install kmod-nft-queue kmod-nfnetlink-queue
 The agent needs the manager's URL and host key (the `openpicket` section):
 
 - **URL**: `wss://<public host>/agent/data/v1/connect`
-- **host_key**: web UI **Nodes > Connection info**, or `kubectl -n <ns> exec deploy/<release>-manager -- openpicket-manager pubkey`
+- **host_key**: web UI **Nodes > Connection info**, or `kubectl -n <ns> exec deploy/<release>-gateway -- openpicket-manager pubkey` (`deploy/<release>-manager` with `gateway.enabled=false`)
 
 **Nodes > Connection info** shows the section ready to copy, and the NOTES printed after the Helm install show the same values.
 
