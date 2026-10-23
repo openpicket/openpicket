@@ -4,7 +4,9 @@
 # evt.Meta.source_ip is the REMOTE party judged by the agent
 # (openpicket.remote_ip), not eve's src_ip: an outbound C2 alert then blames
 # the C2 server instead of the internal host. Internal traffic has no remote
-# and gets no source_ip, so no scenario can ban it.
+# and gets no source_ip, so no scenario can ban it. openpicket.local_ip is
+# the inside party: behind the node's NAT, the inside host (openpicket.nat
+# has the public address and port).
 onsuccess: next_stage
 filter: |
   evt.Parsed.program == "openpicket" && JsonExtract(evt.Parsed.message, "event_type") in ["alert", "anomaly"]
@@ -27,6 +29,12 @@ statics:
     expression: 'JsonExtract(evt.Parsed.message, "openpicket.direction")'
   - meta: openpicket_local_ip
     expression: 'JsonExtract(evt.Parsed.message, "openpicket.local_ip")'
+  - meta: openpicket_nat_type
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket.nat.type")'
+  - meta: openpicket_public_ip
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket.nat.public_ip")'
+  - meta: openpicket_public_port
+    expression: 'JsonExtract(evt.Parsed.message, "openpicket.nat.public_port")'
   - meta: node_id
     expression: 'JsonExtract(evt.Parsed.message, "openpicket_meta.node_id")'
   - meta: node_site

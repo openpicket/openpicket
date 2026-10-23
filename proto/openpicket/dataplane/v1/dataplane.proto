@@ -190,6 +190,25 @@ message Status {
   // The WAN interfaces now: on OpenWrt they follow the fw4 zones, so they
   // may differ from the hello.
   repeated string wan_interfaces = 8;
+  NatStatus nat = 9;
+}
+
+// NAT lookup for Suricata alerts (conntrack events).
+message NatStatus {
+  bool enabled = 1;
+  // The current connections were listed at least once.
+  bool ready = 2;
+  // Translated connections held (live, and ended within the retention).
+  uint64 flows = 3;
+  // New connections not kept: the table was full of live ones.
+  uint64 dropped = 4;
+  // Alerts given the other side of the NAT, and alerts with none (not
+  // translated, or not known).
+  uint64 hits = 5;
+  uint64 misses = 6;
+  // Full listings (start, every 10 minutes, after lost events).
+  uint64 resyncs = 7;
+  string last_error = 8;
 }
 
 // ---------------------------------------------------------------------------

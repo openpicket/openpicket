@@ -14,6 +14,12 @@ dst_port:
   - evt.Parsed.dest_port
 local_ip:
   - evt.Meta.openpicket_local_ip
+nat_type:
+  - evt.Meta.openpicket_nat_type
+public_ip:
+  - evt.Meta.openpicket_public_ip
+public_port:
+  - evt.Meta.openpicket_public_port
 alert_signature:
   - evt.Parsed.suricata_alert_signature
 signature_id:

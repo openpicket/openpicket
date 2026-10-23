@@ -59,3 +59,7 @@ openpicket:
     egress_block: true                   # BOTH bans also block outbound
   policy:
     enabled: true                        # port policies before DNAT
+  nat_lookup:                            # name the inside host of alerts seen across the NAT (conntrack events;
+    enabled: true                        #   OpenWrt: opkg install kmod-nf-conntrack-netlink)
+    retention: 10m                       # ended connections kept for alerts read late
+    max_entries: 100000

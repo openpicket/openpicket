@@ -13,6 +13,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"slices"
@@ -30,6 +31,7 @@ import (
 	"github.com/openpicket/openpicket/agent/dataplane"
 	"github.com/openpicket/openpicket/agent/enforcer"
 	"github.com/openpicket/openpicket/agent/localnets"
+	"github.com/openpicket/openpicket/agent/natmap"
 	"github.com/openpicket/openpicket/agent/nflog"
 	"github.com/openpicket/openpicket/agent/nft"
 	"github.com/openpicket/openpicket/agent/policy"
@@ -78,6 +80,11 @@ type Agent struct {
 
 	nets      atomic.Pointer[direction.Nets]
 	localNets atomic.Pointer[dataplanev1.LocalNets]
+
+	// NAT lookup for eve alerts (nil when disabled).
+	nat       *natmap.Tracker
+	natHits   atomic.Uint64
+	natMisses atomic.Uint64
 }
 
 // New prepares the agent.
@@ -91,10 +98,15 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 	a := &Agent{cfg: cfg, log: log, bootID: hex.EncodeToString(b)}
 	a.nets.Store(&direction.Nets{})
 	a.localNets.Store(&dataplanev1.LocalNets{})
-	a.shipper = dataplane.NewShipper(dataplane.ShipperConfig{
+	sc := dataplane.ShipperConfig{
 		NodeID: cfg.Suri.NodeID, BootID: a.bootID, MaxInflightBytes: int64(cfg.OpenPicket.Logs.InflightMaxBytes),
 		Nets: func() *direction.Nets { return a.nets.Load() }, Logger: log,
-	})
+	}
+	if nl := cfg.OpenPicket.NATLookup; nl.Enabled {
+		a.nat = &natmap.Tracker{Table: natmap.NewTable(nl.Retention, nl.MaxEntries), Logger: log.With("component", "natmap")}
+		sc.NAT = a.lookupNAT
+	}
+	a.shipper = dataplane.NewShipper(sc)
 	so := opts.SuriOptions
 	so.Logger, so.LogTee, so.LogOutput = log, opts.LogTee, a.shipper
 	var err error
@@ -270,6 +282,9 @@ func (a *Agent) Run(ctx context.Context) error {
 	if a.nflog != nil {
 		workers = append(workers, a.nflog.Run)
 	}
+	if a.nat != nil {
+		workers = append(workers, a.nat.Run)
+	}
 	if a.reject != nil {
 		workers = append(workers, a.keepWANReject)
 	}
@@ -308,6 +323,17 @@ func (a *Agent) keepWANReject(ctx context.Context) {
 		case <-t.C:
 		}
 	}
+}
+
+// lookupNAT finds the translation of a connection for the shipper.
+func (a *Agent) lookupNAT(proto uint8, client, server netip.AddrPort) (natmap.Mapping, bool) {
+	m, ok := a.nat.Table.Lookup(proto, client, server)
+	if ok {
+		a.natHits.Add(1)
+	} else {
+		a.natMisses.Add(1)
+	}
+	return m, ok
 }
 
 // watchNets follows HOME_NET and address changes (DHCP, PPPoE), and the
@@ -387,6 +413,11 @@ func (a *Agent) status(ctx context.Context) *dataplanev1.Status {
 	}
 	if a.pol != nil {
 		st.Policy = a.pol.Status(ctx)
+	}
+	if a.nat != nil {
+		ts, ns := a.nat.Table.Stats(), a.nat.State()
+		st.Nat = &dataplanev1.NatStatus{Enabled: true, Ready: ns.Ready, Flows: uint64(ts.Flows), Dropped: ts.Dropped,
+			Hits: a.natHits.Load(), Misses: a.natMisses.Load(), Resyncs: ns.Resyncs, LastError: ns.LastErr}
 	}
 	return st
 }

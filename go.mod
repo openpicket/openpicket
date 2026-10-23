@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	connectrpc.com/connect v1.21.0
 	github.com/coder/websocket v1.8.15
+	github.com/florianl/go-conntrack v0.7.0
 	github.com/florianl/go-nflog/v2 v2.3.0
 	github.com/flynn/noise v1.1.0
 	github.com/go-jose/go-jose/v4 v4.1.3
