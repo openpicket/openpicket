@@ -474,3 +474,104 @@ func pruneOrphans(ctx context.Context, tx pgx.Tx) error {
 		SELECT 1 FROM openpicket.hub_items i, jsonb_array_elements_text(i.data) f WHERE f = d.dest_file)`)
 	return err
 }
+
+// Upload stores an item a user provides (offline installs, own content),
+// with the data files it reads that are not stored yet. The item's name
+// is its first document's. Custom items replace custom items only; new
+// scenarios start in simulation.
+func (s *Store) Upload(ctx context.Context, typ, stage string, content []byte, data map[string][]byte, by string) (Ref, error) {
+	if !hubitem.ValidType(typ) {
+		return Ref{}, fmt.Errorf("%w: unknown type %q", ErrInvalid, typ)
+	}
+	doc, err := hubitem.ParseDoc(typ, content)
+	if err != nil {
+		return Ref{}, fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	if len(doc.Names) == 0 || !hubitem.ValidName(doc.Names[0]) {
+		return Ref{}, fmt.Errorf("%w: the item needs a name of the form author/name", ErrInvalid)
+	}
+	ref := Ref{typ, doc.Names[0]}
+	if !hubitem.Staged(typ) {
+		stage = ""
+	}
+	if typ != hubitem.Collections {
+		if _, err := hubitem.ItemPath(typ, stage, ref.Name); err != nil {
+			return Ref{}, fmt.Errorf("%w: %v", ErrInvalid, err)
+		}
+	}
+	var members []Ref
+	for _, t := range hubitem.Types {
+		for _, n := range doc.Members[t] {
+			members = append(members, Ref{t, n})
+		}
+	}
+	files := []string{}
+	for _, r := range doc.Data {
+		files = append(files, r.DestFile)
+	}
+	for name := range data {
+		if !slices.Contains(files, name) {
+			return Ref{}, fmt.Errorf("%w: %s is not a data file of %s (it reads: %s)", ErrInvalid, name, ref.Name, strings.Join(files, ", "))
+		}
+	}
+	err = pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
+		var source string
+		err := tx.QueryRow(ctx, `SELECT source FROM openpicket.hub_items WHERE type = $1 AND name = $2 FOR UPDATE`, ref.Type, ref.Name).Scan(&source)
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+		case err != nil:
+			return err
+		case source != hubitem.SourceCustom:
+			return fmt.Errorf("%w: %s exists as a %s item; upload it under another name", ErrInvalid, ref.Name, source)
+		}
+		for _, f := range files {
+			if _, ok := data[f]; ok {
+				continue
+			}
+			var exists bool
+			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM openpicket.hub_data WHERE dest_file = $1)`, f).Scan(&exists); err != nil {
+				return err
+			}
+			if !exists {
+				return fmt.Errorf("%w: %s reads the data file %s: upload it with the item", ErrInvalid, ref.Name, f)
+			}
+		}
+		stored := content
+		if typ == hubitem.Collections {
+			stored = nil
+		}
+		membersJSON, _ := json.Marshal(members)
+		dataJSON, _ := json.Marshal(files)
+		desc := ""
+		if d, err := hubitem.ParseDescription(content); err == nil {
+			desc = d
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO openpicket.hub_items (type, name, source, version, stage, content, digest, description, members, data, explicit, updated_by)
+			VALUES ($1,$2,'custom','',$3,COALESCE($4, ''::bytea),$5,$6,$7,$8,true,$9)
+			ON CONFLICT (type, name) DO UPDATE SET stage=excluded.stage, content=excluded.content, digest=excluded.digest, description=excluded.description,
+				members=excluded.members, data=excluded.data, updated_at=now(), updated_by=excluded.updated_by`,
+			ref.Type, ref.Name, stage, stored, digest(content), desc, membersJSON, dataJSON, by); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO openpicket.hub_item_state (type, name, state, updated_by) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
+			ref.Type, ref.Name, DefaultState(ref.Type, hubitem.SourceCustom), by); err != nil {
+			return err
+		}
+		for name, b := range data {
+			if _, err := tx.Exec(ctx, `INSERT INTO openpicket.hub_data (dest_file, source_url, content, digest) VALUES ($1,'upload',$2,$3)
+				ON CONFLICT (dest_file) DO UPDATE SET source_url='upload', content=excluded.content, digest=excluded.digest, updated_at=now()`,
+				name, b, digest(b)); err != nil {
+				return err
+			}
+		}
+		if err := pruneOrphans(ctx, tx); err != nil {
+			return err
+		}
+		return bump(ctx, tx)
+	})
+	if err != nil {
+		return Ref{}, err
+	}
+	s.log.Info("CrowdSec item uploaded", "type", ref.Type, "name", ref.Name, "data", len(data), "by", by)
+	return ref, nil
+}
