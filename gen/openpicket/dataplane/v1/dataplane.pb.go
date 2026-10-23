@@ -1593,13 +1593,17 @@ func (x *Status) GetLogSources() []*LogSourceStatus {
 type LogSourceStatus struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Program string                 `protobuf:"bytes,1,opt,name=program,proto3" json:"program,omitempty"`
-	// The configured path (a glob takes several files).
-	Path  string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	// The configured path (a glob takes several files), "journal [matches]"
+	// or "udp://host:port" (listener).
+	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	// Files open; 1 for a running journal or a bound listener.
 	Files uint32 `protobuf:"varint,3,opt,name=files,proto3" json:"files,omitempty"`
 	Lines uint64 `protobuf:"varint,4,opt,name=lines,proto3" json:"lines,omitempty"`
 	// Lines cut at 64 KiB.
-	Truncated     uint64 `protobuf:"varint,5,opt,name=truncated,proto3" json:"truncated,omitempty"`
-	LastError     string `protobuf:"bytes,6,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	Truncated uint64 `protobuf:"varint,5,opt,name=truncated,proto3" json:"truncated,omitempty"`
+	LastError string `protobuf:"bytes,6,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	// Datagrams dropped by a listener (queue full).
+	Dropped       uint64 `protobuf:"varint,7,opt,name=dropped,proto3" json:"dropped,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1674,6 +1678,13 @@ func (x *LogSourceStatus) GetLastError() string {
 		return x.LastError
 	}
 	return ""
+}
+
+func (x *LogSourceStatus) GetDropped() uint64 {
+	if x != nil {
+		return x.Dropped
+	}
+	return 0
 }
 
 // NAT lookup for Suricata alerts (conntrack events).
@@ -3146,7 +3157,7 @@ const file_openpicket_dataplane_v1_dataplane_proto_rawDesc = "" +
 	"\x03nat\x18\t \x01(\v2\".openpicket.dataplane.v1.NatStatusR\x03nat\x12I\n" +
 	"\vlog_sources\x18\n" +
 	" \x03(\v2(.openpicket.dataplane.v1.LogSourceStatusR\n" +
-	"logSources\"\xa8\x01\n" +
+	"logSources\"\xc2\x01\n" +
 	"\x0fLogSourceStatus\x12\x18\n" +
 	"\aprogram\x18\x01 \x01(\tR\aprogram\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x14\n" +
@@ -3154,7 +3165,8 @@ const file_openpicket_dataplane_v1_dataplane_proto_rawDesc = "" +
 	"\x05lines\x18\x04 \x01(\x04R\x05lines\x12\x1c\n" +
 	"\ttruncated\x18\x05 \x01(\x04R\ttruncated\x12\x1d\n" +
 	"\n" +
-	"last_error\x18\x06 \x01(\tR\tlastError\"\xd0\x01\n" +
+	"last_error\x18\x06 \x01(\tR\tlastError\x12\x18\n" +
+	"\adropped\x18\a \x01(\x04R\adropped\"\xd0\x01\n" +
 	"\tNatStatus\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x14\n" +
 	"\x05ready\x18\x02 \x01(\bR\x05ready\x12\x14\n" +

@@ -63,3 +63,9 @@ openpicket:
     enabled: true                        #   OpenWrt: opkg install kmod-nf-conntrack-netlink)
     retention: 10m                       # ended connections kept for alerts read late
     max_entries: 100000
+  # Other logs of the router for CrowdSec (docs/openwrt.md): its system
+  # log through a local syslog listener (uci system.@system[0].log_ip /
+  # log_port), or files under host_root.
+  # log_sources:
+  #   - { listen: "127.0.0.1:5140" }
+  #   - { program: uhttpd, path: /var/log/uhttpd.log }
