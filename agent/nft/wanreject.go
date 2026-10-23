@@ -253,6 +253,10 @@ func (w *WANReject) removeSnippets(keep []string) (bool, error) {
 
 func (w *WANReject) fw4Reload(ctx context.Context) error {
 	if _, err := w.Host.Exec.Run(ctx, "fw4", []string{"reload"}, nil); err != nil {
+		if strings.Contains(err.Error(), "Read-only file system") {
+			// fw4 writes /var/run/fw4.lock, which is /tmp/run under a read-only /host.
+			return fmt.Errorf("fw4 reload: %w (mount the host /tmp read-write at /host/tmp)", err)
+		}
 		return fmt.Errorf("fw4 reload: %w", err)
 	}
 	return nil

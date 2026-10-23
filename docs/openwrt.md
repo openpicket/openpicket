@@ -142,6 +142,7 @@ Point the log volume (`/var/log/suricata`) in `docker-compose.yml` at external s
     volumes:
       - /:/host:ro                            # host tools (nft, uci, fw4) run via chroot
       - /usr/share/nftables.d:/host/usr/share/nftables.d  # fw4 WAN-REJECT snippet
+      - /tmp:/host/tmp                        # fw4 lock and state (/var/run → /tmp/run on OpenWrt)
       - ./etc:/etc/suri-agent
       - ./suricata:/etc/suricata
       - ./data:/var/lib/suri-agent
@@ -154,6 +155,7 @@ docker logs -f openpicket-agent
 docker exec openpicket-agent openpicket-agent check
 ```
 
+- `/:/host:ro` is read-only down to its submounts (Docker 25+), so `fw4 reload` cannot write `/var/run/fw4.lock` without the `/tmp` mount and fails with `Read-only file system`.
 - `check` verifies the configuration, the key, the manager connection and the controller endpoint the manager hands out.
   ```
   [ok  ] config         /etc/suri-agent/agent.yaml

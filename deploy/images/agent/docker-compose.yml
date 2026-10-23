@@ -9,6 +9,7 @@ services:
     volumes:
       - /:/host:ro                            # host tools (nft, uci, fw4) run via chroot
       - /usr/share/nftables.d:/host/usr/share/nftables.d  # fw4 WAN-REJECT snippet
+      - /tmp:/host/tmp                        # fw4 lock and state (/var/run → /tmp/run on OpenWrt)
       - ./etc:/etc/suri-agent                 # agent.yaml and the agent key
       - ./suricata:/etc/suricata              # suricata.yaml and local rules
       - ./data:/var/lib/suri-agent            # applied state, restored at boot
