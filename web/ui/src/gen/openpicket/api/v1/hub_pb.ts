@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file openpicket/api/v1/hub.proto.
  */
 export const file_openpicket_api_v1_hub: GenFile = /*@__PURE__*/
-  fileDesc("ChtvcGVucGlja2V0L2FwaS92MS9odWIucHJvdG8SEW9wZW5waWNrZXQuYXBpLnYxIiQKBkh1YlJlZhIMCgR0eXBlGAEgASgJEgwKBG5hbWUYAiABKAkirAIKB0h1Ykl0ZW0SDAoEdHlwZRgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnNvdXJjZRgDIAEoCRIPCgd2ZXJzaW9uGAQgASgJEg0KBXN0YWdlGAUgASgJEhMKC2Rlc2NyaXB0aW9uGAYgASgJEg0KBXN0YXRlGAcgASgJEioKB21lbWJlcnMYCCADKAsyGS5vcGVucGlja2V0LmFwaS52MS5IdWJSZWYSEQoJbWVtYmVyX29mGAkgAygJEgwKBGRhdGEYCiADKAkSEAoIZXhwbGljaXQYCyABKAgSDgoGZGlnZXN0GAwgASgJEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCnVwZGF0ZWRfYnkYDiABKAkiIwoTTGlzdEh1Ykl0ZW1zUmVxdWVzdBIMCgR0eXBlGAEgASgJIkEKFExpc3RIdWJJdGVtc1Jlc3BvbnNlEikKBWl0ZW1zGAEgAygLMhoub3BlbnBpY2tldC5hcGkudjEuSHViSXRlbSI7ChFHZXRIdWJJdGVtUmVxdWVzdBImCgNyZWYYASABKAsyGS5vcGVucGlja2V0LmFwaS52MS5IdWJSZWYiTwoSR2V0SHViSXRlbVJlc3BvbnNlEigKBGl0ZW0YASABKAsyGi5vcGVucGlja2V0LmFwaS52MS5IdWJJdGVtEg8KB2NvbnRlbnQYAiABKAkiTwoWU2V0SHViSXRlbVN0YXRlUmVxdWVzdBImCgNyZWYYASABKAsyGS5vcGVucGlja2V0LmFwaS52MS5IdWJSZWYSDQoFc3RhdGUYAiABKAkiGQoXU2V0SHViSXRlbVN0YXRlUmVzcG9uc2UiFgoUR2V0SHViUm9sbG91dFJlcXVlc3QiggEKD0h1YkxvZ1Byb2Nlc3NvchIQCghlbmRwb2ludBgBIAEoCRIQCghyZXZpc2lvbhgCIAEoAxIPCgdydW5uaW5nGAMgASgIEg0KBWVycm9yGAQgASgJEisKB3NlZW5fYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIqsBChVHZXRIdWJSb2xsb3V0UmVzcG9uc2USEAoIcmV2aXNpb24YASABKAMSFQoNZ29vZF9yZXZpc2lvbhgCIAEoAxIXCg9mYWlsZWRfcmV2aXNpb24YAyABKAMSFAoMZmFpbGVkX2Vycm9yGAQgASgJEjoKDmxvZ19wcm9jZXNzb3JzGAUgAygLMiIub3BlbnBpY2tldC5hcGkudjEuSHViTG9nUHJvY2Vzc29yMpYDCgpIdWJTZXJ2aWNlEl8KDExpc3RIdWJJdGVtcxImLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RIdWJJdGVtc1JlcXVlc3QaJy5vcGVucGlja2V0LmFwaS52MS5MaXN0SHViSXRlbXNSZXNwb25zZRJZCgpHZXRIdWJJdGVtEiQub3BlbnBpY2tldC5hcGkudjEuR2V0SHViSXRlbVJlcXVlc3QaJS5vcGVucGlja2V0LmFwaS52MS5HZXRIdWJJdGVtUmVzcG9uc2USaAoPU2V0SHViSXRlbVN0YXRlEikub3BlbnBpY2tldC5hcGkudjEuU2V0SHViSXRlbVN0YXRlUmVxdWVzdBoqLm9wZW5waWNrZXQuYXBpLnYxLlNldEh1Ykl0ZW1TdGF0ZVJlc3BvbnNlEmIKDUdldEh1YlJvbGxvdXQSJy5vcGVucGlja2V0LmFwaS52MS5HZXRIdWJSb2xsb3V0UmVxdWVzdBooLm9wZW5waWNrZXQuYXBpLnYxLkdldEh1YlJvbGxvdXRSZXNwb25zZUI+WjxnaXRodWIuY29tL29wZW5waWNrZXQvb3BlbnBpY2tldC9nZW4vb3BlbnBpY2tldC9hcGkvdjE7YXBpdjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChtvcGVucGlja2V0L2FwaS92MS9odWIucHJvdG8SEW9wZW5waWNrZXQuYXBpLnYxIiQKBkh1YlJlZhIMCgR0eXBlGAEgASgJEgwKBG5hbWUYAiABKAki7wIKB0h1Ykl0ZW0SDAoEdHlwZRgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnNvdXJjZRgDIAEoCRIPCgd2ZXJzaW9uGAQgASgJEg0KBXN0YWdlGAUgASgJEhMKC2Rlc2NyaXB0aW9uGAYgASgJEg0KBXN0YXRlGAcgASgJEioKB21lbWJlcnMYCCADKAsyGS5vcGVucGlja2V0LmFwaS52MS5IdWJSZWYSEQoJbWVtYmVyX29mGAkgAygJEgwKBGRhdGEYCiADKAkSEAoIZXhwbGljaXQYCyABKAgSDgoGZGlnZXN0GAwgASgJEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCnVwZGF0ZWRfYnkYDiABKAkSFgoObGF0ZXN0X3ZlcnNpb24YDyABKAkSDgoGY29tcGF0GBAgASgJEhkKEW1pc3NpbmdfbG9nX3R5cGVzGBEgAygJIiMKE0xpc3RIdWJJdGVtc1JlcXVlc3QSDAoEdHlwZRgBIAEoCSJBChRMaXN0SHViSXRlbXNSZXNwb25zZRIpCgVpdGVtcxgBIAMoCzIaLm9wZW5waWNrZXQuYXBpLnYxLkh1Ykl0ZW0iOwoRR2V0SHViSXRlbVJlcXVlc3QSJgoDcmVmGAEgASgLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmIk8KEkdldEh1Ykl0ZW1SZXNwb25zZRIoCgRpdGVtGAEgASgLMhoub3BlbnBpY2tldC5hcGkudjEuSHViSXRlbRIPCgdjb250ZW50GAIgASgJIk8KFlNldEh1Ykl0ZW1TdGF0ZVJlcXVlc3QSJgoDcmVmGAEgASgLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmEg0KBXN0YXRlGAIgASgJIhkKF1NldEh1Ykl0ZW1TdGF0ZVJlc3BvbnNlIhYKFEdldEh1YlJvbGxvdXRSZXF1ZXN0IoIBCg9IdWJMb2dQcm9jZXNzb3ISEAoIZW5kcG9pbnQYASABKAkSEAoIcmV2aXNpb24YAiABKAMSDwoHcnVubmluZxgDIAEoCBINCgVlcnJvchgEIAEoCRIrCgdzZWVuX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKrAQoVR2V0SHViUm9sbG91dFJlc3BvbnNlEhAKCHJldmlzaW9uGAEgASgDEhUKDWdvb2RfcmV2aXNpb24YAiABKAMSFwoPZmFpbGVkX3JldmlzaW9uGAMgASgDEhQKDGZhaWxlZF9lcnJvchgEIAEoCRI6Cg5sb2dfcHJvY2Vzc29ycxgFIAMoCzIiLm9wZW5waWNrZXQuYXBpLnYxLkh1YkxvZ1Byb2Nlc3NvciLGAQoNSHViSW5kZXhFbnRyeRIMCgR0eXBlGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDwoHdmVyc2lvbhgEIAEoCRISCgpyZWZlcmVuY2VzGAUgAygJEioKB21lbWJlcnMYBiADKAsyGS5vcGVucGlja2V0LmFwaS52MS5IdWJSZWYSGAoQaW5zdGFsbGVkX3NvdXJjZRgHIAEoCRIZChFpbnN0YWxsZWRfdmVyc2lvbhgIIAEoCSJRChNMaXN0SHViSW5kZXhSZXF1ZXN0EgwKBHR5cGUYASABKAkSDQoFcXVlcnkYAiABKAkSDQoFbGltaXQYAyABKAUSDgoGb2Zmc2V0GAQgASgFIpoBChRMaXN0SHViSW5kZXhSZXNwb25zZRIxCgdlbnRyaWVzGAEgAygLMiAub3BlbnBpY2tldC5hcGkudjEuSHViSW5kZXhFbnRyeRINCgV0b3RhbBgCIAEoBRIuCgpmZXRjaGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIQCghiYXNlX3VybBgEIAEoCSIYChZSZWZyZXNoSHViSW5kZXhSZXF1ZXN0IioKF1JlZnJlc2hIdWJJbmRleFJlc3BvbnNlEg8KB2NoYW5nZWQYASABKAgiPwoVUHJldmlld0h1Ykl0ZW1SZXF1ZXN0EiYKA3JlZhgBIAEoCzIZLm9wZW5waWNrZXQuYXBpLnYxLkh1YlJlZiLDAQoWUHJldmlld0h1Ykl0ZW1SZXNwb25zZRIvCgVlbnRyeRgBIAEoCzIgLm9wZW5waWNrZXQuYXBpLnYxLkh1YkluZGV4RW50cnkSDwoHY29udGVudBgCIAEoCRIoCgVpdGVtcxgDIAMoCzIZLm9wZW5waWNrZXQuYXBpLnYxLkh1YlJlZhISCgpkYXRhX2ZpbGVzGAQgAygJEg4KBmNvbXBhdBgFIAEoCRIZChFtaXNzaW5nX2xvZ190eXBlcxgGIAMoCSI/ChVJbnN0YWxsSHViSXRlbVJlcXVlc3QSJgoDcmVmGAEgASgLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmIkYKFkluc3RhbGxIdWJJdGVtUmVzcG9uc2USLAoJaW5zdGFsbGVkGAEgAygLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmIj4KFFJlbW92ZUh1Ykl0ZW1SZXF1ZXN0EiYKA3JlZhgBIAEoCzIZLm9wZW5waWNrZXQuYXBpLnYxLkh1YlJlZiIXChVSZW1vdmVIdWJJdGVtUmVzcG9uc2UykwcKCkh1YlNlcnZpY2USXwoMTGlzdEh1Ykl0ZW1zEiYub3BlbnBpY2tldC5hcGkudjEuTGlzdEh1Ykl0ZW1zUmVxdWVzdBonLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RIdWJJdGVtc1Jlc3BvbnNlElkKCkdldEh1Ykl0ZW0SJC5vcGVucGlja2V0LmFwaS52MS5HZXRIdWJJdGVtUmVxdWVzdBolLm9wZW5waWNrZXQuYXBpLnYxLkdldEh1Ykl0ZW1SZXNwb25zZRJoCg9TZXRIdWJJdGVtU3RhdGUSKS5vcGVucGlja2V0LmFwaS52MS5TZXRIdWJJdGVtU3RhdGVSZXF1ZXN0Gioub3BlbnBpY2tldC5hcGkudjEuU2V0SHViSXRlbVN0YXRlUmVzcG9uc2USYgoNR2V0SHViUm9sbG91dBInLm9wZW5waWNrZXQuYXBpLnYxLkdldEh1YlJvbGxvdXRSZXF1ZXN0Gigub3BlbnBpY2tldC5hcGkudjEuR2V0SHViUm9sbG91dFJlc3BvbnNlEl8KDExpc3RIdWJJbmRleBImLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RIdWJJbmRleFJlcXVlc3QaJy5vcGVucGlja2V0LmFwaS52MS5MaXN0SHViSW5kZXhSZXNwb25zZRJoCg9SZWZyZXNoSHViSW5kZXgSKS5vcGVucGlja2V0LmFwaS52MS5SZWZyZXNoSHViSW5kZXhSZXF1ZXN0Gioub3BlbnBpY2tldC5hcGkudjEuUmVmcmVzaEh1YkluZGV4UmVzcG9uc2USZQoOUHJldmlld0h1Ykl0ZW0SKC5vcGVucGlja2V0LmFwaS52MS5QcmV2aWV3SHViSXRlbVJlcXVlc3QaKS5vcGVucGlja2V0LmFwaS52MS5QcmV2aWV3SHViSXRlbVJlc3BvbnNlEmUKDkluc3RhbGxIdWJJdGVtEigub3BlbnBpY2tldC5hcGkudjEuSW5zdGFsbEh1Ykl0ZW1SZXF1ZXN0Gikub3BlbnBpY2tldC5hcGkudjEuSW5zdGFsbEh1Ykl0ZW1SZXNwb25zZRJiCg1SZW1vdmVIdWJJdGVtEicub3BlbnBpY2tldC5hcGkudjEuUmVtb3ZlSHViSXRlbVJlcXVlc3QaKC5vcGVucGlja2V0LmFwaS52MS5SZW1vdmVIdWJJdGVtUmVzcG9uc2VCPlo8Z2l0aHViLmNvbS9vcGVucGlja2V0L29wZW5waWNrZXQvZ2VuL29wZW5waWNrZXQvYXBpL3YxO2FwaXYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message openpicket.api.v1.HubRef
@@ -122,6 +122,26 @@ export type HubItem = Message<"openpicket.api.v1.HubItem"> & {
    * @generated from field: string updated_by = 14;
    */
   updatedBy: string;
+
+  /**
+   * Hub items: the index version when newer than the installed one.
+   *
+   * @generated from field: string latest_version = 15;
+   */
+  latestVersion: string;
+
+  /**
+   * Scenarios: ok | missing (no enabled parser sets the log types it
+   * reads) | unknown (its filters name no log type).
+   *
+   * @generated from field: string compat = 16;
+   */
+  compat: string;
+
+  /**
+   * @generated from field: repeated string missing_log_types = 17;
+   */
+  missingLogTypes: string[];
 };
 
 /**
@@ -336,6 +356,285 @@ export const GetHubRolloutResponseSchema: GenMessage<GetHubRolloutResponse> = /*
   messageDesc(file_openpicket_api_v1_hub, 10);
 
 /**
+ * @generated from message openpicket.api.v1.HubIndexEntry
+ */
+export type HubIndexEntry = Message<"openpicket.api.v1.HubIndexEntry"> & {
+  /**
+   * @generated from field: string type = 1;
+   */
+  type: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description: string;
+
+  /**
+   * @generated from field: string version = 4;
+   */
+  version: string;
+
+  /**
+   * @generated from field: repeated string references = 5;
+   */
+  references: string[];
+
+  /**
+   * @generated from field: repeated openpicket.api.v1.HubRef members = 6;
+   */
+  members: HubRef[];
+
+  /**
+   * Installed: its source and version ("" when not installed).
+   *
+   * @generated from field: string installed_source = 7;
+   */
+  installedSource: string;
+
+  /**
+   * @generated from field: string installed_version = 8;
+   */
+  installedVersion: string;
+};
+
+/**
+ * Describes the message openpicket.api.v1.HubIndexEntry.
+ * Use `create(HubIndexEntrySchema)` to create a new message.
+ */
+export const HubIndexEntrySchema: GenMessage<HubIndexEntry> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 11);
+
+/**
+ * @generated from message openpicket.api.v1.ListHubIndexRequest
+ */
+export type ListHubIndexRequest = Message<"openpicket.api.v1.ListHubIndexRequest"> & {
+  /**
+   * @generated from field: string type = 1;
+   */
+  type: string;
+
+  /**
+   * Matches names and descriptions.
+   *
+   * @generated from field: string query = 2;
+   */
+  query: string;
+
+  /**
+   * @generated from field: int32 limit = 3;
+   */
+  limit: number;
+
+  /**
+   * @generated from field: int32 offset = 4;
+   */
+  offset: number;
+};
+
+/**
+ * Describes the message openpicket.api.v1.ListHubIndexRequest.
+ * Use `create(ListHubIndexRequestSchema)` to create a new message.
+ */
+export const ListHubIndexRequestSchema: GenMessage<ListHubIndexRequest> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 12);
+
+/**
+ * @generated from message openpicket.api.v1.ListHubIndexResponse
+ */
+export type ListHubIndexResponse = Message<"openpicket.api.v1.ListHubIndexResponse"> & {
+  /**
+   * @generated from field: repeated openpicket.api.v1.HubIndexEntry entries = 1;
+   */
+  entries: HubIndexEntry[];
+
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total: number;
+
+  /**
+   * When the index was downloaded (unset: never).
+   *
+   * @generated from field: google.protobuf.Timestamp fetched_at = 3;
+   */
+  fetchedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: string base_url = 4;
+   */
+  baseUrl: string;
+};
+
+/**
+ * Describes the message openpicket.api.v1.ListHubIndexResponse.
+ * Use `create(ListHubIndexResponseSchema)` to create a new message.
+ */
+export const ListHubIndexResponseSchema: GenMessage<ListHubIndexResponse> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 13);
+
+/**
+ * @generated from message openpicket.api.v1.RefreshHubIndexRequest
+ */
+export type RefreshHubIndexRequest = Message<"openpicket.api.v1.RefreshHubIndexRequest"> & {
+};
+
+/**
+ * Describes the message openpicket.api.v1.RefreshHubIndexRequest.
+ * Use `create(RefreshHubIndexRequestSchema)` to create a new message.
+ */
+export const RefreshHubIndexRequestSchema: GenMessage<RefreshHubIndexRequest> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 14);
+
+/**
+ * @generated from message openpicket.api.v1.RefreshHubIndexResponse
+ */
+export type RefreshHubIndexResponse = Message<"openpicket.api.v1.RefreshHubIndexResponse"> & {
+  /**
+   * @generated from field: bool changed = 1;
+   */
+  changed: boolean;
+};
+
+/**
+ * Describes the message openpicket.api.v1.RefreshHubIndexResponse.
+ * Use `create(RefreshHubIndexResponseSchema)` to create a new message.
+ */
+export const RefreshHubIndexResponseSchema: GenMessage<RefreshHubIndexResponse> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 15);
+
+/**
+ * @generated from message openpicket.api.v1.PreviewHubItemRequest
+ */
+export type PreviewHubItemRequest = Message<"openpicket.api.v1.PreviewHubItemRequest"> & {
+  /**
+   * @generated from field: openpicket.api.v1.HubRef ref = 1;
+   */
+  ref?: HubRef | undefined;
+};
+
+/**
+ * Describes the message openpicket.api.v1.PreviewHubItemRequest.
+ * Use `create(PreviewHubItemRequestSchema)` to create a new message.
+ */
+export const PreviewHubItemRequestSchema: GenMessage<PreviewHubItemRequest> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 16);
+
+/**
+ * @generated from message openpicket.api.v1.PreviewHubItemResponse
+ */
+export type PreviewHubItemResponse = Message<"openpicket.api.v1.PreviewHubItemResponse"> & {
+  /**
+   * @generated from field: openpicket.api.v1.HubIndexEntry entry = 1;
+   */
+  entry?: HubIndexEntry | undefined;
+
+  /**
+   * @generated from field: string content = 2;
+   */
+  content: string;
+
+  /**
+   * Every item installing it brings (itself first).
+   *
+   * @generated from field: repeated openpicket.api.v1.HubRef items = 3;
+   */
+  items: HubRef[];
+
+  /**
+   * @generated from field: repeated string data_files = 4;
+   */
+  dataFiles: string[];
+
+  /**
+   * Scenarios brought: compatibility with the enabled parsers.
+   *
+   * @generated from field: string compat = 5;
+   */
+  compat: string;
+
+  /**
+   * @generated from field: repeated string missing_log_types = 6;
+   */
+  missingLogTypes: string[];
+};
+
+/**
+ * Describes the message openpicket.api.v1.PreviewHubItemResponse.
+ * Use `create(PreviewHubItemResponseSchema)` to create a new message.
+ */
+export const PreviewHubItemResponseSchema: GenMessage<PreviewHubItemResponse> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 17);
+
+/**
+ * @generated from message openpicket.api.v1.InstallHubItemRequest
+ */
+export type InstallHubItemRequest = Message<"openpicket.api.v1.InstallHubItemRequest"> & {
+  /**
+   * @generated from field: openpicket.api.v1.HubRef ref = 1;
+   */
+  ref?: HubRef | undefined;
+};
+
+/**
+ * Describes the message openpicket.api.v1.InstallHubItemRequest.
+ * Use `create(InstallHubItemRequestSchema)` to create a new message.
+ */
+export const InstallHubItemRequestSchema: GenMessage<InstallHubItemRequest> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 18);
+
+/**
+ * @generated from message openpicket.api.v1.InstallHubItemResponse
+ */
+export type InstallHubItemResponse = Message<"openpicket.api.v1.InstallHubItemResponse"> & {
+  /**
+   * @generated from field: repeated openpicket.api.v1.HubRef installed = 1;
+   */
+  installed: HubRef[];
+};
+
+/**
+ * Describes the message openpicket.api.v1.InstallHubItemResponse.
+ * Use `create(InstallHubItemResponseSchema)` to create a new message.
+ */
+export const InstallHubItemResponseSchema: GenMessage<InstallHubItemResponse> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 19);
+
+/**
+ * @generated from message openpicket.api.v1.RemoveHubItemRequest
+ */
+export type RemoveHubItemRequest = Message<"openpicket.api.v1.RemoveHubItemRequest"> & {
+  /**
+   * @generated from field: openpicket.api.v1.HubRef ref = 1;
+   */
+  ref?: HubRef | undefined;
+};
+
+/**
+ * Describes the message openpicket.api.v1.RemoveHubItemRequest.
+ * Use `create(RemoveHubItemRequestSchema)` to create a new message.
+ */
+export const RemoveHubItemRequestSchema: GenMessage<RemoveHubItemRequest> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 20);
+
+/**
+ * @generated from message openpicket.api.v1.RemoveHubItemResponse
+ */
+export type RemoveHubItemResponse = Message<"openpicket.api.v1.RemoveHubItemResponse"> & {
+};
+
+/**
+ * Describes the message openpicket.api.v1.RemoveHubItemResponse.
+ * Use `create(RemoveHubItemResponseSchema)` to create a new message.
+ */
+export const RemoveHubItemResponseSchema: GenMessage<RemoveHubItemResponse> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 21);
+
+/**
  * CrowdSec content: parsers, scenarios, collections... stored by the
  * manager and pushed to the log processors (docs/ARCHITECTURE.md §8).
  *
@@ -377,6 +676,55 @@ export const HubService: GenService<{
     methodKind: "unary";
     input: typeof GetHubRolloutRequestSchema;
     output: typeof GetHubRolloutResponseSchema;
+  },
+  /**
+   * The CrowdSec hub index.
+   *
+   * @generated from rpc openpicket.api.v1.HubService.ListHubIndex
+   */
+  listHubIndex: {
+    methodKind: "unary";
+    input: typeof ListHubIndexRequestSchema;
+    output: typeof ListHubIndexResponseSchema;
+  },
+  /**
+   * @generated from rpc openpicket.api.v1.HubService.RefreshHubIndex
+   */
+  refreshHubIndex: {
+    methodKind: "unary";
+    input: typeof RefreshHubIndexRequestSchema;
+    output: typeof RefreshHubIndexResponseSchema;
+  },
+  /**
+   * Downloads an item and what it brings, without installing.
+   *
+   * @generated from rpc openpicket.api.v1.HubService.PreviewHubItem
+   */
+  previewHubItem: {
+    methodKind: "unary";
+    input: typeof PreviewHubItemRequestSchema;
+    output: typeof PreviewHubItemResponseSchema;
+  },
+  /**
+   * Installs (or updates to the index version) an item from the hub,
+   * with a collection's members and the data files they read.
+   *
+   * @generated from rpc openpicket.api.v1.HubService.InstallHubItem
+   */
+  installHubItem: {
+    methodKind: "unary";
+    input: typeof InstallHubItemRequestSchema;
+    output: typeof InstallHubItemResponseSchema;
+  },
+  /**
+   * Removes a hub or custom item (built-in items can only be turned off).
+   *
+   * @generated from rpc openpicket.api.v1.HubService.RemoveHubItem
+   */
+  removeHubItem: {
+    methodKind: "unary";
+    input: typeof RemoveHubItemRequestSchema;
+    output: typeof RemoveHubItemResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_openpicket_api_v1_hub, 0);

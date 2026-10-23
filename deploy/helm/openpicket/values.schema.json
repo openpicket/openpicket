@@ -388,6 +388,24 @@
           "propertyNames": {
             "pattern": "^[a-zA-Z0-9_-]+$"
           }
+        },
+        "hub": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "dataHosts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "refresh": {
+              "type": "string"
+            }
+          }
         }
       },
       "additionalProperties": false
