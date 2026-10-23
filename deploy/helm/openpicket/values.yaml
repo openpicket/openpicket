@@ -270,6 +270,13 @@ loki:
       repository: grafana/loki
       tag: "3.5.0"
     retention: 720h
+    # Generic logs kept for another period, by the program of the source
+    # (the stream label: "syslog" for syslog files, the journal and syslog
+    # devices), e.g. {nginx: 168h}.
+    programRetention: {}
+    # Other Loki retention_stream entries, e.g.
+    #   - { selector: '{type="eve", event_type="flow"}', priority: 1, period: 72h }
+    retentionStreams: []
     persistence:
       size: 50Gi
       storageClass: ""

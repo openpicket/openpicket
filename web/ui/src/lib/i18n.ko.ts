@@ -826,6 +826,7 @@ export const ko: Record<string, string> = {
   "{n} lines cut at 64 KiB": "64KiB에서 잘린 줄 {n}개",
   "{n} lines shown": "{n}줄 표시",
   "{n} of {total} shown (local reasons first)": "{total}개 중 {n}개 표시 (로컬 사유 우선)",
+  "{n} messages dropped (queue full)": "메시지 {n}개 버림 (대기열 가득 참)",
   "{n} renamed": "{n}개 이름 바꿈",
   "{n} skipped": "{n}개 건너뜀",
   "{n} unread": "읽지 않음 {n}개",

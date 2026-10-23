@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -184,6 +186,21 @@ func check(configPath string) error {
 		return errors.New("configuration is invalid")
 	}
 	for _, src := range cfg.OpenPicket.LogSources {
+		switch {
+		case src.Journal != nil:
+			_, err := exec.LookPath("journalctl")
+			report("log journal", err, "journalctl")
+			continue
+		case src.Listen != "":
+			// The agent holds the address while it runs: only a free one is
+			// reported (run check before starting it).
+			l, err := net.ListenPacket("udp", src.Listen)
+			if err == nil {
+				l.Close()
+			}
+			report("log listen", err, "udp "+src.Listen)
+			continue
+		}
 		path := src.Path
 		if cfg.Node.Docker() {
 			path = filepath.Join(cfg.Node.Platform.HostRoot, path)

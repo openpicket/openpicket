@@ -147,10 +147,20 @@ func TestWithoutSuricata(t *testing.T) {
 		"same path twice":        withoutSuricata("node_id: web-01", "  log_sources: [{program: a, path: /a.log}, {program: b, path: /a.log}]"),
 		"bad glob":               withoutSuricata("node_id: web-01", "  log_sources: [{program: a, path: \"/a/[x\"}]"),
 		"iptables":               withoutSuricata("node_id: web-01\nplatform: {firewall: iptables}", ""),
+		"path and journal":       withoutSuricata("node_id: web-01", "  log_sources: [{program: a, path: /a.log, journal: {}}]"),
+		"journal program":        withoutSuricata("node_id: web-01", "  log_sources: [{program: nginx, journal: {}}]"),
+		"journal option":         withoutSuricata("node_id: web-01", "  log_sources: [{journal: {matches: [\"--file=/x\"]}}]"),
+		"bad listen":             withoutSuricata("node_id: web-01", "  log_sources: [{listen: \"5140\"}]"),
+		"nothing":                withoutSuricata("node_id: web-01", "  log_sources: [{program: a}]"),
 	} {
 		if _, err := Parse([]byte(cfg)); err == nil {
 			t.Errorf("%s accepted", name)
 		}
+	}
+	// The journal and a local syslog listener (program syslog).
+	c, err = Parse([]byte(withoutSuricata("node_id: web-01", "  log_sources:\n    - { journal: { matches: [_SYSTEMD_UNIT=sshd.service, +, SYSLOG_IDENTIFIER=sudo] } }\n    - { program: syslog, listen: \"127.0.0.1:5140\" }")))
+	if err != nil || len(c.OpenPicket.LogSources) != 2 || len(c.OpenPicket.LogSources[0].Journal.Matches) != 3 || c.OpenPicket.LogSources[1].Listen != "127.0.0.1:5140" {
+		t.Fatalf("journal and listener: %v %+v", err, c.OpenPicket.LogSources)
 	}
 	// With Suricata, log sources work too and Node mirrors the top level.
 	c, err = Parse([]byte(sample("", "  log_sources: [{program: uhttpd, path: /var/log/uhttpd.log}]")))

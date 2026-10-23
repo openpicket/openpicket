@@ -124,6 +124,26 @@ openpicket:
 - **allowlist**: adding the management networks is strongly recommended (e.g. `192.168.0.0/16`). It takes precedence over ban decisions and port policies.
 - See `deploy/images/agent/agent.yaml.example` for every setting.
 
+### System log (dropbear, LuCI, dnsmasq)
+
+The router's own log can reach CrowdSec too (SSH brute force on dropbear, for example). The agent runs in a container and cannot read `logread`, so logd forwards the log to a UDP listener of the agent:
+
+```yaml
+openpicket:
+  log_sources:
+    - { listen: "127.0.0.1:5140" }      # syslog datagrams, program syslog
+```
+
+```sh
+uci set system.@system[0].log_ip=127.0.0.1
+uci set system.@system[0].log_port=5140
+uci set system.@system[0].log_proto=udp
+uci commit system && /etc/init.d/log restart
+```
+
+- Each line names its program (`dropbear`, `uhttpd`...), which selects the CrowdSec parser. Install the matching collection on the **CrowdSec content** page.
+- Messages sent while the agent is down are not read again (UDP). The node page shows the listener and the messages it dropped when its queue was full.
+
 ## 4. Key generation and registration
 
 ```sh

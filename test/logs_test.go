@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -124,6 +125,9 @@ func TestAgentWithoutSuricataShipsLogs(t *testing.T) {
 	access, auth := filepath.Join(logs, "access.log"), filepath.Join(logs, "auth.log")
 	_ = os.WriteFile(access, []byte("backlog, not shipped\n"), 0o644)
 	_ = os.WriteFile(auth, nil, 0o644)
+	free, _ := net.ListenPacket("udp", "127.0.0.1:0")
+	listen := free.LocalAddr().String()
+	free.Close()
 	yaml := fmt.Sprintf(`node_id: web-01
 key_file: %s
 state_dir: %s
@@ -134,8 +138,9 @@ openpicket:
   log_sources:
     - { program: nginx, path: %q }
     - { program: syslog, path: %q }
+    - { listen: %q }
 `, keyFile, filepath.Join(dir, "state"), "ws"+strings.TrimPrefix(r.srv.URL, "http")+"/agent/data/v1/connect",
-		hostKey.Public(manager.HostKeyComment).String(), filepath.Join(logs, "*access.log"), auth)
+		hostKey.Public(manager.HostKeyComment).String(), filepath.Join(logs, "*access.log"), auth, listen)
 	cfg, err := config.Parse([]byte(yaml))
 	if err != nil {
 		t.Fatal(err)
@@ -177,6 +182,21 @@ openpicket:
 	appendTo(access, `198.51.100.67 - - [23/Oct/2026:12:00:00 +0000] "GET /x HTTP/1.1" 404 0 "-" "curl"`+"\n")
 	appendTo(auth, "Oct 23 12:00:01 web-01 sshd[812]: Failed password for root from 198.51.100.66 port 4000 ssh2\n")
 	waitFor("both lines at CrowdSec", func() bool { return len(lp.lines()) >= 2 })
+	// A datagram to the local listener (OpenWrt's logd), sent again until
+	// the listener is up.
+	dropbear := "syslog: <38>Oct 23 12:00:02 dropbear[1234]: Bad password attempt for 'root' from 198.51.100.7:4000"
+	waitFor("listener line at CrowdSec", func() bool {
+		if c, err := net.Dial("udp", listen); err == nil {
+			_, _ = c.Write([]byte("<38>Oct 23 12:00:02 dropbear[1234]: Bad password attempt for 'root' from 198.51.100.7:4000"))
+			c.Close()
+		}
+		for _, l := range lp.lines() {
+			if l == dropbear {
+				return true
+			}
+		}
+		return false
+	})
 	got := lp.lines()
 	want := []string{`nginx: 198.51.100.67 - - [23/Oct/2026:12:00:00 +0000] "GET /x HTTP/1.1" 404 0 "-" "curl"`,
 		"syslog: Oct 23 12:00:01 web-01 sshd[812]: Failed password for root from 198.51.100.66 port 4000 ssh2"}

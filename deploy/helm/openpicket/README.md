@@ -115,6 +115,13 @@ Every PVC (PostgreSQL, Loki, suricontroller, MISP and its MariaDB) uses its
 `persistence.storageClass`, else `global.defaultStorageClass`, else the
 cluster default. `-` sets `storageClassName: ""` (pre-provisioned volumes).
 
+The built-in Loki keeps records for `loki.builtin.retention`. Generic logs
+can be kept for another period by the program of their source
+(`loki.builtin.programRetention: {nginx: 168h}`; syslog files, the journal
+and syslog devices are `syslog`), other streams with
+`loki.builtin.retentionStreams` (Loki `retention_stream` entries). The
+**CrowdSec content** page can also keep a program out of Loki entirely.
+
 ## Database connections
 
 `database.maxConnections` caps the pool of each pod (manager 6, gateway 6,

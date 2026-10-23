@@ -186,7 +186,16 @@ func (s *Shipper) ShipSources(ctx context.Context, c *logsrc.Collector) error {
 		for _, b := range batches {
 			recs := make([]*dataplanev1.Record, 0, len(b.Records))
 			for _, r := range b.Records {
-				recs = append(recs, &dataplanev1.Record{Line: r.Line, Rid: record.FileRID(s.nodeID, r.Path, r.Inode, r.Offset), TimeUnixNano: r.Time.UnixNano()})
+				var rid string
+				switch {
+				case r.Key != "":
+					rid = record.FileRID(s.nodeID, r.Key, 0, 0)
+				case r.Path == "":
+					rid = s.NextMemoryRID()
+				default:
+					rid = record.FileRID(s.nodeID, r.Path, r.Inode, r.Offset)
+				}
+				recs = append(recs, &dataplanev1.Record{Line: r.Line, Rid: rid, TimeUnixNano: r.Time.UnixNano()})
 			}
 			if err := s.add(record.TypeLog, "", b.Program, recs, 0, func() { c.Commit(b) }); err != nil {
 				s.log.Warn("drop batch", "program", b.Program, "err", err)

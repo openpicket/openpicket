@@ -1,7 +1,9 @@
 // Package logsrc tails the generic log files of a node (nginx, postgres,
 // auth.log...) for the shipper: at-least-once, a file's position is saved
 // only once the manager acknowledged its lines (docs/ARCHITECTURE.md §4.8).
-// Suricata's logs go through the suricontroller collector instead.
+// It also follows the systemd journal (from the acknowledged cursor) and
+// receives syslog on a local UDP address (OpenWrt's logd). Suricata's logs
+// go through the suricontroller collector instead.
 package logsrc
 
 import (
@@ -15,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -25,10 +28,28 @@ import (
 // MaxLine bounds a line; longer lines are cut (and counted).
 const MaxLine = 64 << 10
 
-// Source is a configured log: a program and a path, which may be a glob.
+// Source is a configured log: a program and a path, which may be a glob;
+// or, in syslog format (program "syslog"), the journal or a listener.
 type Source struct {
 	Program string
 	Path    string
+	// Journal follows the systemd journal; Matches filter its entries
+	// (journalctl matches: "_SYSTEMD_UNIT=sshd.service", "+").
+	Journal bool
+	Matches []string
+	// Listen receives syslog datagrams on a UDP address.
+	Listen string
+}
+
+// Name describes the source in the status.
+func (s Source) Name() string {
+	switch {
+	case s.Journal:
+		return strings.TrimSpace("journal " + strings.Join(s.Matches, " "))
+	case s.Listen != "":
+		return "udp://" + s.Listen
+	}
+	return s.Path
 }
 
 // Config configures a Collector.
@@ -41,8 +62,10 @@ type Config struct {
 	StateFile string
 	// Poll is how often files are read and globs expanded (default 1s;
 	// globs every 5 polls).
-	Poll   time.Duration
-	Logger *slog.Logger
+	Poll time.Duration
+	// Journalctl is the journalctl binary (default from PATH).
+	Journalctl string
+	Logger     *slog.Logger
 }
 
 // Record is a line with its position.
@@ -53,14 +76,19 @@ type Record struct {
 	Offset int64
 	// Time the line was read.
 	Time time.Time
+	// Key identifies a line without a file position (a journal entry);
+	// a line with neither (a datagram) is not replayed.
+	Key string
 }
 
 // Batch is lines of one program, in file order.
 type Batch struct {
 	Program string
 	Records []Record
-	// ends are the file positions reached, committed with the batch.
-	ends map[fileKey]int64
+	// ends are the file positions reached, committed with the batch;
+	// cursors the journal positions.
+	ends    map[fileKey]int64
+	cursors map[string]string
 }
 
 type fileKey struct {
@@ -91,6 +119,8 @@ type SourceStatus struct {
 	Files     int
 	Lines     uint64
 	Truncated uint64
+	// Dropped datagrams (listener queue full).
+	Dropped   uint64
 	LastError string
 }
 
@@ -101,15 +131,22 @@ type Collector struct {
 
 	mu        sync.Mutex
 	files     []*file
-	committed map[string]position // path -> acknowledged position
+	committed map[string]position // path (or stream key) -> acknowledged position
 	stats     []SourceStatus
 	started   bool
 	polls     int
+
+	streams []*stream
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 type position struct {
-	Inode  uint64 `json:"inode"`
-	Offset int64  `json:"offset"`
+	Inode  uint64 `json:"inode,omitempty"`
+	Offset int64  `json:"offset,omitempty"`
+	// Cursor of the journal.
+	Cursor string `json:"cursor,omitempty"`
 }
 
 // New creates a collector; it reads the saved positions.
@@ -121,14 +158,25 @@ func New(cfg Config) (*Collector, error) {
 		cfg.Logger = slog.Default()
 	}
 	c := &Collector{cfg: cfg, log: cfg.Logger.With("component", "logsrc"), committed: map[string]position{}}
-	for _, s := range cfg.Sources {
-		if record.NormalizeProgram(s.Program) == "" || s.Path == "" {
-			return nil, fmt.Errorf("logsrc: invalid source %q %q", s.Program, s.Path)
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+	for i, s := range cfg.Sources {
+		kinds := 0
+		for _, set := range []bool{s.Path != "", s.Journal, s.Listen != ""} {
+			if set {
+				kinds++
+			}
 		}
-		if _, err := filepath.Match(s.Path, ""); err != nil {
-			return nil, fmt.Errorf("logsrc: %s: %w", s.Path, err)
+		if record.NormalizeProgram(s.Program) == "" || kinds != 1 {
+			return nil, fmt.Errorf("logsrc: invalid source %q %q", s.Program, s.Name())
 		}
-		c.stats = append(c.stats, SourceStatus{Program: record.NormalizeProgram(s.Program), Path: s.Path})
+		if s.Path != "" {
+			if _, err := filepath.Match(s.Path, ""); err != nil {
+				return nil, fmt.Errorf("logsrc: %s: %w", s.Path, err)
+			}
+		} else {
+			c.streams = append(c.streams, c.newStream(i, s))
+		}
+		c.stats = append(c.stats, SourceStatus{Program: record.NormalizeProgram(s.Program), Path: s.Name()})
 	}
 	if cfg.StateFile != "" {
 		b, err := os.ReadFile(cfg.StateFile)
@@ -166,6 +214,9 @@ func (c *Collector) discover() {
 	}
 	counts := make([]int, len(c.cfg.Sources))
 	for i, s := range c.cfg.Sources {
+		if s.Path == "" {
+			continue
+		}
 		matches, err := filepath.Glob(c.host(s.Path))
 		if err != nil {
 			c.stats[i].LastError = err.Error()
@@ -193,8 +244,10 @@ func (c *Collector) discover() {
 			tracked[p] = f
 		}
 	}
-	for i := range counts {
-		c.stats[i].Files = counts[i]
+	for i, s := range c.cfg.Sources {
+		if s.Path != "" {
+			c.stats[i].Files = counts[i]
+		}
 	}
 }
 
@@ -342,6 +395,9 @@ func (c *Collector) Next(ctx context.Context, maxRecords, maxBytes int) ([]*Batc
 func (c *Collector) poll(maxRecords, maxBytes int) []*Batch {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.polls == 0 {
+		c.startStreams()
+	}
 	if c.polls%5 == 0 {
 		c.discover()
 	}
@@ -357,7 +413,7 @@ func (c *Collector) poll(maxRecords, maxBytes int) []*Batch {
 		prog := c.stats[f.src].Program
 		b := byProgram[prog]
 		if b == nil {
-			b = &Batch{Program: prog, ends: map[fileKey]int64{}}
+			b = &Batch{Program: prog, ends: map[fileKey]int64{}, cursors: map[string]string{}}
 		}
 		before := len(b.Records)
 		if total < maxRecords && size < maxBytes {
@@ -391,6 +447,19 @@ func (c *Collector) poll(maxRecords, maxBytes int) []*Batch {
 		keep = append(keep, f)
 	}
 	c.files = keep
+	for _, st := range c.streams {
+		prog := c.stats[st.src].Program
+		b := byProgram[prog]
+		if b == nil {
+			b = &Batch{Program: prog, ends: map[fileKey]int64{}, cursors: map[string]string{}}
+		}
+		before := len(b.Records)
+		c.drain(st, b, maxRecords, maxBytes, &total, &size)
+		if len(b.Records) > before && byProgram[prog] == nil {
+			byProgram[prog] = b
+			order = append(order, prog)
+		}
+	}
 	out := make([]*Batch, 0, len(order))
 	for _, p := range order {
 		out = append(out, byProgram[p])
@@ -418,6 +487,9 @@ func (c *Collector) Commit(b *Batch) {
 			c.committed[k.path] = position{Inode: k.inode, Offset: off}
 		}
 	}
+	for key, cursor := range b.cursors {
+		c.committed[key] = position{Cursor: cursor}
+	}
 	snapshot, _ := json.Marshal(c.committed)
 	c.mu.Unlock()
 	if c.cfg.StateFile == "" {
@@ -443,11 +515,21 @@ func writeAtomic(path string, b []byte) error {
 func (c *Collector) Status() []SourceStatus {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return append([]SourceStatus(nil), c.stats...)
+	out := append([]SourceStatus(nil), c.stats...)
+	for _, s := range c.streams {
+		out[s.src].Files = 0
+		if s.up.Load() {
+			out[s.src].Files = 1
+		}
+		out[s.src].Dropped = s.dropped.Load()
+	}
+	return out
 }
 
-// Close closes the open files.
+// Close stops the streams and closes the open files.
 func (c *Collector) Close() {
+	c.cancel()
+	c.wg.Wait()
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, f := range c.files {
