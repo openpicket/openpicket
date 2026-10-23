@@ -177,6 +177,7 @@ var procedures = map[string]spec{
 	apiv1connect.GeoServiceLookupProcedure:         read,
 	apiv1connect.GeoServiceDeleteDatabaseProcedure: adm,
 	geoUploadPath: adm,
+	hubUploadPath: adm,
 
 	apiv1connect.LogServiceQueryLogsProcedure:      read,
 	apiv1connect.LogServiceTailLogsProcedure:       read,
@@ -223,7 +224,10 @@ var procedures = map[string]spec{
 	apiv1connect.SystemServiceResyncAlertsProcedure:      op,
 }
 
-const geoUploadPath = "/geo/upload"
+const (
+	geoUploadPath = "/geo/upload"
+	hubUploadPath = "/hub/upload"
+)
 
 // Handler serves the API (mount at /api/ with the prefix stripped).
 func (s *Server) Handler() http.Handler {
@@ -243,6 +247,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(apiv1connect.NewNotificationServiceHandler(&notificationService{s}, opts...))
 	mux.Handle(apiv1connect.NewIntelServiceHandler(&intelService{s}, opts...))
 	mux.HandleFunc("POST "+geoUploadPath, s.uploadGeo)
+	mux.HandleFunc("POST "+hubUploadPath, s.uploadHub)
 	return s.middleware(mux)
 }
 
@@ -352,7 +357,7 @@ func (s *Server) checkOrigin(r *http.Request) error {
 	if o := r.Header.Get("Origin"); o != "" && !s.originAllowed(r, o) {
 		return errors.New("origin " + o + " is not allowed")
 	}
-	if r.URL.Path == geoUploadPath {
+	if r.URL.Path == geoUploadPath || r.URL.Path == hubUploadPath {
 		// multipart/form-data is a "simple" content type: require a custom
 		// header (preflighted).
 		if r.Header.Get("X-OpenPicket-Request") == "" {

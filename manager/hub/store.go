@@ -69,6 +69,9 @@ type Item struct {
 	MemberOf []string
 }
 
+// Digest is the sha256 of an item file, as stored.
+func Digest(b []byte) string { return digest(b) }
+
 func digest(b []byte) string {
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:])
