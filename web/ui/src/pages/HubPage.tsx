@@ -15,6 +15,7 @@ import {
   SegmentedControl,
   Select,
   Stack,
+  Switch,
   Table,
   Tabs,
   Text,
@@ -32,7 +33,7 @@ import { useAccess } from "../api/hooks";
 import { queryClient } from "../api/queryClient";
 import { EmptyState, ErrorAlert, LoadingBlock, PageHeader, StatusDot, TimeAgo } from "../components/common";
 import type { HubIndexEntry, HubItem } from "../gen/openpicket/api/v1/hub_pb";
-import { toNumber } from "../lib/format";
+import { formatNumber, toNumber } from "../lib/format";
 import { t } from "../lib/i18n";
 import { useUrlState } from "../lib/urlState";
 
@@ -289,6 +290,7 @@ export default function HubPage() {
       />
       <Stack>
         <Rollout />
+        <LogPrograms />
         <Group justify="space-between">
           <SegmentedControl
             value={view}
@@ -478,8 +480,8 @@ function RemoveButton(props: { item: HubItem }) {
 /** The CrowdSec hub index: search, preview, install. */
 function HubBrowser() {
   const access = useAccess();
-  const [type, setType] = useState("scenarios");
-  const [query, setQuery] = useState("");
+  const [type, setType] = useUrlState("hubtype", "scenarios");
+  const [query, setQuery] = useUrlState("q");
   const [page, setPage] = useState(1);
   const [preview, setPreview] = useState<HubIndexEntry | null>(null);
   const limit = 50;
@@ -770,5 +772,107 @@ function UploadButton() {
         </Stack>
       </Modal>
     </>
+  );
+}
+
+/** Programs of the generic logs the nodes send, and whether a parser
+ * handles them (CrowdSec ignores lines no parser selects). */
+function LogPrograms() {
+  const access = useAccess();
+  const [, setView] = useUrlState("view", "installed");
+  const [, setHubType] = useUrlState("hubtype", "scenarios");
+  const [, setQuery] = useUrlState("q");
+  const q = useQuery({ queryKey: ["logPrograms"], queryFn: () => api.hub.listLogPrograms({}), refetchInterval: 60_000 });
+  const storage = useMutation({
+    mutationFn: (v: { program: string; loki: boolean }) => api.hub.setLogProgramStorage(v),
+    meta: { errorTitle: t("Could not change the storage") },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["logPrograms"] }),
+  });
+  if (q.isError) return <ErrorAlert error={q.error} />;
+  const programs = q.data?.programs ?? [];
+  if (programs.length === 0) return null;
+  const showHub = (type: string, name: string) => {
+    setHubType(type);
+    setQuery(name);
+    setView("hub");
+  };
+  return (
+    <Paper withBorder p="md" radius="md">
+      <Title order={5} mb={4}>
+        {t("Log programs")}
+      </Title>
+      <Text size="xs" c="dimmed" mb="sm">
+        {t("Generic logs the nodes send. CrowdSec only reads the lines of programs an enabled parser selects.")}
+      </Text>
+      <Table.ScrollContainer minWidth={640}>
+        <Table fz="sm">
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>{t("Program")}</Table.Th>
+              <Table.Th>{t("Nodes")}</Table.Th>
+              <Table.Th>{t("Lines")}</Table.Th>
+              <Table.Th>{t("Parsers")}</Table.Th>
+              <Table.Th>{t("Stored in Loki")}</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {programs.map((p) => (
+              <Table.Tr key={p.program}>
+                <Table.Td>
+                  <Text size="sm" ff="monospace">
+                    {p.program}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    <TimeAgo ts={p.lastSeen} size="xs" />
+                  </Text>
+                </Table.Td>
+                <Table.Td>
+                  <Tooltip label={p.nodes.join(", ")} withArrow multiline w={300}>
+                    <span>{p.nodes.length}</span>
+                  </Tooltip>
+                </Table.Td>
+                <Table.Td>{formatNumber(p.lines)}</Table.Td>
+                <Table.Td>
+                  {p.parsers.length > 0 ? (
+                    <Text size="xs" ff="monospace">
+                      {p.parsers.join(", ")}
+                    </Text>
+                  ) : (
+                    <Stack gap={4}>
+                      <Badge size="xs" color="orange" variant="light" w="fit-content">
+                        {t("no parser: CrowdSec ignores these lines")}
+                      </Badge>
+                      {p.suggestions.length > 0 && (
+                        <Group gap={4}>
+                          {p.suggestions.map((r) => (
+                            <Badge
+                              key={r.type + r.name}
+                              size="xs"
+                              variant="outline"
+                              style={{ cursor: "pointer", textTransform: "none" }}
+                              onClick={() => showHub(r.type, r.name)}
+                            >
+                              {r.name}
+                            </Badge>
+                          ))}
+                        </Group>
+                      )}
+                    </Stack>
+                  )}
+                </Table.Td>
+                <Table.Td>
+                  <Switch
+                    size="xs"
+                    checked={p.loki}
+                    disabled={!access.canAdmin || storage.isPending}
+                    onChange={(e) => storage.mutate({ program: p.program, loki: e.currentTarget.checked })}
+                  />
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+    </Paper>
   );
 }

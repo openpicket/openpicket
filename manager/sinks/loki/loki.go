@@ -32,6 +32,8 @@ type Config struct {
 	// URL is the push endpoint, e.g. http://loki-gateway/loki/api/v1/push.
 	// A URL without a path gets /loki/api/v1/push.
 	URL string
+	// Skip reports generic log programs not stored (settings).
+	Skip func(program string) bool
 	// TenantID is sent as X-Scope-OrgID (default "openpicket").
 	TenantID string
 	Username string
@@ -114,6 +116,9 @@ func Labels(b *pipeline.Batch, r *pipeline.Record) map[string]string {
 	if b.Type == record.TypeEve && r.EventType != "" {
 		l["event_type"] = r.EventType
 	}
+	if b.Type == record.TypeLog {
+		l["program"] = b.Program
+	}
 	return l
 }
 
@@ -163,11 +168,16 @@ func Metadata(b *pipeline.Batch, r *pipeline.Record) map[string]string {
 }
 
 func labelKey(l map[string]string) string {
-	return l["node"] + "\x00" + l["type"] + "\x00" + l["instance"] + "\x00" + l["event_type"]
+	return l["node"] + "\x00" + l["type"] + "\x00" + l["instance"] + "\x00" + l["event_type"] + "\x00" + l["program"]
 }
 
 // Deliver implements pipeline.Sink.
 func (s *Sink) Deliver(ctx context.Context, b *pipeline.Batch) error {
+	if b.Type == record.TypeLog && s.cfg.Skip != nil && s.cfg.Skip(b.Program) {
+		// Kept out of Loki by the settings (high volume); CrowdSec still
+		// gets the lines.
+		return nil
+	}
 	now := s.cfg.Now()
 	oldest, newest := now.Add(-s.cfg.MaxAge), now.Add(s.cfg.FutureGrace)
 	streams := map[string]*stream{}

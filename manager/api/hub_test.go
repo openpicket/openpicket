@@ -120,3 +120,41 @@ func TestHubUploadAndStates(t *testing.T) {
 		t.Fatalf("index without a hub: %v", err)
 	}
 }
+
+func TestLogPrograms(t *testing.T) {
+	e := setup(t, false)
+	ctx := context.Background()
+	e.server.cfg.Auth.Roles = auth.Roles{Admin: auth.RoleConfig{Users: []string{"root"}}}
+	admin := e.clients(viewerHeaders("root", ""))
+	lp := e.server.cfg.LogPrograms
+	lp.Seen("web-01", "nginx", 10)
+	lp.Seen("web-02", "nginx", 5)
+	lp.Seen("db-01", "postgres", 3)
+	lp.Flush(ctx)
+	if c, msg := e.uploadHub(admin, "parsers", "s01-parse", "name: me/pg\nfilter: evt.Parsed.program == 'postgres'\n", nil); c != http.StatusOK {
+		t.Fatalf("upload: %d %s", c, msg)
+	}
+	if _, err := admin.hub.SetLogProgramStorage(ctx, connect.NewRequest(&apiv1.SetLogProgramStorageRequest{Program: "nginx", Loki: false})); err != nil {
+		t.Fatal(err)
+	}
+	res, err := admin.hub.ListLogPrograms(ctx, connect.NewRequest(&apiv1.ListLogProgramsRequest{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]*apiv1.LogProgram{}
+	for _, p := range res.Msg.Programs {
+		got[p.Program] = p
+	}
+	if n := got["nginx"]; n == nil || n.Lines != 15 || len(n.Nodes) != 2 || len(n.Parsers) != 0 || n.Loki {
+		t.Fatalf("nginx = %v", n)
+	}
+	if p := got["postgres"]; p == nil || len(p.Parsers) != 1 || p.Parsers[0] != "me/pg" || !p.Loki {
+		t.Fatalf("postgres = %v", p)
+	}
+	if !lp.Skip("nginx") || lp.Skip("postgres") {
+		t.Fatal("storage setting not applied")
+	}
+	if _, err := admin.hub.SetLogProgramStorage(ctx, connect.NewRequest(&apiv1.SetLogProgramStorageRequest{Program: " ", Loki: false})); code(err) != connect.CodeInvalidArgument {
+		t.Fatalf("empty program: %v", err)
+	}
+}

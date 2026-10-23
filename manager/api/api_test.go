@@ -39,6 +39,7 @@ import (
 	"github.com/openpicket/openpicket/manager/geo"
 	"github.com/openpicket/openpicket/manager/hub"
 	"github.com/openpicket/openpicket/manager/lapi"
+	"github.com/openpicket/openpicket/manager/logprog"
 	"github.com/openpicket/openpicket/manager/misp"
 	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/policy"
@@ -95,7 +96,7 @@ func setup(t *testing.T, readOnly bool) *env {
 	e.server, err = New(Config{DB: pool, Auth: chain, ReadOnly: readOnly, Geo: g, Policies: policy.New(pool, g, log), Settings: settings.New(pool),
 		HostKey: "ssh-ed25519 AAAA host", Replica: "r1", Version: "test", Suricontroller: su, PrincipalKey: priv, Logger: log,
 		Alerts: &alerts.Querier{DB: pool}, AlertStore: &alerts.Store{DB: pool}, LAPIs: []LAPI{{Name: "default", Watcher: w}},
-		Poke: func(i string) { e.pokes <- i }, Hub: hub.NewStore(pool, log)})
+		Poke: func(i string) { e.pokes <- i }, Hub: hub.NewStore(pool, log), LogPrograms: logprog.New(pool, settings.New(pool), log)})
 	if err != nil {
 		t.Fatal(err)
 	}

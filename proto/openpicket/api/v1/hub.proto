@@ -25,6 +25,12 @@ service HubService {
   rpc InstallHubItem(InstallHubItemRequest) returns (InstallHubItemResponse);
   // Removes a hub or custom item (built-in items can only be turned off).
   rpc RemoveHubItem(RemoveHubItemRequest) returns (RemoveHubItemResponse);
+  // Programs of the generic logs the nodes send, with the parsers that
+  // handle them.
+  rpc ListLogPrograms(ListLogProgramsRequest) returns (ListLogProgramsResponse);
+  // Keeps a program's lines out of Loki (CrowdSec still gets them), or
+  // stores them again.
+  rpc SetLogProgramStorage(SetLogProgramStorageRequest) returns (SetLogProgramStorageResponse);
 }
 
 message HubRef {
@@ -171,3 +177,30 @@ message RemoveHubItemRequest {
 }
 
 message RemoveHubItemResponse {}
+
+message LogProgram {
+  string program = 1;
+  repeated string nodes = 2;
+  int64 lines = 3;
+  google.protobuf.Timestamp last_seen = 4;
+  // Enabled parsers whose filters select it; none: CrowdSec ignores its
+  // lines.
+  repeated string parsers = 5;
+  // Hub items likely to handle it (by name), when no parser does.
+  repeated HubRef suggestions = 6;
+  // Its lines are stored in Loki.
+  bool loki = 7;
+}
+
+message ListLogProgramsRequest {}
+
+message ListLogProgramsResponse {
+  repeated LogProgram programs = 1;
+}
+
+message SetLogProgramStorageRequest {
+  string program = 1;
+  bool loki = 2;
+}
+
+message SetLogProgramStorageResponse {}

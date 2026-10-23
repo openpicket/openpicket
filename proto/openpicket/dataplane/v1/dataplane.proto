@@ -241,7 +241,7 @@ message LogBatch {
   string boot_id = 1;
   // Strictly increasing within boot_id.
   uint64 seq = 2;
-  // eve | suricata | fast | stats | agent | nflog
+  // eve | suricata | fast | stats | agent | nflog | log
   string type = 3;
   // ids | ips | ""
   string instance = 4;
@@ -249,6 +249,9 @@ message LogBatch {
   bytes zstd_records = 5;
   uint32 record_count = 6;
   uint64 dropped_since_last = 7;
+  // type "log": the program that wrote the lines (nginx, postgres, sshd),
+  // which the CrowdSec parsers select on.
+  string program = 8;
 }
 
 message LogAck {

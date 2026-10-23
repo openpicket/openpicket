@@ -16,7 +16,7 @@ service LogService {
 
 message LogFilter {
   repeated string nodes = 1;
-  // eve | nflog | suricata | agent
+  // eve | nflog | suricata | agent | log
   repeated string types = 2;
   // eve event types (alert, flow, dns, tls, http...)
   repeated string event_types = 3;
@@ -32,6 +32,8 @@ message LogFilter {
   string site = 10;
   // A full LogQL log query; replaces the fields above.
   string logql = 11;
+  // Programs of generic logs (type log): nginx, postgres, sshd...
+  repeated string programs = 12;
 }
 
 message LogEntry {

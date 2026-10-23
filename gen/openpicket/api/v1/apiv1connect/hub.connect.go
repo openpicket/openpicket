@@ -57,6 +57,12 @@ const (
 	// HubServiceRemoveHubItemProcedure is the fully-qualified name of the HubService's RemoveHubItem
 	// RPC.
 	HubServiceRemoveHubItemProcedure = "/openpicket.api.v1.HubService/RemoveHubItem"
+	// HubServiceListLogProgramsProcedure is the fully-qualified name of the HubService's
+	// ListLogPrograms RPC.
+	HubServiceListLogProgramsProcedure = "/openpicket.api.v1.HubService/ListLogPrograms"
+	// HubServiceSetLogProgramStorageProcedure is the fully-qualified name of the HubService's
+	// SetLogProgramStorage RPC.
+	HubServiceSetLogProgramStorageProcedure = "/openpicket.api.v1.HubService/SetLogProgramStorage"
 )
 
 // HubServiceClient is a client for the openpicket.api.v1.HubService service.
@@ -77,6 +83,12 @@ type HubServiceClient interface {
 	InstallHubItem(context.Context, *connect.Request[v1.InstallHubItemRequest]) (*connect.Response[v1.InstallHubItemResponse], error)
 	// Removes a hub or custom item (built-in items can only be turned off).
 	RemoveHubItem(context.Context, *connect.Request[v1.RemoveHubItemRequest]) (*connect.Response[v1.RemoveHubItemResponse], error)
+	// Programs of the generic logs the nodes send, with the parsers that
+	// handle them.
+	ListLogPrograms(context.Context, *connect.Request[v1.ListLogProgramsRequest]) (*connect.Response[v1.ListLogProgramsResponse], error)
+	// Keeps a program's lines out of Loki (CrowdSec still gets them), or
+	// stores them again.
+	SetLogProgramStorage(context.Context, *connect.Request[v1.SetLogProgramStorageRequest]) (*connect.Response[v1.SetLogProgramStorageResponse], error)
 }
 
 // NewHubServiceClient constructs a client for the openpicket.api.v1.HubService service. By default,
@@ -144,20 +156,34 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(hubServiceMethods.ByName("RemoveHubItem")),
 			connect.WithClientOptions(opts...),
 		),
+		listLogPrograms: connect.NewClient[v1.ListLogProgramsRequest, v1.ListLogProgramsResponse](
+			httpClient,
+			baseURL+HubServiceListLogProgramsProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("ListLogPrograms")),
+			connect.WithClientOptions(opts...),
+		),
+		setLogProgramStorage: connect.NewClient[v1.SetLogProgramStorageRequest, v1.SetLogProgramStorageResponse](
+			httpClient,
+			baseURL+HubServiceSetLogProgramStorageProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("SetLogProgramStorage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // hubServiceClient implements HubServiceClient.
 type hubServiceClient struct {
-	listHubItems    *connect.Client[v1.ListHubItemsRequest, v1.ListHubItemsResponse]
-	getHubItem      *connect.Client[v1.GetHubItemRequest, v1.GetHubItemResponse]
-	setHubItemState *connect.Client[v1.SetHubItemStateRequest, v1.SetHubItemStateResponse]
-	getHubRollout   *connect.Client[v1.GetHubRolloutRequest, v1.GetHubRolloutResponse]
-	listHubIndex    *connect.Client[v1.ListHubIndexRequest, v1.ListHubIndexResponse]
-	refreshHubIndex *connect.Client[v1.RefreshHubIndexRequest, v1.RefreshHubIndexResponse]
-	previewHubItem  *connect.Client[v1.PreviewHubItemRequest, v1.PreviewHubItemResponse]
-	installHubItem  *connect.Client[v1.InstallHubItemRequest, v1.InstallHubItemResponse]
-	removeHubItem   *connect.Client[v1.RemoveHubItemRequest, v1.RemoveHubItemResponse]
+	listHubItems         *connect.Client[v1.ListHubItemsRequest, v1.ListHubItemsResponse]
+	getHubItem           *connect.Client[v1.GetHubItemRequest, v1.GetHubItemResponse]
+	setHubItemState      *connect.Client[v1.SetHubItemStateRequest, v1.SetHubItemStateResponse]
+	getHubRollout        *connect.Client[v1.GetHubRolloutRequest, v1.GetHubRolloutResponse]
+	listHubIndex         *connect.Client[v1.ListHubIndexRequest, v1.ListHubIndexResponse]
+	refreshHubIndex      *connect.Client[v1.RefreshHubIndexRequest, v1.RefreshHubIndexResponse]
+	previewHubItem       *connect.Client[v1.PreviewHubItemRequest, v1.PreviewHubItemResponse]
+	installHubItem       *connect.Client[v1.InstallHubItemRequest, v1.InstallHubItemResponse]
+	removeHubItem        *connect.Client[v1.RemoveHubItemRequest, v1.RemoveHubItemResponse]
+	listLogPrograms      *connect.Client[v1.ListLogProgramsRequest, v1.ListLogProgramsResponse]
+	setLogProgramStorage *connect.Client[v1.SetLogProgramStorageRequest, v1.SetLogProgramStorageResponse]
 }
 
 // ListHubItems calls openpicket.api.v1.HubService.ListHubItems.
@@ -205,6 +231,16 @@ func (c *hubServiceClient) RemoveHubItem(ctx context.Context, req *connect.Reque
 	return c.removeHubItem.CallUnary(ctx, req)
 }
 
+// ListLogPrograms calls openpicket.api.v1.HubService.ListLogPrograms.
+func (c *hubServiceClient) ListLogPrograms(ctx context.Context, req *connect.Request[v1.ListLogProgramsRequest]) (*connect.Response[v1.ListLogProgramsResponse], error) {
+	return c.listLogPrograms.CallUnary(ctx, req)
+}
+
+// SetLogProgramStorage calls openpicket.api.v1.HubService.SetLogProgramStorage.
+func (c *hubServiceClient) SetLogProgramStorage(ctx context.Context, req *connect.Request[v1.SetLogProgramStorageRequest]) (*connect.Response[v1.SetLogProgramStorageResponse], error) {
+	return c.setLogProgramStorage.CallUnary(ctx, req)
+}
+
 // HubServiceHandler is an implementation of the openpicket.api.v1.HubService service.
 type HubServiceHandler interface {
 	ListHubItems(context.Context, *connect.Request[v1.ListHubItemsRequest]) (*connect.Response[v1.ListHubItemsResponse], error)
@@ -223,6 +259,12 @@ type HubServiceHandler interface {
 	InstallHubItem(context.Context, *connect.Request[v1.InstallHubItemRequest]) (*connect.Response[v1.InstallHubItemResponse], error)
 	// Removes a hub or custom item (built-in items can only be turned off).
 	RemoveHubItem(context.Context, *connect.Request[v1.RemoveHubItemRequest]) (*connect.Response[v1.RemoveHubItemResponse], error)
+	// Programs of the generic logs the nodes send, with the parsers that
+	// handle them.
+	ListLogPrograms(context.Context, *connect.Request[v1.ListLogProgramsRequest]) (*connect.Response[v1.ListLogProgramsResponse], error)
+	// Keeps a program's lines out of Loki (CrowdSec still gets them), or
+	// stores them again.
+	SetLogProgramStorage(context.Context, *connect.Request[v1.SetLogProgramStorageRequest]) (*connect.Response[v1.SetLogProgramStorageResponse], error)
 }
 
 // NewHubServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -286,6 +328,18 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(hubServiceMethods.ByName("RemoveHubItem")),
 		connect.WithHandlerOptions(opts...),
 	)
+	hubServiceListLogProgramsHandler := connect.NewUnaryHandler(
+		HubServiceListLogProgramsProcedure,
+		svc.ListLogPrograms,
+		connect.WithSchema(hubServiceMethods.ByName("ListLogPrograms")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceSetLogProgramStorageHandler := connect.NewUnaryHandler(
+		HubServiceSetLogProgramStorageProcedure,
+		svc.SetLogProgramStorage,
+		connect.WithSchema(hubServiceMethods.ByName("SetLogProgramStorage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/openpicket.api.v1.HubService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HubServiceListHubItemsProcedure:
@@ -306,6 +360,10 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceInstallHubItemHandler.ServeHTTP(w, r)
 		case HubServiceRemoveHubItemProcedure:
 			hubServiceRemoveHubItemHandler.ServeHTTP(w, r)
+		case HubServiceListLogProgramsProcedure:
+			hubServiceListLogProgramsHandler.ServeHTTP(w, r)
+		case HubServiceSetLogProgramStorageProcedure:
+			hubServiceSetLogProgramStorageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -349,4 +407,12 @@ func (UnimplementedHubServiceHandler) InstallHubItem(context.Context, *connect.R
 
 func (UnimplementedHubServiceHandler) RemoveHubItem(context.Context, *connect.Request[v1.RemoveHubItemRequest]) (*connect.Response[v1.RemoveHubItemResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.HubService.RemoveHubItem is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) ListLogPrograms(context.Context, *connect.Request[v1.ListLogProgramsRequest]) (*connect.Response[v1.ListLogProgramsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.HubService.ListLogPrograms is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) SetLogProgramStorage(context.Context, *connect.Request[v1.SetLogProgramStorageRequest]) (*connect.Response[v1.SetLogProgramStorageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.HubService.SetLogProgramStorage is not implemented"))
 }

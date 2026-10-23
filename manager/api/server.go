@@ -29,6 +29,7 @@ import (
 	"github.com/openpicket/openpicket/manager/csmetrics"
 	"github.com/openpicket/openpicket/manager/geo"
 	"github.com/openpicket/openpicket/manager/hub"
+	"github.com/openpicket/openpicket/manager/logprog"
 	"github.com/openpicket/openpicket/manager/misp"
 	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/policy"
@@ -53,7 +54,9 @@ type Config struct {
 	// Hub is the CrowdSec content store; HubRemote the CrowdSec hub.
 	Hub       *hub.Store
 	HubRemote *hub.Hub
-	Settings  *settings.Store
+	// LogPrograms are the generic log programs seen.
+	LogPrograms *logprog.Store
+	Settings    *settings.Store
 	// HostKey is the manager public key line agents pin.
 	HostKey string
 	Replica string
@@ -190,15 +193,17 @@ var procedures = map[string]spec{
 
 	apiv1connect.MetricsServiceGetCrowdSecMetricsProcedure: read,
 
-	apiv1connect.HubServiceListHubItemsProcedure:    read,
-	apiv1connect.HubServiceGetHubItemProcedure:      read,
-	apiv1connect.HubServiceGetHubRolloutProcedure:   read,
-	apiv1connect.HubServiceSetHubItemStateProcedure: adm,
-	apiv1connect.HubServiceListHubIndexProcedure:    read,
-	apiv1connect.HubServiceRefreshHubIndexProcedure: {role: auth.RoleAdmin, write: true},
-	apiv1connect.HubServicePreviewHubItemProcedure:  {role: auth.RoleAdmin},
-	apiv1connect.HubServiceInstallHubItemProcedure:  adm,
-	apiv1connect.HubServiceRemoveHubItemProcedure:   adm,
+	apiv1connect.HubServiceListHubItemsProcedure:         read,
+	apiv1connect.HubServiceGetHubItemProcedure:           read,
+	apiv1connect.HubServiceGetHubRolloutProcedure:        read,
+	apiv1connect.HubServiceSetHubItemStateProcedure:      adm,
+	apiv1connect.HubServiceListHubIndexProcedure:         read,
+	apiv1connect.HubServiceRefreshHubIndexProcedure:      {role: auth.RoleAdmin, write: true},
+	apiv1connect.HubServicePreviewHubItemProcedure:       {role: auth.RoleAdmin},
+	apiv1connect.HubServiceInstallHubItemProcedure:       adm,
+	apiv1connect.HubServiceRemoveHubItemProcedure:        adm,
+	apiv1connect.HubServiceListLogProgramsProcedure:      read,
+	apiv1connect.HubServiceSetLogProgramStorageProcedure: adm,
 
 	apiv1connect.NotificationServiceListNotificationsProcedure:     read,
 	apiv1connect.NotificationServiceMarkNotificationsReadProcedure: own,

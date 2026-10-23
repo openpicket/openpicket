@@ -25,6 +25,61 @@ type Doc struct {
 	LogTypes []string
 	// Produces: log types a parser sets (statics meta log_type).
 	Produces []string
+	// Programs: how a parser's filters select evt.Parsed.program.
+	Programs []ProgramSelector
+}
+
+// ProgramSelector is one evt.Parsed.program test of a parser filter.
+type ProgramSelector struct {
+	// Op: ==, startsWith, endsWith, contains, matches.
+	Op    string
+	Value string
+}
+
+// Match reports whether program passes the test.
+func (p ProgramSelector) Match(program string) bool {
+	switch p.Op {
+	case "==":
+		return program == p.Value
+	case "startsWith":
+		return strings.HasPrefix(program, p.Value)
+	case "endsWith":
+		return strings.HasSuffix(program, p.Value)
+	case "contains":
+		return strings.Contains(program, p.Value)
+	case "matches":
+		re, err := regexp.Compile(p.Value)
+		return err == nil && re.MatchString(program)
+	}
+	return false
+}
+
+// HandlesProgram reports whether a parser selects a program.
+func (d *Doc) HandlesProgram(program string) bool {
+	for _, p := range d.Programs {
+		if p.Match(program) {
+			return true
+		}
+	}
+	return false
+}
+
+var (
+	programOp = regexp.MustCompile(`evt\.Parsed\.program\s*(==|startsWith|endsWith|contains|matches)\s*["']([^"']+)["']`)
+	programIn = regexp.MustCompile(`evt\.Parsed\.program\s+in\s+\[([^\]]*)\]`)
+)
+
+func filterPrograms(filter string) []ProgramSelector {
+	var out []ProgramSelector
+	for _, m := range programOp.FindAllStringSubmatch(filter, -1) {
+		out = append(out, ProgramSelector{Op: m[1], Value: m[2]})
+	}
+	for _, m := range programIn.FindAllStringSubmatch(filter, -1) {
+		for _, q := range quoted.FindAllStringSubmatch(m[1], -1) {
+			out = append(out, ProgramSelector{Op: "==", Value: q[1]})
+		}
+	}
+	return out
 }
 
 // DataRef is a data entry of an item.
@@ -91,6 +146,7 @@ func ParseDoc(typ string, content []byte) (*Doc, error) {
 		}
 		if typ == Parsers {
 			collectProduces(node.Content[0], &d.Produces)
+			d.Programs = append(d.Programs, filterPrograms(raw.Filter)...)
 		}
 		if typ == Collections {
 			var members map[string]any

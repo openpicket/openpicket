@@ -1,0 +1,30 @@
+# Generic log lines from openpicket-manager (docs/ARCHITECTURE.md §4.8):
+#   {"openpicket_log":{"program":"nginx","message":"<line>"},"openpicket_meta":{...}}
+# Unwrapped into evt.Parsed.program and evt.Parsed.message, which the hub's
+# s01 parsers select on and read, so they apply unchanged.
+#
+# Its own stage, between s00-raw and s01-parse: in s00-raw CrowdSec's
+# built-in non-syslog parser succeeds first (program = the datasource
+# type, message = the raw line), and a stage ends at its first success.
+# Every line passes (a stage where nothing succeeds drops the line); lines
+# that are not generic logs (eve, nflog) keep their values. The message is
+# read with JsonExtractObject: JsonExtract keeps the JSON escapes (\"
+# breaks the groks) and JsonExtractUnescape returns nothing for a nested
+# key (CrowdSec 1.8.1).
+onsuccess: next_stage
+filter: "true"
+name: openpicket/logs
+description: "Unwrap generic log lines shipped by OpenPicket"
+statics:
+  - parsed: program
+    expression: 'JsonExtract(evt.Line.Raw, "openpicket_log.program") != "" ? JsonExtract(evt.Line.Raw, "openpicket_log.program") : evt.Parsed.program'
+  - parsed: message
+    expression: 'JsonExtract(evt.Line.Raw, "openpicket_log.program") != "" ? JsonExtractObject(evt.Line.Raw, "openpicket_log")["message"] : evt.Parsed.message'
+  # When the agent read the line; the s01 parsers replace it with the time
+  # in the line when they know its format.
+  - target: evt.StrTime
+    expression: 'JsonExtract(evt.Line.Raw, "openpicket_log.program") != "" ? JsonExtract(evt.Line.Raw, "openpicket_meta.ts") : evt.StrTime'
+  - meta: node_id
+    expression: 'JsonExtract(evt.Line.Raw, "openpicket_meta.node_id")'
+  - meta: node_site
+    expression: 'JsonExtract(evt.Line.Raw, "openpicket_meta.site")'

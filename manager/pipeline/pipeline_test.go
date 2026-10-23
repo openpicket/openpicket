@@ -3,6 +3,8 @@ package pipeline
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +14,7 @@ import (
 
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/manager/registry"
+	"github.com/openpicket/openpicket/pkg/record"
 )
 
 type fakeSink struct {
@@ -241,4 +244,47 @@ func mustRecords(t *testing.T) []byte {
 	enc, _ := zstd.NewWriter(nil)
 	defer enc.Close()
 	return enc.EncodeAll(raw, nil)
+}
+
+type programCounts map[string]int
+
+func (c programCounts) Seen(node, program string, n int) { c[node+"/"+program] += n }
+
+// TestDecodeGenericLog: a generic log batch gets its program normalized;
+// syslog lines get the program and message of their header.
+func TestDecodeGenericLog(t *testing.T) {
+	counts := programCounts{}
+	p := New(Config{Programs: counts})
+	enc, _ := zstd.NewWriter(nil)
+	mk := func(program string, lines ...string) *dataplanev1.LogBatch {
+		var l dataplanev1.RecordList
+		for i, line := range lines {
+			l.Records = append(l.Records, &dataplanev1.Record{Line: []byte(line), Rid: fmt.Sprint(i), TimeUnixNano: time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC).UnixNano()})
+		}
+		raw, _ := proto.Marshal(&l)
+		return &dataplanev1.LogBatch{BootId: "b", Seq: 1, Type: record.TypeLog, Program: program, ZstdRecords: enc.EncodeAll(raw, nil), RecordCount: uint32(len(lines))}
+	}
+	node := &registry.Node{ID: "web-01"}
+	b, err := p.decode(node, mk(" NGINX ", `198.51.100.7 - - [23/Oct/2026:12:00:00 +0000] "GET /x HTTP/1.1" 404 0 "-" "curl"`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Program != "nginx" || b.Records[0].Program != "nginx" || !strings.HasPrefix(b.Records[0].Message, "198.51.100.7 - -") {
+		t.Fatalf("nginx: %s %+v", b.Program, b.Records[0])
+	}
+	b, err = p.decode(node, mk("syslog", "Oct 23 11:59:59 web-01 sshd[812]: Failed password for root from 198.51.100.66 port 4000 ssh2", "not a syslog line"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Program != "syslog" || b.Records[0].Program != "sshd" || b.Records[0].Message != "Failed password for root from 198.51.100.66 port 4000 ssh2" ||
+		b.Records[1].Program != "syslog" || b.Records[1].Message != "not a syslog line" {
+		t.Fatalf("syslog: %+v %+v", b.Records[0], b.Records[1])
+	}
+	if counts["web-01/nginx"] != 1 || counts["web-01/sshd"] != 1 || counts["web-01/syslog"] != 1 {
+		t.Fatalf("counts = %v", counts)
+	}
+	// Eve batches have no program.
+	if b, _ := p.decode(node, &dataplanev1.LogBatch{Type: record.TypeEve, ZstdRecords: enc.EncodeAll(nil, nil)}); b.Program != "" {
+		t.Fatal("eve batch with a program")
+	}
 }
