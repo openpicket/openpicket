@@ -13,6 +13,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
 
 	agentv1 "github.com/jc-lab/suricontroller/gen/suricontroller/agent/v1"
@@ -26,6 +27,8 @@ const (
 	TypeStats    = "stats"
 	TypeAgent    = "agent"
 	TypeNflog    = "nflog"
+	// TypeLog is a generic log: lines of a program (LogBatch.program).
+	TypeLog = "log"
 )
 
 // TypeName maps a suricontroller log type to its wire name.
@@ -198,4 +201,24 @@ func StringField(line []byte, name string) string {
 		return ""
 	}
 	return string(rest[1 : 1+end])
+}
+
+// MaxProgram bounds a program name.
+const MaxProgram = 32
+
+// NormalizeProgram returns the canonical form of a program name (lower
+// case; letters, digits, '.', '_', '-'), or "" when nothing is left. It is
+// a Loki label and selects the CrowdSec parsers (evt.Parsed.program).
+func NormalizeProgram(p string) string {
+	var b strings.Builder
+	for _, c := range strings.ToLower(strings.TrimSpace(p)) {
+		switch {
+		case c >= 'a' && c <= 'z', c >= '0' && c <= '9', c == '.', c == '_', c == '-':
+			b.WriteRune(c)
+		}
+		if b.Len() == MaxProgram {
+			break
+		}
+	}
+	return strings.Trim(b.String(), ".-_")
 }

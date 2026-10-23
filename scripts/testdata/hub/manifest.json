@@ -1,0 +1,42 @@
+[
+  {
+    "type": "parsers",
+    "name": "crowdsecurity/sshd-logs",
+    "path": "parsers/s01-parse/crowdsecurity/sshd-logs.yaml",
+    "version": "3.1",
+    "digest": "045ff4c7895888becf161a8666ec173c45b58e52f2a72583a03f22b40203390d",
+    "stage": "s01-parse"
+  },
+  {
+    "type": "scenarios",
+    "name": "crowdsecurity/ssh-bf",
+    "path": "scenarios/crowdsecurity/ssh-bf.yaml",
+    "version": "0.3",
+    "digest": "242f36684d66bbae3044e576b7cfffef62d5323465f3f74f87923167c6d93356",
+    "stage": ""
+  },
+  {
+    "type": "parsers",
+    "name": "crowdsecurity/nginx-logs",
+    "path": "parsers/s01-parse/crowdsecurity/nginx-logs.yaml",
+    "version": "2.0",
+    "digest": "ee5cb4f964265c44d51b5d3cbed83f40a63cf00f66f2c613f9a3fa090615ea60",
+    "stage": "s01-parse"
+  },
+  {
+    "type": "parsers",
+    "name": "crowdsecurity/http-logs",
+    "path": "parsers/s02-enrich/crowdsecurity/http-logs.yaml",
+    "version": "1.4",
+    "digest": "c7cef82f42d8682dc0e2e02cd973a096bb6501a1dbc85e7655f6a38b3d96a61c",
+    "stage": "s02-enrich"
+  },
+  {
+    "type": "scenarios",
+    "name": "crowdsecurity/http-probing",
+    "path": "scenarios/crowdsecurity/http-probing.yaml",
+    "version": "0.4",
+    "digest": "4b16f896af400e006c28b1476bf5989c748186f2b3756ed9ad7d1559480d278c",
+    "stage": ""
+  }
+]

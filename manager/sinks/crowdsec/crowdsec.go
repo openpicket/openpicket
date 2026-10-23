@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -40,10 +41,11 @@ type Config struct {
 	DiscoveryHost   string
 	DiscoveryPort   int
 	DiscoveryScheme string
-	// EvePath and NflogPath are the datasource paths (default /openpicket
-	// for both; the parsers tell records apart by event_type).
+	// EvePath, NflogPath and LogPath are the datasource paths (default
+	// /openpicket for all; the parsers tell records apart).
 	EvePath   string
 	NflogPath string
+	LogPath   string
 	// AuthHeader/AuthValue authenticate to the datasource (auth_type: headers).
 	AuthHeader string
 	AuthValue  string
@@ -82,6 +84,9 @@ func New(cfg Config) (*Sink, error) {
 	}
 	if cfg.NflogPath == "" {
 		cfg.NflogPath = "/openpicket"
+	}
+	if cfg.LogPath == "" {
+		cfg.LogPath = "/openpicket"
 	}
 	if cfg.AuthHeader == "" {
 		cfg.AuthHeader = "X-OpenPicket-Token"
@@ -232,6 +237,9 @@ func Pick(key string, endpoints []string) string {
 
 // selected reports whether a record goes to CrowdSec and its path.
 func (s *Sink) selected(b *pipeline.Batch, r *pipeline.Record) (string, bool) {
+	if b.Type == record.TypeLog {
+		return s.cfg.LogPath, len(r.Line) > 0
+	}
 	if r.Eve == nil {
 		return "", false
 	}
@@ -244,8 +252,14 @@ func (s *Sink) selected(b *pipeline.Batch, r *pipeline.Record) (string, bool) {
 	return "", false
 }
 
-// shardKey is the scenarios' groupby key.
-func shardKey(r *pipeline.Record) string {
+// shardKey picks the log processor. For eve and nflog it is the
+// scenarios' groupby key (the remote party). Generic log lines are not
+// parsed here: a node's lines all go to one log processor, so its buckets
+// per source address are whole (scenarios across nodes are not).
+func shardKey(b *pipeline.Batch, r *pipeline.Record) string {
+	if b.Type == record.TypeLog {
+		return "node:" + b.NodeID
+	}
 	if t := r.Eve.OpenPicket; t != nil && t.RemoteIP != "" {
 		return t.RemoteIP
 	}
@@ -268,11 +282,37 @@ type meta struct {
 	RemoteGeo *pipeline.Geo `json:"remote_geo,omitempty"`
 }
 
+// LogEnvelope carries a generic log line to CrowdSec; the openpicket/logs
+// parser (s00-unwrap) unwraps it into evt.Parsed.program and message,
+// which the hub parsers select on. Syslog lines go whole, under program
+// "syslog": openpicket/syslog-logs splits them as
+// crowdsecurity/syslog-logs does.
+type LogEnvelope struct {
+	Log  LogLine `json:"openpicket_log"`
+	Meta meta    `json:"openpicket_meta"`
+}
+
+// LogLine is the generic log line.
+type LogLine struct {
+	Program string `json:"program"`
+	Message string `json:"message"`
+	// ProgramOverride replaces the tag of a syslog line.
+	ProgramOverride string `json:"program_override,omitempty"`
+}
+
 // Line returns the NDJSON line sent for a record.
 func Line(b *pipeline.Batch, r *pipeline.Record) []byte {
 	m := meta{TS: r.Time.UTC().Format(time.RFC3339Nano), NodeID: b.NodeID, IngestTS: b.Received.UTC().Format(time.RFC3339Nano), SrcGeo: r.SrcGeo, DestGeo: r.DestGeo}
 	if b.Node != nil {
 		m.Site, m.Labels = b.Node.Site(), b.Node.Labels
+	}
+	if b.Type == record.TypeLog {
+		l := LogLine{Program: r.Program, Message: string(r.Line)}
+		if r.Syslog {
+			l.Program, l.ProgramOverride = pipeline.ProgramSyslog, r.ProgramOverride
+		}
+		out, _ := json.Marshal(LogEnvelope{Log: l, Meta: m})
+		return out
 	}
 	if r.Eve != nil && r.Eve.OpenPicket != nil {
 		switch r.Eve.OpenPicket.RemoteIP {
@@ -316,7 +356,7 @@ func (s *Sink) Deliver(ctx context.Context, b *pipeline.Batch) error {
 		if !ok {
 			continue
 		}
-		ep := Pick(shardKey(r), up)
+		ep := Pick(shardKey(b, r), up)
 		k := ep + path
 		g, ok := groups[k]
 		if !ok {

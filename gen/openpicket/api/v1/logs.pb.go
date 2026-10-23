@@ -25,7 +25,7 @@ const (
 type LogFilter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Nodes []string               `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	// eve | nflog | suricata | agent
+	// eve | nflog | suricata | agent | log
 	Types []string `protobuf:"bytes,2,rep,name=types,proto3" json:"types,omitempty"`
 	// eve event types (alert, flow, dns, tls, http...)
 	EventTypes []string `protobuf:"bytes,3,rep,name=event_types,json=eventTypes,proto3" json:"event_types,omitempty"`
@@ -40,7 +40,9 @@ type LogFilter struct {
 	CommunityId string `protobuf:"bytes,9,opt,name=community_id,json=communityId,proto3" json:"community_id,omitempty"`
 	Site        string `protobuf:"bytes,10,opt,name=site,proto3" json:"site,omitempty"`
 	// A full LogQL log query; replaces the fields above.
-	Logql         string `protobuf:"bytes,11,opt,name=logql,proto3" json:"logql,omitempty"`
+	Logql string `protobuf:"bytes,11,opt,name=logql,proto3" json:"logql,omitempty"`
+	// Programs of generic logs (type log): nginx, postgres, sshd...
+	Programs      []string `protobuf:"bytes,12,rep,name=programs,proto3" json:"programs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -150,6 +152,13 @@ func (x *LogFilter) GetLogql() string {
 		return x.Logql
 	}
 	return ""
+}
+
+func (x *LogFilter) GetPrograms() []string {
+	if x != nil {
+		return x.Programs
+	}
+	return nil
 }
 
 type LogEntry struct {
@@ -531,7 +540,7 @@ var File_openpicket_api_v1_logs_proto protoreflect.FileDescriptor
 
 const file_openpicket_api_v1_logs_proto_rawDesc = "" +
 	"\n" +
-	"\x1copenpicket/api/v1/logs.proto\x12\x11openpicket.api.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa6\x02\n" +
+	"\x1copenpicket/api/v1/logs.proto\x12\x11openpicket.api.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc2\x02\n" +
 	"\tLogFilter\x12\x14\n" +
 	"\x05nodes\x18\x01 \x03(\tR\x05nodes\x12\x14\n" +
 	"\x05types\x18\x02 \x03(\tR\x05types\x12\x1f\n" +
@@ -545,7 +554,8 @@ const file_openpicket_api_v1_logs_proto_rawDesc = "" +
 	"\fcommunity_id\x18\t \x01(\tR\vcommunityId\x12\x12\n" +
 	"\x04site\x18\n" +
 	" \x01(\tR\x04site\x12\x14\n" +
-	"\x05logql\x18\v \x01(\tR\x05logql\"\xca\x01\n" +
+	"\x05logql\x18\v \x01(\tR\x05logql\x12\x1a\n" +
+	"\bprograms\x18\f \x03(\tR\bprograms\"\xca\x01\n" +
 	"\bLogEntry\x12.\n" +
 	"\x04time\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12\x12\n" +
 	"\x04line\x18\x02 \x01(\tR\x04line\x12?\n" +

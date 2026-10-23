@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file openpicket/api/v1/hub.proto.
  */
 export const file_openpicket_api_v1_hub: GenFile = /*@__PURE__*/
-  fileDesc("ChtvcGVucGlja2V0L2FwaS92MS9odWIucHJvdG8SEW9wZW5waWNrZXQuYXBpLnYxIiQKBkh1YlJlZhIMCgR0eXBlGAEgASgJEgwKBG5hbWUYAiABKAki7wIKB0h1Ykl0ZW0SDAoEdHlwZRgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnNvdXJjZRgDIAEoCRIPCgd2ZXJzaW9uGAQgASgJEg0KBXN0YWdlGAUgASgJEhMKC2Rlc2NyaXB0aW9uGAYgASgJEg0KBXN0YXRlGAcgASgJEioKB21lbWJlcnMYCCADKAsyGS5vcGVucGlja2V0LmFwaS52MS5IdWJSZWYSEQoJbWVtYmVyX29mGAkgAygJEgwKBGRhdGEYCiADKAkSEAoIZXhwbGljaXQYCyABKAgSDgoGZGlnZXN0GAwgASgJEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCnVwZGF0ZWRfYnkYDiABKAkSFgoObGF0ZXN0X3ZlcnNpb24YDyABKAkSDgoGY29tcGF0GBAgASgJEhkKEW1pc3NpbmdfbG9nX3R5cGVzGBEgAygJIiMKE0xpc3RIdWJJdGVtc1JlcXVlc3QSDAoEdHlwZRgBIAEoCSJBChRMaXN0SHViSXRlbXNSZXNwb25zZRIpCgVpdGVtcxgBIAMoCzIaLm9wZW5waWNrZXQuYXBpLnYxLkh1Ykl0ZW0iOwoRR2V0SHViSXRlbVJlcXVlc3QSJgoDcmVmGAEgASgLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmIk8KEkdldEh1Ykl0ZW1SZXNwb25zZRIoCgRpdGVtGAEgASgLMhoub3BlbnBpY2tldC5hcGkudjEuSHViSXRlbRIPCgdjb250ZW50GAIgASgJIk8KFlNldEh1Ykl0ZW1TdGF0ZVJlcXVlc3QSJgoDcmVmGAEgASgLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmEg0KBXN0YXRlGAIgASgJIhkKF1NldEh1Ykl0ZW1TdGF0ZVJlc3BvbnNlIhYKFEdldEh1YlJvbGxvdXRSZXF1ZXN0IoIBCg9IdWJMb2dQcm9jZXNzb3ISEAoIZW5kcG9pbnQYASABKAkSEAoIcmV2aXNpb24YAiABKAMSDwoHcnVubmluZxgDIAEoCBINCgVlcnJvchgEIAEoCRIrCgdzZWVuX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKrAQoVR2V0SHViUm9sbG91dFJlc3BvbnNlEhAKCHJldmlzaW9uGAEgASgDEhUKDWdvb2RfcmV2aXNpb24YAiABKAMSFwoPZmFpbGVkX3JldmlzaW9uGAMgASgDEhQKDGZhaWxlZF9lcnJvchgEIAEoCRI6Cg5sb2dfcHJvY2Vzc29ycxgFIAMoCzIiLm9wZW5waWNrZXQuYXBpLnYxLkh1YkxvZ1Byb2Nlc3NvciLGAQoNSHViSW5kZXhFbnRyeRIMCgR0eXBlGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDwoHdmVyc2lvbhgEIAEoCRISCgpyZWZlcmVuY2VzGAUgAygJEioKB21lbWJlcnMYBiADKAsyGS5vcGVucGlja2V0LmFwaS52MS5IdWJSZWYSGAoQaW5zdGFsbGVkX3NvdXJjZRgHIAEoCRIZChFpbnN0YWxsZWRfdmVyc2lvbhgIIAEoCSJRChNMaXN0SHViSW5kZXhSZXF1ZXN0EgwKBHR5cGUYASABKAkSDQoFcXVlcnkYAiABKAkSDQoFbGltaXQYAyABKAUSDgoGb2Zmc2V0GAQgASgFIpoBChRMaXN0SHViSW5kZXhSZXNwb25zZRIxCgdlbnRyaWVzGAEgAygLMiAub3BlbnBpY2tldC5hcGkudjEuSHViSW5kZXhFbnRyeRINCgV0b3RhbBgCIAEoBRIuCgpmZXRjaGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIQCghiYXNlX3VybBgEIAEoCSIYChZSZWZyZXNoSHViSW5kZXhSZXF1ZXN0IioKF1JlZnJlc2hIdWJJbmRleFJlc3BvbnNlEg8KB2NoYW5nZWQYASABKAgiPwoVUHJldmlld0h1Ykl0ZW1SZXF1ZXN0EiYKA3JlZhgBIAEoCzIZLm9wZW5waWNrZXQuYXBpLnYxLkh1YlJlZiLDAQoWUHJldmlld0h1Ykl0ZW1SZXNwb25zZRIvCgVlbnRyeRgBIAEoCzIgLm9wZW5waWNrZXQuYXBpLnYxLkh1YkluZGV4RW50cnkSDwoHY29udGVudBgCIAEoCRIoCgVpdGVtcxgDIAMoCzIZLm9wZW5waWNrZXQuYXBpLnYxLkh1YlJlZhISCgpkYXRhX2ZpbGVzGAQgAygJEg4KBmNvbXBhdBgFIAEoCRIZChFtaXNzaW5nX2xvZ190eXBlcxgGIAMoCSI/ChVJbnN0YWxsSHViSXRlbVJlcXVlc3QSJgoDcmVmGAEgASgLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmIkYKFkluc3RhbGxIdWJJdGVtUmVzcG9uc2USLAoJaW5zdGFsbGVkGAEgAygLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmIj4KFFJlbW92ZUh1Ykl0ZW1SZXF1ZXN0EiYKA3JlZhgBIAEoCzIZLm9wZW5waWNrZXQuYXBpLnYxLkh1YlJlZiIXChVSZW1vdmVIdWJJdGVtUmVzcG9uc2UykwcKCkh1YlNlcnZpY2USXwoMTGlzdEh1Ykl0ZW1zEiYub3BlbnBpY2tldC5hcGkudjEuTGlzdEh1Ykl0ZW1zUmVxdWVzdBonLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RIdWJJdGVtc1Jlc3BvbnNlElkKCkdldEh1Ykl0ZW0SJC5vcGVucGlja2V0LmFwaS52MS5HZXRIdWJJdGVtUmVxdWVzdBolLm9wZW5waWNrZXQuYXBpLnYxLkdldEh1Ykl0ZW1SZXNwb25zZRJoCg9TZXRIdWJJdGVtU3RhdGUSKS5vcGVucGlja2V0LmFwaS52MS5TZXRIdWJJdGVtU3RhdGVSZXF1ZXN0Gioub3BlbnBpY2tldC5hcGkudjEuU2V0SHViSXRlbVN0YXRlUmVzcG9uc2USYgoNR2V0SHViUm9sbG91dBInLm9wZW5waWNrZXQuYXBpLnYxLkdldEh1YlJvbGxvdXRSZXF1ZXN0Gigub3BlbnBpY2tldC5hcGkudjEuR2V0SHViUm9sbG91dFJlc3BvbnNlEl8KDExpc3RIdWJJbmRleBImLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RIdWJJbmRleFJlcXVlc3QaJy5vcGVucGlja2V0LmFwaS52MS5MaXN0SHViSW5kZXhSZXNwb25zZRJoCg9SZWZyZXNoSHViSW5kZXgSKS5vcGVucGlja2V0LmFwaS52MS5SZWZyZXNoSHViSW5kZXhSZXF1ZXN0Gioub3BlbnBpY2tldC5hcGkudjEuUmVmcmVzaEh1YkluZGV4UmVzcG9uc2USZQoOUHJldmlld0h1Ykl0ZW0SKC5vcGVucGlja2V0LmFwaS52MS5QcmV2aWV3SHViSXRlbVJlcXVlc3QaKS5vcGVucGlja2V0LmFwaS52MS5QcmV2aWV3SHViSXRlbVJlc3BvbnNlEmUKDkluc3RhbGxIdWJJdGVtEigub3BlbnBpY2tldC5hcGkudjEuSW5zdGFsbEh1Ykl0ZW1SZXF1ZXN0Gikub3BlbnBpY2tldC5hcGkudjEuSW5zdGFsbEh1Ykl0ZW1SZXNwb25zZRJiCg1SZW1vdmVIdWJJdGVtEicub3BlbnBpY2tldC5hcGkudjEuUmVtb3ZlSHViSXRlbVJlcXVlc3QaKC5vcGVucGlja2V0LmFwaS52MS5SZW1vdmVIdWJJdGVtUmVzcG9uc2VCPlo8Z2l0aHViLmNvbS9vcGVucGlja2V0L29wZW5waWNrZXQvZ2VuL29wZW5waWNrZXQvYXBpL3YxO2FwaXYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("ChtvcGVucGlja2V0L2FwaS92MS9odWIucHJvdG8SEW9wZW5waWNrZXQuYXBpLnYxIiQKBkh1YlJlZhIMCgR0eXBlGAEgASgJEgwKBG5hbWUYAiABKAki7wIKB0h1Ykl0ZW0SDAoEdHlwZRgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnNvdXJjZRgDIAEoCRIPCgd2ZXJzaW9uGAQgASgJEg0KBXN0YWdlGAUgASgJEhMKC2Rlc2NyaXB0aW9uGAYgASgJEg0KBXN0YXRlGAcgASgJEioKB21lbWJlcnMYCCADKAsyGS5vcGVucGlja2V0LmFwaS52MS5IdWJSZWYSEQoJbWVtYmVyX29mGAkgAygJEgwKBGRhdGEYCiADKAkSEAoIZXhwbGljaXQYCyABKAgSDgoGZGlnZXN0GAwgASgJEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCnVwZGF0ZWRfYnkYDiABKAkSFgoObGF0ZXN0X3ZlcnNpb24YDyABKAkSDgoGY29tcGF0GBAgASgJEhkKEW1pc3NpbmdfbG9nX3R5cGVzGBEgAygJIiMKE0xpc3RIdWJJdGVtc1JlcXVlc3QSDAoEdHlwZRgBIAEoCSJBChRMaXN0SHViSXRlbXNSZXNwb25zZRIpCgVpdGVtcxgBIAMoCzIaLm9wZW5waWNrZXQuYXBpLnYxLkh1Ykl0ZW0iOwoRR2V0SHViSXRlbVJlcXVlc3QSJgoDcmVmGAEgASgLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmIk8KEkdldEh1Ykl0ZW1SZXNwb25zZRIoCgRpdGVtGAEgASgLMhoub3BlbnBpY2tldC5hcGkudjEuSHViSXRlbRIPCgdjb250ZW50GAIgASgJIk8KFlNldEh1Ykl0ZW1TdGF0ZVJlcXVlc3QSJgoDcmVmGAEgASgLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmEg0KBXN0YXRlGAIgASgJIhkKF1NldEh1Ykl0ZW1TdGF0ZVJlc3BvbnNlIhYKFEdldEh1YlJvbGxvdXRSZXF1ZXN0IoIBCg9IdWJMb2dQcm9jZXNzb3ISEAoIZW5kcG9pbnQYASABKAkSEAoIcmV2aXNpb24YAiABKAMSDwoHcnVubmluZxgDIAEoCBINCgVlcnJvchgEIAEoCRIrCgdzZWVuX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKrAQoVR2V0SHViUm9sbG91dFJlc3BvbnNlEhAKCHJldmlzaW9uGAEgASgDEhUKDWdvb2RfcmV2aXNpb24YAiABKAMSFwoPZmFpbGVkX3JldmlzaW9uGAMgASgDEhQKDGZhaWxlZF9lcnJvchgEIAEoCRI6Cg5sb2dfcHJvY2Vzc29ycxgFIAMoCzIiLm9wZW5waWNrZXQuYXBpLnYxLkh1YkxvZ1Byb2Nlc3NvciLGAQoNSHViSW5kZXhFbnRyeRIMCgR0eXBlGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDwoHdmVyc2lvbhgEIAEoCRISCgpyZWZlcmVuY2VzGAUgAygJEioKB21lbWJlcnMYBiADKAsyGS5vcGVucGlja2V0LmFwaS52MS5IdWJSZWYSGAoQaW5zdGFsbGVkX3NvdXJjZRgHIAEoCRIZChFpbnN0YWxsZWRfdmVyc2lvbhgIIAEoCSJRChNMaXN0SHViSW5kZXhSZXF1ZXN0EgwKBHR5cGUYASABKAkSDQoFcXVlcnkYAiABKAkSDQoFbGltaXQYAyABKAUSDgoGb2Zmc2V0GAQgASgFIpoBChRMaXN0SHViSW5kZXhSZXNwb25zZRIxCgdlbnRyaWVzGAEgAygLMiAub3BlbnBpY2tldC5hcGkudjEuSHViSW5kZXhFbnRyeRINCgV0b3RhbBgCIAEoBRIuCgpmZXRjaGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIQCghiYXNlX3VybBgEIAEoCSIYChZSZWZyZXNoSHViSW5kZXhSZXF1ZXN0IioKF1JlZnJlc2hIdWJJbmRleFJlc3BvbnNlEg8KB2NoYW5nZWQYASABKAgiPwoVUHJldmlld0h1Ykl0ZW1SZXF1ZXN0EiYKA3JlZhgBIAEoCzIZLm9wZW5waWNrZXQuYXBpLnYxLkh1YlJlZiLDAQoWUHJldmlld0h1Ykl0ZW1SZXNwb25zZRIvCgVlbnRyeRgBIAEoCzIgLm9wZW5waWNrZXQuYXBpLnYxLkh1YkluZGV4RW50cnkSDwoHY29udGVudBgCIAEoCRIoCgVpdGVtcxgDIAMoCzIZLm9wZW5waWNrZXQuYXBpLnYxLkh1YlJlZhISCgpkYXRhX2ZpbGVzGAQgAygJEg4KBmNvbXBhdBgFIAEoCRIZChFtaXNzaW5nX2xvZ190eXBlcxgGIAMoCSI/ChVJbnN0YWxsSHViSXRlbVJlcXVlc3QSJgoDcmVmGAEgASgLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmIkYKFkluc3RhbGxIdWJJdGVtUmVzcG9uc2USLAoJaW5zdGFsbGVkGAEgAygLMhkub3BlbnBpY2tldC5hcGkudjEuSHViUmVmIj4KFFJlbW92ZUh1Ykl0ZW1SZXF1ZXN0EiYKA3JlZhgBIAEoCzIZLm9wZW5waWNrZXQuYXBpLnYxLkh1YlJlZiIXChVSZW1vdmVIdWJJdGVtUmVzcG9uc2UiuQEKCkxvZ1Byb2dyYW0SDwoHcHJvZ3JhbRgBIAEoCRINCgVub2RlcxgCIAMoCRINCgVsaW5lcxgDIAEoAxItCglsYXN0X3NlZW4YBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB3BhcnNlcnMYBSADKAkSLgoLc3VnZ2VzdGlvbnMYBiADKAsyGS5vcGVucGlja2V0LmFwaS52MS5IdWJSZWYSDAoEbG9raRgHIAEoCCIYChZMaXN0TG9nUHJvZ3JhbXNSZXF1ZXN0IkoKF0xpc3RMb2dQcm9ncmFtc1Jlc3BvbnNlEi8KCHByb2dyYW1zGAEgAygLMh0ub3BlbnBpY2tldC5hcGkudjEuTG9nUHJvZ3JhbSI8ChtTZXRMb2dQcm9ncmFtU3RvcmFnZVJlcXVlc3QSDwoHcHJvZ3JhbRgBIAEoCRIMCgRsb2tpGAIgASgIIh4KHFNldExvZ1Byb2dyYW1TdG9yYWdlUmVzcG9uc2Uy9ggKCkh1YlNlcnZpY2USXwoMTGlzdEh1Ykl0ZW1zEiYub3BlbnBpY2tldC5hcGkudjEuTGlzdEh1Ykl0ZW1zUmVxdWVzdBonLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RIdWJJdGVtc1Jlc3BvbnNlElkKCkdldEh1Ykl0ZW0SJC5vcGVucGlja2V0LmFwaS52MS5HZXRIdWJJdGVtUmVxdWVzdBolLm9wZW5waWNrZXQuYXBpLnYxLkdldEh1Ykl0ZW1SZXNwb25zZRJoCg9TZXRIdWJJdGVtU3RhdGUSKS5vcGVucGlja2V0LmFwaS52MS5TZXRIdWJJdGVtU3RhdGVSZXF1ZXN0Gioub3BlbnBpY2tldC5hcGkudjEuU2V0SHViSXRlbVN0YXRlUmVzcG9uc2USYgoNR2V0SHViUm9sbG91dBInLm9wZW5waWNrZXQuYXBpLnYxLkdldEh1YlJvbGxvdXRSZXF1ZXN0Gigub3BlbnBpY2tldC5hcGkudjEuR2V0SHViUm9sbG91dFJlc3BvbnNlEl8KDExpc3RIdWJJbmRleBImLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RIdWJJbmRleFJlcXVlc3QaJy5vcGVucGlja2V0LmFwaS52MS5MaXN0SHViSW5kZXhSZXNwb25zZRJoCg9SZWZyZXNoSHViSW5kZXgSKS5vcGVucGlja2V0LmFwaS52MS5SZWZyZXNoSHViSW5kZXhSZXF1ZXN0Gioub3BlbnBpY2tldC5hcGkudjEuUmVmcmVzaEh1YkluZGV4UmVzcG9uc2USZQoOUHJldmlld0h1Ykl0ZW0SKC5vcGVucGlja2V0LmFwaS52MS5QcmV2aWV3SHViSXRlbVJlcXVlc3QaKS5vcGVucGlja2V0LmFwaS52MS5QcmV2aWV3SHViSXRlbVJlc3BvbnNlEmUKDkluc3RhbGxIdWJJdGVtEigub3BlbnBpY2tldC5hcGkudjEuSW5zdGFsbEh1Ykl0ZW1SZXF1ZXN0Gikub3BlbnBpY2tldC5hcGkudjEuSW5zdGFsbEh1Ykl0ZW1SZXNwb25zZRJiCg1SZW1vdmVIdWJJdGVtEicub3BlbnBpY2tldC5hcGkudjEuUmVtb3ZlSHViSXRlbVJlcXVlc3QaKC5vcGVucGlja2V0LmFwaS52MS5SZW1vdmVIdWJJdGVtUmVzcG9uc2USaAoPTGlzdExvZ1Byb2dyYW1zEikub3BlbnBpY2tldC5hcGkudjEuTGlzdExvZ1Byb2dyYW1zUmVxdWVzdBoqLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RMb2dQcm9ncmFtc1Jlc3BvbnNlEncKFFNldExvZ1Byb2dyYW1TdG9yYWdlEi4ub3BlbnBpY2tldC5hcGkudjEuU2V0TG9nUHJvZ3JhbVN0b3JhZ2VSZXF1ZXN0Gi8ub3BlbnBpY2tldC5hcGkudjEuU2V0TG9nUHJvZ3JhbVN0b3JhZ2VSZXNwb25zZUI+WjxnaXRodWIuY29tL29wZW5waWNrZXQvb3BlbnBpY2tldC9nZW4vb3BlbnBpY2tldC9hcGkvdjE7YXBpdjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message openpicket.api.v1.HubRef
@@ -635,6 +635,125 @@ export const RemoveHubItemResponseSchema: GenMessage<RemoveHubItemResponse> = /*
   messageDesc(file_openpicket_api_v1_hub, 21);
 
 /**
+ * @generated from message openpicket.api.v1.LogProgram
+ */
+export type LogProgram = Message<"openpicket.api.v1.LogProgram"> & {
+  /**
+   * @generated from field: string program = 1;
+   */
+  program: string;
+
+  /**
+   * @generated from field: repeated string nodes = 2;
+   */
+  nodes: string[];
+
+  /**
+   * @generated from field: int64 lines = 3;
+   */
+  lines: bigint;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_seen = 4;
+   */
+  lastSeen?: Timestamp | undefined;
+
+  /**
+   * Enabled parsers whose filters select it; none: CrowdSec ignores its
+   * lines.
+   *
+   * @generated from field: repeated string parsers = 5;
+   */
+  parsers: string[];
+
+  /**
+   * Hub items likely to handle it (by name), when no parser does.
+   *
+   * @generated from field: repeated openpicket.api.v1.HubRef suggestions = 6;
+   */
+  suggestions: HubRef[];
+
+  /**
+   * Its lines are stored in Loki.
+   *
+   * @generated from field: bool loki = 7;
+   */
+  loki: boolean;
+};
+
+/**
+ * Describes the message openpicket.api.v1.LogProgram.
+ * Use `create(LogProgramSchema)` to create a new message.
+ */
+export const LogProgramSchema: GenMessage<LogProgram> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 22);
+
+/**
+ * @generated from message openpicket.api.v1.ListLogProgramsRequest
+ */
+export type ListLogProgramsRequest = Message<"openpicket.api.v1.ListLogProgramsRequest"> & {
+};
+
+/**
+ * Describes the message openpicket.api.v1.ListLogProgramsRequest.
+ * Use `create(ListLogProgramsRequestSchema)` to create a new message.
+ */
+export const ListLogProgramsRequestSchema: GenMessage<ListLogProgramsRequest> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 23);
+
+/**
+ * @generated from message openpicket.api.v1.ListLogProgramsResponse
+ */
+export type ListLogProgramsResponse = Message<"openpicket.api.v1.ListLogProgramsResponse"> & {
+  /**
+   * @generated from field: repeated openpicket.api.v1.LogProgram programs = 1;
+   */
+  programs: LogProgram[];
+};
+
+/**
+ * Describes the message openpicket.api.v1.ListLogProgramsResponse.
+ * Use `create(ListLogProgramsResponseSchema)` to create a new message.
+ */
+export const ListLogProgramsResponseSchema: GenMessage<ListLogProgramsResponse> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 24);
+
+/**
+ * @generated from message openpicket.api.v1.SetLogProgramStorageRequest
+ */
+export type SetLogProgramStorageRequest = Message<"openpicket.api.v1.SetLogProgramStorageRequest"> & {
+  /**
+   * @generated from field: string program = 1;
+   */
+  program: string;
+
+  /**
+   * @generated from field: bool loki = 2;
+   */
+  loki: boolean;
+};
+
+/**
+ * Describes the message openpicket.api.v1.SetLogProgramStorageRequest.
+ * Use `create(SetLogProgramStorageRequestSchema)` to create a new message.
+ */
+export const SetLogProgramStorageRequestSchema: GenMessage<SetLogProgramStorageRequest> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 25);
+
+/**
+ * @generated from message openpicket.api.v1.SetLogProgramStorageResponse
+ */
+export type SetLogProgramStorageResponse = Message<"openpicket.api.v1.SetLogProgramStorageResponse"> & {
+};
+
+/**
+ * Describes the message openpicket.api.v1.SetLogProgramStorageResponse.
+ * Use `create(SetLogProgramStorageResponseSchema)` to create a new message.
+ */
+export const SetLogProgramStorageResponseSchema: GenMessage<SetLogProgramStorageResponse> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_hub, 26);
+
+/**
  * CrowdSec content: parsers, scenarios, collections... stored by the
  * manager and pushed to the log processors (docs/ARCHITECTURE.md §8).
  *
@@ -725,6 +844,28 @@ export const HubService: GenService<{
     methodKind: "unary";
     input: typeof RemoveHubItemRequestSchema;
     output: typeof RemoveHubItemResponseSchema;
+  },
+  /**
+   * Programs of the generic logs the nodes send, with the parsers that
+   * handle them.
+   *
+   * @generated from rpc openpicket.api.v1.HubService.ListLogPrograms
+   */
+  listLogPrograms: {
+    methodKind: "unary";
+    input: typeof ListLogProgramsRequestSchema;
+    output: typeof ListLogProgramsResponseSchema;
+  },
+  /**
+   * Keeps a program's lines out of Loki (CrowdSec still gets them), or
+   * stores them again.
+   *
+   * @generated from rpc openpicket.api.v1.HubService.SetLogProgramStorage
+   */
+  setLogProgramStorage: {
+    methodKind: "unary";
+    input: typeof SetLogProgramStorageRequestSchema;
+    output: typeof SetLogProgramStorageResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_openpicket_api_v1_hub, 0);

@@ -1809,7 +1809,7 @@ type LogBatch struct {
 	BootId string                 `protobuf:"bytes,1,opt,name=boot_id,json=bootId,proto3" json:"boot_id,omitempty"`
 	// Strictly increasing within boot_id.
 	Seq uint64 `protobuf:"varint,2,opt,name=seq,proto3" json:"seq,omitempty"`
-	// eve | suricata | fast | stats | agent | nflog
+	// eve | suricata | fast | stats | agent | nflog | log
 	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
 	// ids | ips | ""
 	Instance string `protobuf:"bytes,4,opt,name=instance,proto3" json:"instance,omitempty"`
@@ -1817,8 +1817,11 @@ type LogBatch struct {
 	ZstdRecords      []byte `protobuf:"bytes,5,opt,name=zstd_records,json=zstdRecords,proto3" json:"zstd_records,omitempty"`
 	RecordCount      uint32 `protobuf:"varint,6,opt,name=record_count,json=recordCount,proto3" json:"record_count,omitempty"`
 	DroppedSinceLast uint64 `protobuf:"varint,7,opt,name=dropped_since_last,json=droppedSinceLast,proto3" json:"dropped_since_last,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// type "log": the program that wrote the lines (nginx, postgres, sshd),
+	// which the CrowdSec parsers select on.
+	Program       string `protobuf:"bytes,8,opt,name=program,proto3" json:"program,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *LogBatch) Reset() {
@@ -1898,6 +1901,13 @@ func (x *LogBatch) GetDroppedSinceLast() uint64 {
 		return x.DroppedSinceLast
 	}
 	return 0
+}
+
+func (x *LogBatch) GetProgram() string {
+	if x != nil {
+		return x.Program
+	}
+	return ""
 }
 
 type LogAck struct {
@@ -3055,7 +3065,7 @@ const file_openpicket_dataplane_v1_dataplane_proto_rawDesc = "" +
 	"\x0etime_unix_nano\x18\x03 \x01(\x03R\ftimeUnixNano\"G\n" +
 	"\n" +
 	"RecordList\x129\n" +
-	"\arecords\x18\x01 \x03(\v2\x1f.openpicket.dataplane.v1.RecordR\arecords\"\xd9\x01\n" +
+	"\arecords\x18\x01 \x03(\v2\x1f.openpicket.dataplane.v1.RecordR\arecords\"\xf3\x01\n" +
 	"\bLogBatch\x12\x17\n" +
 	"\aboot_id\x18\x01 \x01(\tR\x06bootId\x12\x10\n" +
 	"\x03seq\x18\x02 \x01(\x04R\x03seq\x12\x12\n" +
@@ -3063,7 +3073,8 @@ const file_openpicket_dataplane_v1_dataplane_proto_rawDesc = "" +
 	"\binstance\x18\x04 \x01(\tR\binstance\x12!\n" +
 	"\fzstd_records\x18\x05 \x01(\fR\vzstdRecords\x12!\n" +
 	"\frecord_count\x18\x06 \x01(\rR\vrecordCount\x12,\n" +
-	"\x12dropped_since_last\x18\a \x01(\x04R\x10droppedSinceLast\"3\n" +
+	"\x12dropped_since_last\x18\a \x01(\x04R\x10droppedSinceLast\x12\x18\n" +
+	"\aprogram\x18\b \x01(\tR\aprogram\"3\n" +
 	"\x06LogAck\x12\x17\n" +
 	"\aboot_id\x18\x01 \x01(\tR\x06bootId\x12\x10\n" +
 	"\x03seq\x18\x02 \x01(\x04R\x03seq\"\xe3\x01\n" +

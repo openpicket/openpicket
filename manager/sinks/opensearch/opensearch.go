@@ -128,6 +128,8 @@ func (c *Client) Stream(b *pipeline.Batch, r *pipeline.Record) string {
 		return c.cfg.Prefix + "-eve-" + t
 	case record.TypeNflog:
 		return c.cfg.Prefix + "-nflog"
+	case record.TypeLog:
+		return c.cfg.Prefix + "-log-" + nameRe.ReplaceAllString(b.Program, "_")
 	}
 	return c.cfg.Prefix + "-" + nameRe.ReplaceAllString(b.Type, "_")
 }

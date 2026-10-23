@@ -26,6 +26,7 @@ import (
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/manager/registry"
 	"github.com/openpicket/openpicket/pkg/record"
+	"github.com/openpicket/openpicket/pkg/syslogfmt"
 )
 
 // ErrPermanent marks a delivery error that retrying cannot fix (the sink
@@ -55,17 +56,31 @@ type Record struct {
 	// EventType is the eve event_type (or "nflog").
 	EventType       string
 	SrcGeo, DestGeo *Geo
+	// Program of a generic log line: the batch's program, or for syslog
+	// lines (program "syslog": auth.log, received messages) the one in
+	// the line's header, as the log programs count it.
+	Program string
+	// Syslog marks a line with a syslog header: CrowdSec gets it whole
+	// under program "syslog" and splits it itself (openpicket/syslog-logs).
+	// ProgramOverride is the program a syslog device gives its tag.
+	Syslog          bool
+	ProgramOverride string
 }
+
+// ProgramSyslog marks generic log lines in syslog format.
+const ProgramSyslog = "syslog"
 
 // Batch is a decoded LogBatch with its manager-side enrichment.
 type Batch struct {
 	NodeID, BootID string
 	Seq            uint64
 	Type, Instance string
-	Node           *registry.Node
-	Received       time.Time
-	Records        []*Record
-	Dropped        uint64
+	// Program wrote the lines of a generic log (type "log"), normalized.
+	Program  string
+	Node     *registry.Node
+	Received time.Time
+	Records  []*Record
+	Dropped  uint64
 
 	state sync.Map
 }
@@ -75,6 +90,11 @@ type Batch struct {
 func (b *Batch) State(sink string, init func() any) any {
 	v, _ := b.state.LoadOrStore(sink, init())
 	return v
+}
+
+// ProgramCounter records the programs of generic logs.
+type ProgramCounter interface {
+	Seen(nodeID, program string, lines int)
 }
 
 // Sink delivers batches.
@@ -95,6 +115,8 @@ type Config struct {
 	AsyncQueue int
 	Watermarks *Watermarks
 	Geo        GeoLookup
+	// Programs counts the generic log lines per node and program.
+	Programs   ProgramCounter
 	Logger     *slog.Logger
 	Registerer prometheus.Registerer
 	// OpenAfter opens a sink's circuit after this much continuous failure
@@ -248,6 +270,11 @@ func (p *Pipeline) decode(node *registry.Node, lb *dataplanev1.LogBatch) (*Batch
 		NodeID: node.ID, BootID: lb.BootId, Seq: lb.Seq, Type: lb.Type, Instance: lb.Instance,
 		Node: node, Received: p.cfg.Now(), Dropped: lb.DroppedSinceLast,
 	}
+	if lb.Type == record.TypeLog {
+		if b.Program = record.NormalizeProgram(lb.Program); b.Program == "" {
+			b.Program = "unknown"
+		}
+	}
 	jsonType := record.IsJSON(lb.Type)
 	for _, r := range list.Records {
 		rec := &Record{Line: r.Line, RID: r.Rid, Time: time.Unix(0, r.TimeUnixNano)}
@@ -263,7 +290,27 @@ func (p *Pipeline) decode(node *registry.Node, lb *dataplanev1.LogBatch) (*Batch
 				}
 			}
 		}
+		if b.Program != "" {
+			rec.Program = b.Program
+			if b.Program == ProgramSyslog {
+				if m, ok := syslogfmt.Parse(string(r.Line), rec.Time); ok && m.Program != "" {
+					rec.Syslog = true
+					if prog := record.NormalizeProgram(m.Program); prog != "" {
+						rec.Program = prog
+					}
+				}
+			}
+		}
 		b.Records = append(b.Records, rec)
+	}
+	if b.Program != "" && p.cfg.Programs != nil {
+		counts := map[string]int{}
+		for _, r := range b.Records {
+			counts[r.Program]++
+		}
+		for prog, n := range counts {
+			p.cfg.Programs.Seen(node.ID, prog, n)
+		}
 	}
 	p.m.ingested.WithLabelValues(lb.Type).Add(float64(len(b.Records)))
 	if lb.DroppedSinceLast > 0 {

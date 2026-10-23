@@ -44,7 +44,7 @@ func LogQL(f *apiv1.LogFilter) (string, error) {
 	for _, l := range []struct {
 		label  string
 		values []string
-	}{{"node", f.GetNodes()}, {"type", f.GetTypes()}, {"event_type", f.GetEventTypes()}} {
+	}{{"node", f.GetNodes()}, {"type", f.GetTypes()}, {"event_type", f.GetEventTypes()}, {"program", f.GetPrograms()}} {
 		c, err := anyOf(l.label, l.values)
 		if err != nil {
 			return "", err
@@ -190,7 +190,7 @@ func (l *logService) TailLogs(ctx context.Context, req *connect.Request[apiv1.Ta
 	}
 }
 
-var logLabels = map[string]bool{"node": true, "type": true, "instance": true, "event_type": true}
+var logLabels = map[string]bool{"node": true, "type": true, "instance": true, "event_type": true, "program": true}
 
 func (l *logService) LogLabelValues(ctx context.Context, req *connect.Request[apiv1.LogLabelValuesRequest]) (*connect.Response[apiv1.LogLabelValuesResponse], error) {
 	q, err := l.querier()

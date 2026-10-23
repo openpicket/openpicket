@@ -1338,6 +1338,270 @@ func (*RemoveHubItemResponse) Descriptor() ([]byte, []int) {
 	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{21}
 }
 
+type LogProgram struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Program  string                 `protobuf:"bytes,1,opt,name=program,proto3" json:"program,omitempty"`
+	Nodes    []string               `protobuf:"bytes,2,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	Lines    int64                  `protobuf:"varint,3,opt,name=lines,proto3" json:"lines,omitempty"`
+	LastSeen *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=last_seen,json=lastSeen,proto3" json:"last_seen,omitempty"`
+	// Enabled parsers whose filters select it; none: CrowdSec ignores its
+	// lines.
+	Parsers []string `protobuf:"bytes,5,rep,name=parsers,proto3" json:"parsers,omitempty"`
+	// Hub items likely to handle it (by name), when no parser does.
+	Suggestions []*HubRef `protobuf:"bytes,6,rep,name=suggestions,proto3" json:"suggestions,omitempty"`
+	// Its lines are stored in Loki.
+	Loki          bool `protobuf:"varint,7,opt,name=loki,proto3" json:"loki,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogProgram) Reset() {
+	*x = LogProgram{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogProgram) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogProgram) ProtoMessage() {}
+
+func (x *LogProgram) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogProgram.ProtoReflect.Descriptor instead.
+func (*LogProgram) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *LogProgram) GetProgram() string {
+	if x != nil {
+		return x.Program
+	}
+	return ""
+}
+
+func (x *LogProgram) GetNodes() []string {
+	if x != nil {
+		return x.Nodes
+	}
+	return nil
+}
+
+func (x *LogProgram) GetLines() int64 {
+	if x != nil {
+		return x.Lines
+	}
+	return 0
+}
+
+func (x *LogProgram) GetLastSeen() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSeen
+	}
+	return nil
+}
+
+func (x *LogProgram) GetParsers() []string {
+	if x != nil {
+		return x.Parsers
+	}
+	return nil
+}
+
+func (x *LogProgram) GetSuggestions() []*HubRef {
+	if x != nil {
+		return x.Suggestions
+	}
+	return nil
+}
+
+func (x *LogProgram) GetLoki() bool {
+	if x != nil {
+		return x.Loki
+	}
+	return false
+}
+
+type ListLogProgramsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListLogProgramsRequest) Reset() {
+	*x = ListLogProgramsRequest{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListLogProgramsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListLogProgramsRequest) ProtoMessage() {}
+
+func (x *ListLogProgramsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListLogProgramsRequest.ProtoReflect.Descriptor instead.
+func (*ListLogProgramsRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{23}
+}
+
+type ListLogProgramsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Programs      []*LogProgram          `protobuf:"bytes,1,rep,name=programs,proto3" json:"programs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListLogProgramsResponse) Reset() {
+	*x = ListLogProgramsResponse{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListLogProgramsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListLogProgramsResponse) ProtoMessage() {}
+
+func (x *ListLogProgramsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListLogProgramsResponse.ProtoReflect.Descriptor instead.
+func (*ListLogProgramsResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ListLogProgramsResponse) GetPrograms() []*LogProgram {
+	if x != nil {
+		return x.Programs
+	}
+	return nil
+}
+
+type SetLogProgramStorageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Program       string                 `protobuf:"bytes,1,opt,name=program,proto3" json:"program,omitempty"`
+	Loki          bool                   `protobuf:"varint,2,opt,name=loki,proto3" json:"loki,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetLogProgramStorageRequest) Reset() {
+	*x = SetLogProgramStorageRequest{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetLogProgramStorageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetLogProgramStorageRequest) ProtoMessage() {}
+
+func (x *SetLogProgramStorageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetLogProgramStorageRequest.ProtoReflect.Descriptor instead.
+func (*SetLogProgramStorageRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *SetLogProgramStorageRequest) GetProgram() string {
+	if x != nil {
+		return x.Program
+	}
+	return ""
+}
+
+func (x *SetLogProgramStorageRequest) GetLoki() bool {
+	if x != nil {
+		return x.Loki
+	}
+	return false
+}
+
+type SetLogProgramStorageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetLogProgramStorageResponse) Reset() {
+	*x = SetLogProgramStorageResponse{}
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetLogProgramStorageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetLogProgramStorageResponse) ProtoMessage() {}
+
+func (x *SetLogProgramStorageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_hub_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetLogProgramStorageResponse.ProtoReflect.Descriptor instead.
+func (*SetLogProgramStorageResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_hub_proto_rawDescGZIP(), []int{26}
+}
+
 var File_openpicket_api_v1_hub_proto protoreflect.FileDescriptor
 
 const file_openpicket_api_v1_hub_proto_rawDesc = "" +
@@ -1434,7 +1698,23 @@ const file_openpicket_api_v1_hub_proto_rawDesc = "" +
 	"\tinstalled\x18\x01 \x03(\v2\x19.openpicket.api.v1.HubRefR\tinstalled\"C\n" +
 	"\x14RemoveHubItemRequest\x12+\n" +
 	"\x03ref\x18\x01 \x01(\v2\x19.openpicket.api.v1.HubRefR\x03ref\"\x17\n" +
-	"\x15RemoveHubItemResponse2\x93\a\n" +
+	"\x15RemoveHubItemResponse\"\xf6\x01\n" +
+	"\n" +
+	"LogProgram\x12\x18\n" +
+	"\aprogram\x18\x01 \x01(\tR\aprogram\x12\x14\n" +
+	"\x05nodes\x18\x02 \x03(\tR\x05nodes\x12\x14\n" +
+	"\x05lines\x18\x03 \x01(\x03R\x05lines\x127\n" +
+	"\tlast_seen\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\x12\x18\n" +
+	"\aparsers\x18\x05 \x03(\tR\aparsers\x12;\n" +
+	"\vsuggestions\x18\x06 \x03(\v2\x19.openpicket.api.v1.HubRefR\vsuggestions\x12\x12\n" +
+	"\x04loki\x18\a \x01(\bR\x04loki\"\x18\n" +
+	"\x16ListLogProgramsRequest\"T\n" +
+	"\x17ListLogProgramsResponse\x129\n" +
+	"\bprograms\x18\x01 \x03(\v2\x1d.openpicket.api.v1.LogProgramR\bprograms\"K\n" +
+	"\x1bSetLogProgramStorageRequest\x12\x18\n" +
+	"\aprogram\x18\x01 \x01(\tR\aprogram\x12\x12\n" +
+	"\x04loki\x18\x02 \x01(\bR\x04loki\"\x1e\n" +
+	"\x1cSetLogProgramStorageResponse2\xf6\b\n" +
 	"\n" +
 	"HubService\x12_\n" +
 	"\fListHubItems\x12&.openpicket.api.v1.ListHubItemsRequest\x1a'.openpicket.api.v1.ListHubItemsResponse\x12Y\n" +
@@ -1446,7 +1726,9 @@ const file_openpicket_api_v1_hub_proto_rawDesc = "" +
 	"\x0fRefreshHubIndex\x12).openpicket.api.v1.RefreshHubIndexRequest\x1a*.openpicket.api.v1.RefreshHubIndexResponse\x12e\n" +
 	"\x0ePreviewHubItem\x12(.openpicket.api.v1.PreviewHubItemRequest\x1a).openpicket.api.v1.PreviewHubItemResponse\x12e\n" +
 	"\x0eInstallHubItem\x12(.openpicket.api.v1.InstallHubItemRequest\x1a).openpicket.api.v1.InstallHubItemResponse\x12b\n" +
-	"\rRemoveHubItem\x12'.openpicket.api.v1.RemoveHubItemRequest\x1a(.openpicket.api.v1.RemoveHubItemResponseB>Z<github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1b\x06proto3"
+	"\rRemoveHubItem\x12'.openpicket.api.v1.RemoveHubItemRequest\x1a(.openpicket.api.v1.RemoveHubItemResponse\x12h\n" +
+	"\x0fListLogPrograms\x12).openpicket.api.v1.ListLogProgramsRequest\x1a*.openpicket.api.v1.ListLogProgramsResponse\x12w\n" +
+	"\x14SetLogProgramStorage\x12..openpicket.api.v1.SetLogProgramStorageRequest\x1a/.openpicket.api.v1.SetLogProgramStorageResponseB>Z<github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1b\x06proto3"
 
 var (
 	file_openpicket_api_v1_hub_proto_rawDescOnce sync.Once
@@ -1460,73 +1742,85 @@ func file_openpicket_api_v1_hub_proto_rawDescGZIP() []byte {
 	return file_openpicket_api_v1_hub_proto_rawDescData
 }
 
-var file_openpicket_api_v1_hub_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_openpicket_api_v1_hub_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_openpicket_api_v1_hub_proto_goTypes = []any{
-	(*HubRef)(nil),                  // 0: openpicket.api.v1.HubRef
-	(*HubItem)(nil),                 // 1: openpicket.api.v1.HubItem
-	(*ListHubItemsRequest)(nil),     // 2: openpicket.api.v1.ListHubItemsRequest
-	(*ListHubItemsResponse)(nil),    // 3: openpicket.api.v1.ListHubItemsResponse
-	(*GetHubItemRequest)(nil),       // 4: openpicket.api.v1.GetHubItemRequest
-	(*GetHubItemResponse)(nil),      // 5: openpicket.api.v1.GetHubItemResponse
-	(*SetHubItemStateRequest)(nil),  // 6: openpicket.api.v1.SetHubItemStateRequest
-	(*SetHubItemStateResponse)(nil), // 7: openpicket.api.v1.SetHubItemStateResponse
-	(*GetHubRolloutRequest)(nil),    // 8: openpicket.api.v1.GetHubRolloutRequest
-	(*HubLogProcessor)(nil),         // 9: openpicket.api.v1.HubLogProcessor
-	(*GetHubRolloutResponse)(nil),   // 10: openpicket.api.v1.GetHubRolloutResponse
-	(*HubIndexEntry)(nil),           // 11: openpicket.api.v1.HubIndexEntry
-	(*ListHubIndexRequest)(nil),     // 12: openpicket.api.v1.ListHubIndexRequest
-	(*ListHubIndexResponse)(nil),    // 13: openpicket.api.v1.ListHubIndexResponse
-	(*RefreshHubIndexRequest)(nil),  // 14: openpicket.api.v1.RefreshHubIndexRequest
-	(*RefreshHubIndexResponse)(nil), // 15: openpicket.api.v1.RefreshHubIndexResponse
-	(*PreviewHubItemRequest)(nil),   // 16: openpicket.api.v1.PreviewHubItemRequest
-	(*PreviewHubItemResponse)(nil),  // 17: openpicket.api.v1.PreviewHubItemResponse
-	(*InstallHubItemRequest)(nil),   // 18: openpicket.api.v1.InstallHubItemRequest
-	(*InstallHubItemResponse)(nil),  // 19: openpicket.api.v1.InstallHubItemResponse
-	(*RemoveHubItemRequest)(nil),    // 20: openpicket.api.v1.RemoveHubItemRequest
-	(*RemoveHubItemResponse)(nil),   // 21: openpicket.api.v1.RemoveHubItemResponse
-	(*timestamppb.Timestamp)(nil),   // 22: google.protobuf.Timestamp
+	(*HubRef)(nil),                       // 0: openpicket.api.v1.HubRef
+	(*HubItem)(nil),                      // 1: openpicket.api.v1.HubItem
+	(*ListHubItemsRequest)(nil),          // 2: openpicket.api.v1.ListHubItemsRequest
+	(*ListHubItemsResponse)(nil),         // 3: openpicket.api.v1.ListHubItemsResponse
+	(*GetHubItemRequest)(nil),            // 4: openpicket.api.v1.GetHubItemRequest
+	(*GetHubItemResponse)(nil),           // 5: openpicket.api.v1.GetHubItemResponse
+	(*SetHubItemStateRequest)(nil),       // 6: openpicket.api.v1.SetHubItemStateRequest
+	(*SetHubItemStateResponse)(nil),      // 7: openpicket.api.v1.SetHubItemStateResponse
+	(*GetHubRolloutRequest)(nil),         // 8: openpicket.api.v1.GetHubRolloutRequest
+	(*HubLogProcessor)(nil),              // 9: openpicket.api.v1.HubLogProcessor
+	(*GetHubRolloutResponse)(nil),        // 10: openpicket.api.v1.GetHubRolloutResponse
+	(*HubIndexEntry)(nil),                // 11: openpicket.api.v1.HubIndexEntry
+	(*ListHubIndexRequest)(nil),          // 12: openpicket.api.v1.ListHubIndexRequest
+	(*ListHubIndexResponse)(nil),         // 13: openpicket.api.v1.ListHubIndexResponse
+	(*RefreshHubIndexRequest)(nil),       // 14: openpicket.api.v1.RefreshHubIndexRequest
+	(*RefreshHubIndexResponse)(nil),      // 15: openpicket.api.v1.RefreshHubIndexResponse
+	(*PreviewHubItemRequest)(nil),        // 16: openpicket.api.v1.PreviewHubItemRequest
+	(*PreviewHubItemResponse)(nil),       // 17: openpicket.api.v1.PreviewHubItemResponse
+	(*InstallHubItemRequest)(nil),        // 18: openpicket.api.v1.InstallHubItemRequest
+	(*InstallHubItemResponse)(nil),       // 19: openpicket.api.v1.InstallHubItemResponse
+	(*RemoveHubItemRequest)(nil),         // 20: openpicket.api.v1.RemoveHubItemRequest
+	(*RemoveHubItemResponse)(nil),        // 21: openpicket.api.v1.RemoveHubItemResponse
+	(*LogProgram)(nil),                   // 22: openpicket.api.v1.LogProgram
+	(*ListLogProgramsRequest)(nil),       // 23: openpicket.api.v1.ListLogProgramsRequest
+	(*ListLogProgramsResponse)(nil),      // 24: openpicket.api.v1.ListLogProgramsResponse
+	(*SetLogProgramStorageRequest)(nil),  // 25: openpicket.api.v1.SetLogProgramStorageRequest
+	(*SetLogProgramStorageResponse)(nil), // 26: openpicket.api.v1.SetLogProgramStorageResponse
+	(*timestamppb.Timestamp)(nil),        // 27: google.protobuf.Timestamp
 }
 var file_openpicket_api_v1_hub_proto_depIdxs = []int32{
 	0,  // 0: openpicket.api.v1.HubItem.members:type_name -> openpicket.api.v1.HubRef
-	22, // 1: openpicket.api.v1.HubItem.updated_at:type_name -> google.protobuf.Timestamp
+	27, // 1: openpicket.api.v1.HubItem.updated_at:type_name -> google.protobuf.Timestamp
 	1,  // 2: openpicket.api.v1.ListHubItemsResponse.items:type_name -> openpicket.api.v1.HubItem
 	0,  // 3: openpicket.api.v1.GetHubItemRequest.ref:type_name -> openpicket.api.v1.HubRef
 	1,  // 4: openpicket.api.v1.GetHubItemResponse.item:type_name -> openpicket.api.v1.HubItem
 	0,  // 5: openpicket.api.v1.SetHubItemStateRequest.ref:type_name -> openpicket.api.v1.HubRef
-	22, // 6: openpicket.api.v1.HubLogProcessor.seen_at:type_name -> google.protobuf.Timestamp
+	27, // 6: openpicket.api.v1.HubLogProcessor.seen_at:type_name -> google.protobuf.Timestamp
 	9,  // 7: openpicket.api.v1.GetHubRolloutResponse.log_processors:type_name -> openpicket.api.v1.HubLogProcessor
 	0,  // 8: openpicket.api.v1.HubIndexEntry.members:type_name -> openpicket.api.v1.HubRef
 	11, // 9: openpicket.api.v1.ListHubIndexResponse.entries:type_name -> openpicket.api.v1.HubIndexEntry
-	22, // 10: openpicket.api.v1.ListHubIndexResponse.fetched_at:type_name -> google.protobuf.Timestamp
+	27, // 10: openpicket.api.v1.ListHubIndexResponse.fetched_at:type_name -> google.protobuf.Timestamp
 	0,  // 11: openpicket.api.v1.PreviewHubItemRequest.ref:type_name -> openpicket.api.v1.HubRef
 	11, // 12: openpicket.api.v1.PreviewHubItemResponse.entry:type_name -> openpicket.api.v1.HubIndexEntry
 	0,  // 13: openpicket.api.v1.PreviewHubItemResponse.items:type_name -> openpicket.api.v1.HubRef
 	0,  // 14: openpicket.api.v1.InstallHubItemRequest.ref:type_name -> openpicket.api.v1.HubRef
 	0,  // 15: openpicket.api.v1.InstallHubItemResponse.installed:type_name -> openpicket.api.v1.HubRef
 	0,  // 16: openpicket.api.v1.RemoveHubItemRequest.ref:type_name -> openpicket.api.v1.HubRef
-	2,  // 17: openpicket.api.v1.HubService.ListHubItems:input_type -> openpicket.api.v1.ListHubItemsRequest
-	4,  // 18: openpicket.api.v1.HubService.GetHubItem:input_type -> openpicket.api.v1.GetHubItemRequest
-	6,  // 19: openpicket.api.v1.HubService.SetHubItemState:input_type -> openpicket.api.v1.SetHubItemStateRequest
-	8,  // 20: openpicket.api.v1.HubService.GetHubRollout:input_type -> openpicket.api.v1.GetHubRolloutRequest
-	12, // 21: openpicket.api.v1.HubService.ListHubIndex:input_type -> openpicket.api.v1.ListHubIndexRequest
-	14, // 22: openpicket.api.v1.HubService.RefreshHubIndex:input_type -> openpicket.api.v1.RefreshHubIndexRequest
-	16, // 23: openpicket.api.v1.HubService.PreviewHubItem:input_type -> openpicket.api.v1.PreviewHubItemRequest
-	18, // 24: openpicket.api.v1.HubService.InstallHubItem:input_type -> openpicket.api.v1.InstallHubItemRequest
-	20, // 25: openpicket.api.v1.HubService.RemoveHubItem:input_type -> openpicket.api.v1.RemoveHubItemRequest
-	3,  // 26: openpicket.api.v1.HubService.ListHubItems:output_type -> openpicket.api.v1.ListHubItemsResponse
-	5,  // 27: openpicket.api.v1.HubService.GetHubItem:output_type -> openpicket.api.v1.GetHubItemResponse
-	7,  // 28: openpicket.api.v1.HubService.SetHubItemState:output_type -> openpicket.api.v1.SetHubItemStateResponse
-	10, // 29: openpicket.api.v1.HubService.GetHubRollout:output_type -> openpicket.api.v1.GetHubRolloutResponse
-	13, // 30: openpicket.api.v1.HubService.ListHubIndex:output_type -> openpicket.api.v1.ListHubIndexResponse
-	15, // 31: openpicket.api.v1.HubService.RefreshHubIndex:output_type -> openpicket.api.v1.RefreshHubIndexResponse
-	17, // 32: openpicket.api.v1.HubService.PreviewHubItem:output_type -> openpicket.api.v1.PreviewHubItemResponse
-	19, // 33: openpicket.api.v1.HubService.InstallHubItem:output_type -> openpicket.api.v1.InstallHubItemResponse
-	21, // 34: openpicket.api.v1.HubService.RemoveHubItem:output_type -> openpicket.api.v1.RemoveHubItemResponse
-	26, // [26:35] is the sub-list for method output_type
-	17, // [17:26] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	27, // 17: openpicket.api.v1.LogProgram.last_seen:type_name -> google.protobuf.Timestamp
+	0,  // 18: openpicket.api.v1.LogProgram.suggestions:type_name -> openpicket.api.v1.HubRef
+	22, // 19: openpicket.api.v1.ListLogProgramsResponse.programs:type_name -> openpicket.api.v1.LogProgram
+	2,  // 20: openpicket.api.v1.HubService.ListHubItems:input_type -> openpicket.api.v1.ListHubItemsRequest
+	4,  // 21: openpicket.api.v1.HubService.GetHubItem:input_type -> openpicket.api.v1.GetHubItemRequest
+	6,  // 22: openpicket.api.v1.HubService.SetHubItemState:input_type -> openpicket.api.v1.SetHubItemStateRequest
+	8,  // 23: openpicket.api.v1.HubService.GetHubRollout:input_type -> openpicket.api.v1.GetHubRolloutRequest
+	12, // 24: openpicket.api.v1.HubService.ListHubIndex:input_type -> openpicket.api.v1.ListHubIndexRequest
+	14, // 25: openpicket.api.v1.HubService.RefreshHubIndex:input_type -> openpicket.api.v1.RefreshHubIndexRequest
+	16, // 26: openpicket.api.v1.HubService.PreviewHubItem:input_type -> openpicket.api.v1.PreviewHubItemRequest
+	18, // 27: openpicket.api.v1.HubService.InstallHubItem:input_type -> openpicket.api.v1.InstallHubItemRequest
+	20, // 28: openpicket.api.v1.HubService.RemoveHubItem:input_type -> openpicket.api.v1.RemoveHubItemRequest
+	23, // 29: openpicket.api.v1.HubService.ListLogPrograms:input_type -> openpicket.api.v1.ListLogProgramsRequest
+	25, // 30: openpicket.api.v1.HubService.SetLogProgramStorage:input_type -> openpicket.api.v1.SetLogProgramStorageRequest
+	3,  // 31: openpicket.api.v1.HubService.ListHubItems:output_type -> openpicket.api.v1.ListHubItemsResponse
+	5,  // 32: openpicket.api.v1.HubService.GetHubItem:output_type -> openpicket.api.v1.GetHubItemResponse
+	7,  // 33: openpicket.api.v1.HubService.SetHubItemState:output_type -> openpicket.api.v1.SetHubItemStateResponse
+	10, // 34: openpicket.api.v1.HubService.GetHubRollout:output_type -> openpicket.api.v1.GetHubRolloutResponse
+	13, // 35: openpicket.api.v1.HubService.ListHubIndex:output_type -> openpicket.api.v1.ListHubIndexResponse
+	15, // 36: openpicket.api.v1.HubService.RefreshHubIndex:output_type -> openpicket.api.v1.RefreshHubIndexResponse
+	17, // 37: openpicket.api.v1.HubService.PreviewHubItem:output_type -> openpicket.api.v1.PreviewHubItemResponse
+	19, // 38: openpicket.api.v1.HubService.InstallHubItem:output_type -> openpicket.api.v1.InstallHubItemResponse
+	21, // 39: openpicket.api.v1.HubService.RemoveHubItem:output_type -> openpicket.api.v1.RemoveHubItemResponse
+	24, // 40: openpicket.api.v1.HubService.ListLogPrograms:output_type -> openpicket.api.v1.ListLogProgramsResponse
+	26, // 41: openpicket.api.v1.HubService.SetLogProgramStorage:output_type -> openpicket.api.v1.SetLogProgramStorageResponse
+	31, // [31:42] is the sub-list for method output_type
+	20, // [20:31] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_openpicket_api_v1_hub_proto_init() }
@@ -1540,7 +1834,7 @@ func file_openpicket_api_v1_hub_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_openpicket_api_v1_hub_proto_rawDesc), len(file_openpicket_api_v1_hub_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

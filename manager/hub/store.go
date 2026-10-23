@@ -430,6 +430,30 @@ func (s *Store) Produced(ctx context.Context) ([]string, error) {
 	return slices.Compact(out), rows.Err()
 }
 
+// EnabledParsers returns the parsers not disabled, parsed.
+func (s *Store) EnabledParsers(ctx context.Context) (map[string]*hubitem.Doc, error) {
+	rows, err := s.db.Query(ctx, `SELECT i.name, i.content FROM openpicket.hub_items i LEFT JOIN openpicket.hub_item_state st ON st.type = i.type AND st.name = i.name
+		WHERE i.type = 'parsers' AND COALESCE(st.state, 'enabled') <> 'disabled'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]*hubitem.Doc{}
+	for rows.Next() {
+		var (
+			name string
+			b    []byte
+		)
+		if err := rows.Scan(&name, &b); err != nil {
+			return nil, err
+		}
+		if doc, err := hubitem.ParseDoc(hubitem.Parsers, b); err == nil {
+			out[name] = doc
+		}
+	}
+	return out, rows.Err()
+}
+
 // Compatibilities judges every stored scenario.
 func (s *Store) Compatibilities(ctx context.Context) (map[string]Compatibility, error) {
 	produced, err := s.Produced(ctx)

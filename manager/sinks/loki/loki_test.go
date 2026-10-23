@@ -78,3 +78,36 @@ func TestDeliver(t *testing.T) {
 		t.Fatalf("503 must be retryable: %v", err)
 	}
 }
+
+// TestGenericLogLabelsAndSkip: generic logs are labelled by program; a
+// program kept out of Loki is acknowledged without a push.
+func TestGenericLogLabelsAndSkip(t *testing.T) {
+	now := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+	var got push
+	pushes := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pushes++
+		zr, _ := gzip.NewReader(r.Body)
+		got = push{}
+		_ = json.NewDecoder(zr).Decode(&got)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	s, err := New(Config{URL: srv.URL, Now: func() time.Time { return now }, Skip: func(p string) bool { return p == "nginx" }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mk := func(program string) *pipeline.Batch {
+		return &pipeline.Batch{NodeID: "web-01", Type: record.TypeLog, Program: program, Received: now, Node: &registry.Node{ID: "web-01"},
+			Records: []*pipeline.Record{{Line: []byte("a line"), Time: now, Program: program}}}
+	}
+	if err := s.Deliver(context.Background(), mk("nginx")); err != nil || pushes != 0 {
+		t.Fatalf("skipped program pushed: %v %d", err, pushes)
+	}
+	if err := s.Deliver(context.Background(), mk("postgres")); err != nil || pushes != 1 {
+		t.Fatalf("push: %v %d", err, pushes)
+	}
+	if l := got.Streams[0].Stream; l["type"] != "log" || l["program"] != "postgres" || l["node"] != "web-01" {
+		t.Fatalf("labels = %v", l)
+	}
+}

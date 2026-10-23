@@ -37,6 +37,7 @@ import (
 	"github.com/openpicket/openpicket/manager/geo"
 	"github.com/openpicket/openpicket/manager/hub"
 	"github.com/openpicket/openpicket/manager/lapi"
+	"github.com/openpicket/openpicket/manager/logprog"
 	"github.com/openpicket/openpicket/manager/misp"
 	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/pipeline"
@@ -162,6 +163,7 @@ type Manager struct {
 	geo        *geo.Store
 	hub        *hub.Store
 	hubRemote  *hub.Hub
+	programs   *logprog.Store
 	rollout    *hub.Rollout
 	policies   *policy.Service
 	alerts     *alerts.Syncer
@@ -210,8 +212,10 @@ func New(opts Options) (*Manager, error) {
 	m.presence = &presence{db: opts.DB, replica: opts.ReplicaID, gw: m.gw, log: opts.Logger.With("component", "presence")}
 
 	var ack []pipeline.Sink
+	m.programs = logprog.New(opts.DB, m.settings, opts.Logger)
 	lokiCfg := opts.Loki
 	lokiCfg.Registerer = m.reg
+	lokiCfg.Skip = m.programs.Skip
 	lk, err := loki.New(lokiCfg)
 	if err != nil {
 		return nil, err
@@ -242,7 +246,7 @@ func New(opts Options) (*Manager, error) {
 		async = append(async, m.search)
 	}
 	m.pipe = pipeline.New(pipeline.Config{
-		AckSinks: ack, AsyncSinks: async, Watermarks: m.watermarks, Geo: m.geo, Logger: opts.Logger, Registerer: m.reg, OpenAfter: opts.PipelineOpenAfter,
+		AckSinks: ack, AsyncSinks: async, Watermarks: m.watermarks, Geo: m.geo, Programs: m.programs, Logger: opts.Logger, Registerer: m.reg, OpenAfter: opts.PipelineOpenAfter,
 	})
 
 	m.nodes.OnRevoked = func(id string) { m.gw.Disconnect(id, "") }
@@ -307,8 +311,11 @@ func New(opts Options) (*Manager, error) {
 		m.controller = newControllerEndpoint(opts.Suricontroller, keys.Principal, opts.AgentControllerURL, opts.ControllerPollInterval, opts.Logger)
 	}
 	m.settings.OnChange = func(key string) {
-		if key == settings.KeyLogPolicy {
+		switch key {
+		case settings.KeyLogPolicy:
 			m.pushLogPolicy()
+		case logprog.KeyStorage:
+			m.programs.Load(context.Background())
 		}
 	}
 	return m, nil
@@ -410,6 +417,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	}
 	// The CrowdSec image carries no content: the built-in items come from
 	// this binary (hub.Builtin).
+	m.programs.Load(ctx)
 	if err := m.hub.SeedBuiltin(ctx); err != nil {
 		m.log.Error("store built-in CrowdSec content", "err", err)
 	}
@@ -439,6 +447,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		m.listener.Run,
 		m.pipe.Run,
 		m.watermarks.Run,
+		m.programs.Run,
 		m.cs.Run,
 		el.Run,
 		func(ctx context.Context) { m.presence.run(ctx, 30*time.Second) },

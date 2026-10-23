@@ -17,6 +17,7 @@ import (
 	apiv1 "github.com/openpicket/openpicket/gen/openpicket/api/v1"
 	"github.com/openpicket/openpicket/manager/hub"
 	"github.com/openpicket/openpicket/pkg/hubitem"
+	"github.com/openpicket/openpicket/pkg/record"
 )
 
 type hubService struct{ s *Server }
@@ -361,4 +362,79 @@ func (s *Server) uploadHub(w http.ResponseWriter, r *http.Request) {
 	s.audit(r.Context(), "HubService.Upload", ref.Type+" "+ref.Name, fmt.Sprintf(`{"sha256":%q,"data":%d}`, hub.Digest(item), len(data)))
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"type": ref.Type, "name": ref.Name})
+}
+
+func (h *hubService) ListLogPrograms(ctx context.Context, _ *connect.Request[apiv1.ListLogProgramsRequest]) (*connect.Response[apiv1.ListLogProgramsResponse], error) {
+	st, err := h.store()
+	if err != nil {
+		return nil, err
+	}
+	if h.s.cfg.LogPrograms == nil {
+		return connect.NewResponse(&apiv1.ListLogProgramsResponse{}), nil
+	}
+	programs, err := h.s.cfg.LogPrograms.List(ctx)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	parsers, err := st.EnabledParsers(ctx)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	var idx hub.Index
+	if h.s.cfg.HubRemote != nil {
+		idx, _, _ = h.s.cfg.HubRemote.Index(ctx)
+	}
+	res := &apiv1.ListLogProgramsResponse{}
+	for _, p := range programs {
+		pb := &apiv1.LogProgram{Program: p.Program, Nodes: p.Nodes, Lines: p.Lines, LastSeen: timestamppb.New(p.LastSeen), Loki: p.Loki}
+		for name, doc := range parsers {
+			if doc.HandlesProgram(p.Program) {
+				pb.Parsers = append(pb.Parsers, name)
+			}
+		}
+		sort.Strings(pb.Parsers)
+		if len(pb.Parsers) == 0 {
+			pb.Suggestions = suggestFor(idx, p.Program)
+		}
+		res.Programs = append(res.Programs, pb)
+	}
+	return connect.NewResponse(res), nil
+}
+
+// suggestFor names hub collections and parsers likely to handle a program
+// (by name: crowdsecurity/nginx, crowdsecurity/nginx-logs).
+func suggestFor(idx hub.Index, program string) []*apiv1.HubRef {
+	var out []*apiv1.HubRef
+	base := strings.TrimSuffix(strings.TrimSuffix(program, "d"), "-session")
+	for _, typ := range []string{hubitem.Collections, hubitem.Parsers} {
+		var names []string
+		for name := range idx[typ] {
+			short := name[strings.IndexByte(name, '/')+1:]
+			short = strings.TrimSuffix(short, "-logs")
+			if short == program || short == base {
+				names = append(names, name)
+			}
+		}
+		sort.Strings(names)
+		for _, n := range names {
+			out = append(out, &apiv1.HubRef{Type: typ, Name: n})
+		}
+	}
+	if len(out) > 6 {
+		out = out[:6]
+	}
+	return out
+}
+
+func (h *hubService) SetLogProgramStorage(ctx context.Context, req *connect.Request[apiv1.SetLogProgramStorageRequest]) (*connect.Response[apiv1.SetLogProgramStorageResponse], error) {
+	if h.s.cfg.LogPrograms == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("log programs are not tracked"))
+	}
+	if record.NormalizeProgram(req.Msg.GetProgram()) == "" {
+		return nil, toConnectError(fmt.Errorf("%w: program", errInvalid))
+	}
+	if err := h.s.cfg.LogPrograms.SetLoki(ctx, req.Msg.GetProgram(), req.Msg.GetLoki()); err != nil {
+		return nil, toConnectError(err)
+	}
+	return connect.NewResponse(&apiv1.SetLogProgramStorageResponse{}), nil
 }
