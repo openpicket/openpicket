@@ -38,11 +38,10 @@ import (
 	"github.com/openpicket/openpicket/suristore"
 )
 
-// TestGatewayAndAPISplit runs the API and the gateway as separate replicas,
-// the gateway on a restricted database account: logs reach the sinks, the
-// decisions and port policies the API side writes reach the nodes, and the
-// gateway cannot change what the API manages.
-func TestGatewayAndAPISplit(t *testing.T) {
+// restrictedPools returns a pool on a fresh, migrated database and one
+// connecting as a new gateway role (granted like the API replicas do).
+func restrictedPools(t *testing.T) (pool, gwPool *pgxpool.Pool, role string) {
+	t.Helper()
 	admin := os.Getenv(pgtest.Env)
 	if admin == "" {
 		t.Skip(pgtest.Env + " not set")
@@ -73,7 +72,7 @@ func TestGatewayAndAPISplit(t *testing.T) {
 	}
 	u, _ := url.Parse(dsn)
 	u.User = url.UserPassword(role, password)
-	gwPool, err := pgxpool.New(ctx, u.String())
+	gwPool, err = pgxpool.New(ctx, u.String())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,6 +80,16 @@ func TestGatewayAndAPISplit(t *testing.T) {
 	if err := schema.Wait(ctx, gwPool, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatal(err)
 	}
+	return pool, gwPool, role
+}
+
+// TestGatewayAndAPISplit runs the API and the gateway as separate replicas,
+// the gateway on a restricted database account: logs reach the sinks, the
+// decisions and port policies the API side writes reach the nodes, and the
+// gateway cannot change what the API manages.
+func TestGatewayAndAPISplit(t *testing.T) {
+	ctx := context.Background()
+	pool, gwPool, role := restrictedPools(t)
 	if restricted, user, err := dbroles.Restricted(ctx, gwPool); err != nil || !restricted || user != role {
 		t.Fatalf("restricted = %v %q %v", restricted, user, err)
 	}

@@ -170,6 +170,41 @@ gateway:
   affinity: {}
 
 # ---------------------------------------------------------------------------
+# Syslog (optional): devices without an agent (switches, firewalls, NAS)
+# send syslog to the gateways (the manager without them), which recognize
+# the device by the sender's address (UI: Syslog devices). Their lines go
+# to CrowdSec and Loki like the agents' generic logs; alerts ban as usual.
+# UDP senders can be spoofed: expose it on internal networks only.
+# ---------------------------------------------------------------------------
+syslog:
+  enabled: false
+  # Messages of senders no registered device matches: drop (counted per
+  # address) or accept (a temporary device named after the address).
+  # The UI can change it later; this applies until it does.
+  unregistered: drop
+  udp: { enabled: true, port: 514 }
+  # Newline or octet-counting framing (RFC 6587).
+  tcp: { enabled: true, port: 514 }
+  # RFC 5425.
+  tls:
+    enabled: false
+    port: 6514
+    # Secret with tls.crt and tls.key (e.g. from cert-manager; renewals
+    # are picked up).
+    secretName: ""
+    # Secret with ca.crt: senders must present a certificate it signed.
+    clientCASecret: ""
+  service:
+    # LoadBalancer or NodePort (devices outside the cluster), ClusterIP.
+    type: LoadBalancer
+    # Local keeps the sender's address, which identifies the device.
+    externalTrafficPolicy: Local
+    annotations: {}
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+    nodePorts: { udp: null, tcp: null, tls: null }
+
+# ---------------------------------------------------------------------------
 # openpicket-suricontroller: Suricata management (single replica).
 # ---------------------------------------------------------------------------
 suricontroller:

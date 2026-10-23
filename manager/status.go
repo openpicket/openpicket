@@ -27,6 +27,7 @@ func (m *Manager) API(cfg api.Config) (*api.Server, error) {
 	cfg.HubRemote = m.hubRemote
 	cfg.LogPrograms = m.programs
 	cfg.Settings = m.settings
+	cfg.SyslogUnregistered = m.opts.Syslog.Unregistered
 	cfg.HostKey = m.HostPublicKey
 	cfg.Replica = m.opts.ReplicaID
 	cfg.Version = version.Version

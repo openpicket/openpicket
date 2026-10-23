@@ -69,11 +69,15 @@ func (m *Manager) publishGateway(ctx context.Context) {
 	for sink := range m.localSinksDown() {
 		down = append(down, sink)
 	}
-	if _, err := m.opts.DB.Exec(ctx, `INSERT INTO openpicket.gateway_info (replica, host_key, db_user, db_restricted, version, sinks_down, sessions, seen_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+	listeners := []string{}
+	if m.syslog != nil {
+		listeners = m.syslog.Listeners()
+	}
+	if _, err := m.opts.DB.Exec(ctx, `INSERT INTO openpicket.gateway_info (replica, host_key, db_user, db_restricted, version, sinks_down, sessions, syslog, seen_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
 		ON CONFLICT (replica) DO UPDATE SET host_key = excluded.host_key, db_user = excluded.db_user, db_restricted = excluded.db_restricted,
-			version = excluded.version, sinks_down = excluded.sinks_down, sessions = excluded.sessions, seen_at = now()`,
-		m.opts.ReplicaID, m.HostPublicKey(), user, restricted, version.Version, down, len(m.gw.Sessions())); err != nil {
+			version = excluded.version, sinks_down = excluded.sinks_down, sessions = excluded.sessions, syslog = excluded.syslog, seen_at = now()`,
+		m.opts.ReplicaID, m.HostPublicKey(), user, restricted, version.Version, down, len(m.gw.Sessions()), listeners); err != nil {
 		m.log.Warn("record gateway", "err", err)
 	}
 }
@@ -99,13 +103,15 @@ type GatewayInfo struct {
 	Replica, HostKey, DBUser, Version string
 	DBRestricted                      bool
 	SinksDown                         []string
-	Sessions                          int
-	SeenAt                            time.Time
+	// Syslog lists the syslog listeners ("udp [::]:5514").
+	Syslog   []string
+	Sessions int
+	SeenAt   time.Time
 }
 
 // Gateways lists the gateway replicas seen in the last 10 minutes.
 func (m *Manager) Gateways(ctx context.Context) ([]GatewayInfo, error) {
-	rows, err := m.opts.DB.Query(ctx, `SELECT replica, host_key, db_user, db_restricted, version, sinks_down, sessions, seen_at FROM openpicket.gateway_info
+	rows, err := m.opts.DB.Query(ctx, `SELECT replica, host_key, db_user, db_restricted, version, sinks_down, sessions, syslog, seen_at FROM openpicket.gateway_info
 		WHERE seen_at > now() - interval '3 minutes' ORDER BY replica`)
 	if err != nil {
 		return nil, err
@@ -114,7 +120,7 @@ func (m *Manager) Gateways(ctx context.Context) ([]GatewayInfo, error) {
 	var out []GatewayInfo
 	for rows.Next() {
 		var g GatewayInfo
-		if err := rows.Scan(&g.Replica, &g.HostKey, &g.DBUser, &g.DBRestricted, &g.Version, &g.SinksDown, &g.Sessions, &g.SeenAt); err != nil {
+		if err := rows.Scan(&g.Replica, &g.HostKey, &g.DBUser, &g.DBRestricted, &g.Version, &g.SinksDown, &g.Sessions, &g.Syslog, &g.SeenAt); err != nil {
 			return nil, err
 		}
 		out = append(out, g)

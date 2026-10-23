@@ -23,9 +23,10 @@ var (
 	gatewayRead = []string{
 		"nodes", "node_sessions", "edge_decisions", "edge_meta", "port_policies", "ip_lists", "policy_meta",
 		"policy_compiled", "geo_databases", "settings", "sink_watermarks", "log_programs", "gateway_info", "node_decision_state", "node_policy_state",
+		"syslog_devices", "syslog_sources",
 	}
 	gatewayWrite = []string{
-		"node_sessions", "node_decision_state", "node_policy_state", "sink_watermarks", "log_programs", "gateway_info",
+		"node_sessions", "node_decision_state", "node_policy_state", "sink_watermarks", "log_programs", "gateway_info", "syslog_sources",
 	}
 	// Columns of other tables a gateway updates.
 	gatewayColumns = map[string][]string{"nodes": {"dp_last_seen_at"}}

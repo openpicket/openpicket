@@ -1,0 +1,61 @@
+{{- if .Values.syslog.enabled }}
+{{- $full := include "openpicket.fullname" . }}
+{{- $s := .Values.syslog }}
+{{- if not (or $s.udp.enabled $s.tcp.enabled $s.tls.enabled) }}
+{{- fail "syslog: enable at least one of udp, tcp and tls" }}
+{{- end }}
+# Syslog from devices outside the cluster to the pods facing the agents.
+# The device is recognized by the sender's address: keep it (Local).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}-syslog
+  labels:
+    {{- include "openpicket.labels" . | nindent 4 }}
+  {{- with $s.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ $s.service.type }}
+  {{- if ne $s.service.type "ClusterIP" }}
+  externalTrafficPolicy: {{ $s.service.externalTrafficPolicy }}
+  {{- end }}
+  {{- with $s.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  {{- with $s.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    {{- include "openpicket.selector" (list . (ternary "gateway" "manager" .Values.gateway.enabled)) | nindent 4 }}
+  ports:
+    {{- if $s.udp.enabled }}
+    - name: syslog-udp
+      port: {{ $s.udp.port }}
+      targetPort: syslog-udp
+      protocol: UDP
+      {{- if and (eq $s.service.type "NodePort") $s.service.nodePorts.udp }}
+      nodePort: {{ $s.service.nodePorts.udp }}
+      {{- end }}
+    {{- end }}
+    {{- if $s.tcp.enabled }}
+    - name: syslog-tcp
+      port: {{ $s.tcp.port }}
+      targetPort: syslog-tcp
+      protocol: TCP
+      {{- if and (eq $s.service.type "NodePort") $s.service.nodePorts.tcp }}
+      nodePort: {{ $s.service.nodePorts.tcp }}
+      {{- end }}
+    {{- end }}
+    {{- if $s.tls.enabled }}
+    - name: syslog-tls
+      port: {{ $s.tls.port }}
+      targetPort: syslog-tls
+      protocol: TCP
+      {{- if and (eq $s.service.type "NodePort") $s.service.nodePorts.tls }}
+      nodePort: {{ $s.service.nodePorts.tls }}
+      {{- end }}
+    {{- end }}
+{{- end }}

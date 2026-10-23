@@ -38,6 +38,7 @@ import (
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
 	"github.com/openpicket/openpicket/manager/sinks/loki"
 	"github.com/openpicket/openpicket/manager/sinks/opensearch"
+	"github.com/openpicket/openpicket/manager/syslog"
 	"github.com/openpicket/openpicket/pkg/version"
 	"github.com/openpicket/openpicket/web"
 )
@@ -73,6 +74,9 @@ type config struct {
 	LAPIExtra         string
 	AlertRetention    time.Duration
 	Rules             relay.Rules
+	// Syslog receiver (gateway) and the TLS listener's files.
+	Syslog                                      manager.SyslogOptions
+	SyslogCertFile, SyslogKeyFile, SyslogCAFile string
 
 	// UI and API
 	AuthConfig        string
@@ -99,6 +103,13 @@ func loadConfig() (*config, error) {
 	e.String("DB_GATEWAY_ROLE", &c.GatewayDBRole)
 	e.Secret("DB_GATEWAY_PASSWORD", &c.GatewayDBPassword)
 	e.String("REPLICA_ID", &c.ReplicaID)
+	e.String("SYSLOG_UDP_LISTEN", &c.Syslog.UDP)
+	e.String("SYSLOG_TCP_LISTEN", &c.Syslog.TCP)
+	e.String("SYSLOG_TLS_LISTEN", &c.Syslog.TLS)
+	e.String("SYSLOG_TLS_CERT_FILE", &c.SyslogCertFile)
+	e.String("SYSLOG_TLS_KEY_FILE", &c.SyslogKeyFile)
+	e.String("SYSLOG_TLS_CLIENT_CA_FILE", &c.SyslogCAFile)
+	e.String("SYSLOG_UNREGISTERED", &c.Syslog.Unregistered)
 	e.Bool("TRUST_PROXY_HEADERS", &c.TrustProxyHeaders)
 	e.String("LOG_LEVEL", &c.LogLevel)
 	e.String("LOKI_URL", &c.Loki.URL)
@@ -185,6 +196,16 @@ func loadConfig() (*config, error) {
 	}
 	if c.Loki.URL == "" {
 		errs = append(errs, errors.New("OPENPICKET_LOKI_URL is required"))
+	}
+	if c.Syslog.Unregistered != "" && !syslog.ValidMode(c.Syslog.Unregistered) {
+		errs = append(errs, fmt.Errorf("OPENPICKET_SYSLOG_UNREGISTERED: %q is not drop or accept", c.Syslog.Unregistered))
+	}
+	if c.Syslog.TLS != "" {
+		tc, err := syslog.TLSFiles(c.SyslogCertFile, c.SyslogKeyFile, c.SyslogCAFile)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("OPENPICKET_SYSLOG_TLS_*: %w", err))
+		}
+		c.Syslog.TLSConfig = tc
 	}
 	if c.AuthConfig == "" && c.AdminUsername == "" && role != manager.RoleGateway {
 		errs = append(errs, errors.New("OPENPICKET_AUTH_CONFIG(_FILE) or OPENPICKET_ADMIN_USERNAME is required"))
@@ -426,7 +447,7 @@ func serve() error {
 		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, CrowdSecSync: cfg.CrowdSecSync, Hub: cfg.Hub, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
 		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, OpenSearch: &cfg.OpenSearch, MISP: &cfg.MISP, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
 		Suricontroller: suri, AgentControllerURL: cfg.AgentControllerURL, TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
-		Role: role, Keys: keys,
+		Role: role, Keys: keys, Syslog: cfg.Syslog,
 	})
 	if err != nil {
 		return err
