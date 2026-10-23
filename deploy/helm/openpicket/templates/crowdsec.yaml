@@ -148,7 +148,9 @@ spec:
             name: {{ $full }}-crowdsec-lapi
 ---
 # Agent pod addresses: openpicket-manager spreads records over them
-# (rendezvous hashing on the remote address) and scrapes their metrics.
+# (rendezvous hashing on the remote address), pushes their content and
+# scrapes their metrics. Pods are listed before they are ready: they become
+# ready once the manager pushed them content.
 apiVersion: v1
 kind: Service
 metadata:
@@ -157,12 +159,16 @@ metadata:
     {{- include "openpicket.componentLabels" (list . "crowdsec-agent") | nindent 4 }}
 spec:
   clusterIP: None
+  publishNotReadyAddresses: true
   selector:
     {{- include "openpicket.selector" (list . "crowdsec-agent") | nindent 4 }}
   ports:
     - name: acquis
       port: 8081
       targetPort: acquis
+    - name: hub-sync
+      port: 8082
+      targetPort: hub-sync
     - name: metrics
       port: 6060
       targetPort: metrics
@@ -208,8 +214,12 @@ spec:
           ports:
             - name: acquis
               containerPort: 8081
+            - name: hub-sync
+              containerPort: 8082
             - name: metrics
               containerPort: 6060
+          # Ready once CrowdSec runs: it starts when the manager pushed the
+          # content (openpicket-crowdsec-sync).
           readinessProbe:
             tcpSocket:
               port: acquis

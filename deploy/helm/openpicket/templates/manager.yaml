@@ -126,6 +126,20 @@ spec:
                 secretKeyRef:
                   name: {{ $secret }}
                   key: acquis-token
+            {{- with .Values.crowdsec.hub }}
+            {{- if .url }}
+            - name: OPENPICKET_HUB_URL
+              value: {{ .url | quote }}
+            {{- end }}
+            {{- if .dataHosts }}
+            - name: OPENPICKET_HUB_DATA_HOSTS
+              value: {{ join "," .dataHosts | quote }}
+            {{- end }}
+            {{- if .refresh }}
+            - name: OPENPICKET_HUB_REFRESH
+              value: {{ .refresh | quote }}
+            {{- end }}
+            {{- end }}
             - name: OPENPICKET_CROWDSEC_METRICS_DISCOVERY_HOSTS
               value: {{ printf "%s-crowdsec-agents,%s-crowdsec-lapi-pods" $full $full | quote }}
             - name: OPENPICKET_LAPI_URL

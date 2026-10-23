@@ -37,6 +37,7 @@ import (
 	"github.com/openpicket/openpicket/manager/alerts"
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/geo"
+	"github.com/openpicket/openpicket/manager/hub"
 	"github.com/openpicket/openpicket/manager/lapi"
 	"github.com/openpicket/openpicket/manager/misp"
 	"github.com/openpicket/openpicket/manager/notify"
@@ -94,7 +95,7 @@ func setup(t *testing.T, readOnly bool) *env {
 	e.server, err = New(Config{DB: pool, Auth: chain, ReadOnly: readOnly, Geo: g, Policies: policy.New(pool, g, log), Settings: settings.New(pool),
 		HostKey: "ssh-ed25519 AAAA host", Replica: "r1", Version: "test", Suricontroller: su, PrincipalKey: priv, Logger: log,
 		Alerts: &alerts.Querier{DB: pool}, AlertStore: &alerts.Store{DB: pool}, LAPIs: []LAPI{{Name: "default", Watcher: w}},
-		Poke: func(i string) { e.pokes <- i }})
+		Poke: func(i string) { e.pokes <- i }, Hub: hub.NewStore(pool, log)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,6 +118,7 @@ type clients struct {
 	pol    apiv1connect.PolicyServiceClient
 	system apiv1connect.SystemServiceClient
 	geo    apiv1connect.GeoServiceClient
+	hub    apiv1connect.HubServiceClient
 }
 
 type headerRT struct {
@@ -144,7 +146,7 @@ func (e *env) clients(h http.Header) *clients {
 		dash: apiv1connect.NewDashboardServiceClient(hc, base),
 		auth: apiv1connect.NewAuthServiceClient(hc, base), nodes: apiv1connect.NewNodeServiceClient(hc, base),
 		pol: apiv1connect.NewPolicyServiceClient(hc, base), system: apiv1connect.NewSystemServiceClient(hc, base),
-		geo: apiv1connect.NewGeoServiceClient(hc, base)}
+		geo: apiv1connect.NewGeoServiceClient(hc, base), hub: apiv1connect.NewHubServiceClient(hc, base)}
 }
 
 func code(err error) connect.Code {

@@ -28,6 +28,7 @@ import (
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/csmetrics"
 	"github.com/openpicket/openpicket/manager/geo"
+	"github.com/openpicket/openpicket/manager/hub"
 	"github.com/openpicket/openpicket/manager/misp"
 	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/policy"
@@ -49,7 +50,10 @@ type Config struct {
 	TrustProxyHeaders bool
 	Geo               *geo.Store
 	Policies          *policy.Service
-	Settings          *settings.Store
+	// Hub is the CrowdSec content store; HubRemote the CrowdSec hub.
+	Hub       *hub.Store
+	HubRemote *hub.Hub
+	Settings  *settings.Store
 	// HostKey is the manager public key line agents pin.
 	HostKey string
 	Replica string
@@ -173,6 +177,7 @@ var procedures = map[string]spec{
 	apiv1connect.GeoServiceLookupProcedure:         read,
 	apiv1connect.GeoServiceDeleteDatabaseProcedure: adm,
 	geoUploadPath: adm,
+	hubUploadPath: adm,
 
 	apiv1connect.LogServiceQueryLogsProcedure:      read,
 	apiv1connect.LogServiceTailLogsProcedure:       read,
@@ -184,6 +189,16 @@ var procedures = map[string]spec{
 	apiv1connect.IntelServiceProposeIOCProcedure:     op,
 
 	apiv1connect.MetricsServiceGetCrowdSecMetricsProcedure: read,
+
+	apiv1connect.HubServiceListHubItemsProcedure:    read,
+	apiv1connect.HubServiceGetHubItemProcedure:      read,
+	apiv1connect.HubServiceGetHubRolloutProcedure:   read,
+	apiv1connect.HubServiceSetHubItemStateProcedure: adm,
+	apiv1connect.HubServiceListHubIndexProcedure:    read,
+	apiv1connect.HubServiceRefreshHubIndexProcedure: {role: auth.RoleAdmin, write: true},
+	apiv1connect.HubServicePreviewHubItemProcedure:  {role: auth.RoleAdmin},
+	apiv1connect.HubServiceInstallHubItemProcedure:  adm,
+	apiv1connect.HubServiceRemoveHubItemProcedure:   adm,
 
 	apiv1connect.NotificationServiceListNotificationsProcedure:     read,
 	apiv1connect.NotificationServiceMarkNotificationsReadProcedure: own,
@@ -209,7 +224,10 @@ var procedures = map[string]spec{
 	apiv1connect.SystemServiceResyncAlertsProcedure:      op,
 }
 
-const geoUploadPath = "/geo/upload"
+const (
+	geoUploadPath = "/geo/upload"
+	hubUploadPath = "/hub/upload"
+)
 
 // Handler serves the API (mount at /api/ with the prefix stripped).
 func (s *Server) Handler() http.Handler {
@@ -225,9 +243,11 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(apiv1connect.NewDashboardServiceHandler(&dashboardService{s}, opts...))
 	mux.Handle(apiv1connect.NewLogServiceHandler(&logService{s}, opts...))
 	mux.Handle(apiv1connect.NewMetricsServiceHandler(&metricsService{s}, opts...))
+	mux.Handle(apiv1connect.NewHubServiceHandler(&hubService{s}, opts...))
 	mux.Handle(apiv1connect.NewNotificationServiceHandler(&notificationService{s}, opts...))
 	mux.Handle(apiv1connect.NewIntelServiceHandler(&intelService{s}, opts...))
 	mux.HandleFunc("POST "+geoUploadPath, s.uploadGeo)
+	mux.HandleFunc("POST "+hubUploadPath, s.uploadHub)
 	return s.middleware(mux)
 }
 
@@ -337,7 +357,7 @@ func (s *Server) checkOrigin(r *http.Request) error {
 	if o := r.Header.Get("Origin"); o != "" && !s.originAllowed(r, o) {
 		return errors.New("origin " + o + " is not allowed")
 	}
-	if r.URL.Path == geoUploadPath {
+	if r.URL.Path == geoUploadPath || r.URL.Path == hubUploadPath {
 		// multipart/form-data is a "simple" content type: require a custom
 		// header (preflighted).
 		if r.Header.Get("X-OpenPicket-Request") == "" {
@@ -397,9 +417,9 @@ func toConnectError(err error) error {
 	switch {
 	case errors.As(err, &ce):
 		return err
-	case errors.Is(err, policy.ErrNotFound), errors.Is(err, pgx.ErrNoRows), errors.Is(err, errNotFound):
+	case errors.Is(err, policy.ErrNotFound), errors.Is(err, pgx.ErrNoRows), errors.Is(err, errNotFound), errors.Is(err, hub.ErrNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, policy.ErrInvalid), errors.Is(err, errInvalid):
+	case errors.Is(err, policy.ErrInvalid), errors.Is(err, errInvalid), errors.Is(err, hub.ErrInvalid):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, errExists):
 		return connect.NewError(connect.CodeAlreadyExists, err)

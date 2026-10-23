@@ -1,0 +1,173 @@
+syntax = "proto3";
+
+package openpicket.api.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1";
+
+// CrowdSec content: parsers, scenarios, collections... stored by the
+// manager and pushed to the log processors (docs/ARCHITECTURE.md §8).
+service HubService {
+  rpc ListHubItems(ListHubItemsRequest) returns (ListHubItemsResponse);
+  // The item file.
+  rpc GetHubItem(GetHubItemRequest) returns (GetHubItemResponse);
+  rpc SetHubItemState(SetHubItemStateRequest) returns (SetHubItemStateResponse);
+  // What the log processors run.
+  rpc GetHubRollout(GetHubRolloutRequest) returns (GetHubRolloutResponse);
+  // The CrowdSec hub index.
+  rpc ListHubIndex(ListHubIndexRequest) returns (ListHubIndexResponse);
+  rpc RefreshHubIndex(RefreshHubIndexRequest) returns (RefreshHubIndexResponse);
+  // Downloads an item and what it brings, without installing.
+  rpc PreviewHubItem(PreviewHubItemRequest) returns (PreviewHubItemResponse);
+  // Installs (or updates to the index version) an item from the hub,
+  // with a collection's members and the data files they read.
+  rpc InstallHubItem(InstallHubItemRequest) returns (InstallHubItemResponse);
+  // Removes a hub or custom item (built-in items can only be turned off).
+  rpc RemoveHubItem(RemoveHubItemRequest) returns (RemoveHubItemResponse);
+}
+
+message HubRef {
+  string type = 1;
+  string name = 2;
+}
+
+message HubItem {
+  // parsers | scenarios | postoverflows | collections | contexts |
+  // appsec-configs | appsec-rules
+  string type = 1;
+  string name = 2;
+  // builtin | hub | custom
+  string source = 3;
+  string version = 4;
+  string stage = 5;
+  string description = 6;
+  // enabled | simulation (scenarios, collections) | disabled
+  string state = 7;
+  repeated HubRef members = 8;
+  // Collections having the item.
+  repeated string member_of = 9;
+  // Data files it reads.
+  repeated string data = 10;
+  // Installed on its own (not only as a collection member).
+  bool explicit = 11;
+  string digest = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  string updated_by = 14;
+  // Hub items: the index version when newer than the installed one.
+  string latest_version = 15;
+  // Scenarios: ok | missing (no enabled parser sets the log types it
+  // reads) | unknown (its filters name no log type).
+  string compat = 16;
+  repeated string missing_log_types = 17;
+}
+
+message ListHubItemsRequest {
+  // Empty: every type.
+  string type = 1;
+}
+
+message ListHubItemsResponse {
+  repeated HubItem items = 1;
+}
+
+message GetHubItemRequest {
+  HubRef ref = 1;
+}
+
+message GetHubItemResponse {
+  HubItem item = 1;
+  string content = 2;
+}
+
+message SetHubItemStateRequest {
+  HubRef ref = 1;
+  string state = 2;
+}
+
+message SetHubItemStateResponse {}
+
+message GetHubRolloutRequest {}
+
+message HubLogProcessor {
+  string endpoint = 1;
+  int64 revision = 2;
+  bool running = 3;
+  string error = 4;
+  google.protobuf.Timestamp seen_at = 5;
+}
+
+message GetHubRolloutResponse {
+  // Current content revision.
+  int64 revision = 1;
+  // Last revision a log processor accepted (pushed while a newer one is
+  // refused).
+  int64 good_revision = 2;
+  // A revision CrowdSec refused, and why.
+  int64 failed_revision = 3;
+  string failed_error = 4;
+  repeated HubLogProcessor log_processors = 5;
+}
+
+message HubIndexEntry {
+  string type = 1;
+  string name = 2;
+  string description = 3;
+  string version = 4;
+  repeated string references = 5;
+  repeated HubRef members = 6;
+  // Installed: its source and version ("" when not installed).
+  string installed_source = 7;
+  string installed_version = 8;
+}
+
+message ListHubIndexRequest {
+  string type = 1;
+  // Matches names and descriptions.
+  string query = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message ListHubIndexResponse {
+  repeated HubIndexEntry entries = 1;
+  int32 total = 2;
+  // When the index was downloaded (unset: never).
+  google.protobuf.Timestamp fetched_at = 3;
+  string base_url = 4;
+}
+
+message RefreshHubIndexRequest {}
+
+message RefreshHubIndexResponse {
+  bool changed = 1;
+}
+
+message PreviewHubItemRequest {
+  HubRef ref = 1;
+}
+
+message PreviewHubItemResponse {
+  HubIndexEntry entry = 1;
+  string content = 2;
+  // Every item installing it brings (itself first).
+  repeated HubRef items = 3;
+  repeated string data_files = 4;
+  // Scenarios brought: compatibility with the enabled parsers.
+  string compat = 5;
+  repeated string missing_log_types = 6;
+}
+
+message InstallHubItemRequest {
+  HubRef ref = 1;
+}
+
+message InstallHubItemResponse {
+  repeated HubRef installed = 1;
+}
+
+message RemoveHubItemRequest {
+  HubRef ref = 1;
+}
+
+message RemoveHubItemResponse {}

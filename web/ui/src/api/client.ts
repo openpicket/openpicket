@@ -9,6 +9,7 @@ import { LogService } from "../gen/openpicket/api/v1/logs_pb";
 import { MetricsService } from "../gen/openpicket/api/v1/metrics_pb";
 import { NotificationService } from "../gen/openpicket/api/v1/notifications_pb";
 import { IntelService } from "../gen/openpicket/api/v1/intel_pb";
+import { HubService } from "../gen/openpicket/api/v1/hub_pb";
 
 /** Base URL of the API (same origin). */
 export const apiBase = new URL("/api", window.location.origin).href;
@@ -34,6 +35,7 @@ export const api = {
   metrics: createClient(MetricsService, transport),
   notifications: createClient(NotificationService, transport),
   intel: createClient(IntelService, transport),
+  hub: createClient(HubService, transport),
 };
 
 /** Uploads a MaxMind database (multipart; not a Connect call). */
@@ -41,6 +43,23 @@ export async function uploadGeoDatabase(file: File): Promise<{ kind: string; dat
   const body = new FormData();
   body.append("file", file);
   const res = await fetch(`${apiBase}/geo/upload`, {
+    method: "POST",
+    body,
+    credentials: "same-origin",
+    headers: { "X-OpenPicket-Request": "1" },
+  });
+  if (!res.ok) throw new Error((await res.text()).trim() || `upload failed (${res.status})`);
+  return res.json();
+}
+
+/** Uploads a CrowdSec item with the data files it reads (multipart). */
+export async function uploadHubItem(type: string, stage: string, item: File, data: File[]): Promise<{ type: string; name: string }> {
+  const body = new FormData();
+  body.append("type", type);
+  body.append("stage", stage);
+  body.append("item", item);
+  for (const f of data) body.append("data", f);
+  const res = await fetch(`${apiBase}/hub/upload`, {
     method: "POST",
     body,
     credentials: "same-origin",

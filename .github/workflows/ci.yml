@@ -115,7 +115,7 @@ jobs:
           out="$RUNNER_TEMP/bin"
           for platform in linux/amd64 linux/arm64; do
             IFS=/ read -r os arch <<<"$platform"
-            for cmd in openpicket-manager openpicket-suricontroller openpicket-agent; do
+            for cmd in openpicket-manager openpicket-suricontroller openpicket-agent openpicket-crowdsec-sync; do
               CGO_ENABLED=0 GOOS=$os GOARCH=$arch \
                 go build -trimpath -ldflags "$ldflags" -o "$out/${os}_${arch}/$cmd" "./cmd/$cmd"
             done
@@ -157,8 +157,8 @@ jobs:
 
   # Each platform is built natively on its own runner (amd64 / arm64) and
   # pushed by digest; images-merge stitches the digests into multi-arch tags.
-  # The Go images take the prebuilt binaries (build context "binary"); the
-  # CrowdSec image installs its hub content at build time.
+  # Every image takes its prebuilt binary (build context "binary"); the
+  # CrowdSec image carries no hub content (the manager pushes it).
   images:
     needs: [go, web, helm, binaries, resolve]
     strategy:
@@ -183,7 +183,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
-        if: matrix.image != 'openpicket-crowdsec'
         with:
           name: binaries
           path: ${{ runner.temp }}/bin
@@ -192,10 +191,8 @@ jobs:
         run: |
           platform='${{ matrix.platform }}'
           echo "pair=${platform//\//-}" >> "$GITHUB_OUTPUT"
-          if [[ '${{ matrix.image }}' != openpicket-crowdsec ]]; then
-            chmod +x "$RUNNER_TEMP"/bin/*/*
-            echo "contexts=binary=$RUNNER_TEMP/bin/${platform//\//_}" >> "$GITHUB_OUTPUT"
-          fi
+          chmod +x "$RUNNER_TEMP"/bin/*/*
+          echo "contexts=binary=$RUNNER_TEMP/bin/${platform//\//_}" >> "$GITHUB_OUTPUT"
           if [[ '${{ matrix.image }}' == openpicket-agent ]]; then
             echo "args=SURICATA_VERSION=${{ needs.resolve.outputs.suricata }}" >> "$GITHUB_OUTPUT"
           fi

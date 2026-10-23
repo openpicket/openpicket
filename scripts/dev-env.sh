@@ -44,6 +44,13 @@ for img in openpicket-crowdsec:dev openpicket-suricontroller:dev; do
 done
 echo "starting dependencies..."
 compose up -d --wait
+# CrowdSec has no content until it gets some: the built-in one now, the
+# manager's (revision of the database) once it runs.
+go run ./cmd/openpicket-manager hub-bundle | compose exec -T crowdsec openpicket-crowdsec-sync put >/dev/null
+for _ in $(seq 1 60); do
+  compose exec -T crowdsec cscli lapi status >/dev/null 2>&1 && break
+  sleep 1
+done
 [ "${SEED:-0}" = 1 ] && ./scripts/dev-seed.sh
 
 export OPENPICKET_LISTEN="127.0.0.1:${PORT}"
@@ -53,6 +60,7 @@ export OPENPICKET_LOKI_URL="http://127.0.0.1:13100"
 export OPENPICKET_CROWDSEC_ENDPOINTS="http://127.0.0.1:18081/openpicket"
 export OPENPICKET_CROWDSEC_AUTH_HEADER="X-OpenPicket-Token"
 export OPENPICKET_CROWDSEC_AUTH_VALUE="dev-token"
+export OPENPICKET_CROWDSEC_SYNC_ENDPOINTS="http://127.0.0.1:18083"
 export OPENPICKET_CROWDSEC_METRICS_URLS="http://127.0.0.1:16060/metrics"
 export OPENPICKET_LAPI_URL="http://127.0.0.1:18080"
 export OPENPICKET_LAPI_BOUNCER_KEY="dev-bouncer-key"

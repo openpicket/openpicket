@@ -19,6 +19,7 @@ import { useDisclosure } from "@mantine/hooks";
 import {
   IconBell,
   IconChartBar,
+  IconPuzzle,
   IconChecklist,
   IconChevronDown,
   IconDeviceDesktop,
@@ -84,6 +85,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Monitor",
     items: [
+      { to: "/crowdsec", label: "CrowdSec content", icon: IconPuzzle },
       { to: "/metrics", label: "CrowdSec metrics", icon: IconChartBar, feature: "metrics" },
       { to: "/notifications", label: "Notifications", icon: IconBell },
       { to: "/system", label: "System", icon: IconSettings },
