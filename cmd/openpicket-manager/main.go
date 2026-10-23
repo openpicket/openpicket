@@ -31,6 +31,7 @@ import (
 	"github.com/openpicket/openpicket/manager/api"
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/csmetrics"
+	"github.com/openpicket/openpicket/manager/hub"
 	"github.com/openpicket/openpicket/manager/lapi"
 	"github.com/openpicket/openpicket/manager/relay"
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
@@ -55,6 +56,7 @@ type config struct {
 	MISP              manager.MISPOptions
 	Metrics           csmetrics.Config
 	CrowdSec          crowdsec.Config
+	CrowdSecSync      manager.CrowdSecSync
 	LAPI              lapi.Config
 	LAPIName          string
 	LAPIExtra         string
@@ -114,6 +116,8 @@ func loadConfig() (*config, error) {
 	e.Secret("CROWDSEC_AUTH_VALUE", &c.CrowdSec.AuthValue)
 	e.List("CROWDSEC_EVE_TYPES", &c.CrowdSec.EveTypes)
 	e.List("CROWDSEC_NFLOG_PREFIXES", &c.CrowdSec.NflogPrefixes)
+	e.List("CROWDSEC_SYNC_ENDPOINTS", &c.CrowdSecSync.Endpoints)
+	e.Int("CROWDSEC_SYNC_PORT", &c.CrowdSecSync.Port)
 	e.String("LAPI_URL", &c.LAPI.URL)
 	e.Secret("LAPI_BOUNCER_KEY", &c.LAPI.BouncerKey)
 	e.String("LAPI_LOGIN", &c.LAPI.Login)
@@ -173,6 +177,9 @@ Commands:
            (openpicket-suricontroller OPENPICKET_SURI_PRINCIPAL_PUBLIC_KEY)
   hash-password
            read a password from stdin and print its bcrypt hash
+  hub-bundle
+           print the built-in CrowdSec content as a log processor bundle
+           (JSON, for openpicket-crowdsec-sync PUT /hub/bundle)
   version  print the version
 `)
 }
@@ -196,6 +203,8 @@ func main() {
 		err = pubkey(true)
 	case "hash-password":
 		err = hashPassword()
+	case "hub-bundle":
+		err = hubBundle()
 	case "version":
 		fmt.Println(version.Version)
 	default:
@@ -206,6 +215,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
+}
+
+func hubBundle() error {
+	b, err := hub.BuiltinBundle(1)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(b)
 }
 
 func keygen() error {
@@ -342,7 +359,7 @@ func serve() error {
 		}
 	}
 	m, err := manager.New(manager.Options{
-		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
+		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, CrowdSecSync: cfg.CrowdSecSync, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
 		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, OpenSearch: &cfg.OpenSearch, MISP: &cfg.MISP, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
 		Suricontroller: suri, AgentControllerURL: cfg.AgentControllerURL, TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
 	})

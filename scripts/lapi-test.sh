@@ -7,9 +7,17 @@ cd "$(dirname "$0")/.."
 IMAGE="${IMAGE:-openpicket-crowdsec:dev}"
 name="openpicket-lapi-test-$$"
 docker run -d --rm --name "$name" -e OPENPICKET_ACQUIS_TOKEN=test-token -p 127.0.0.1::8080 -p 127.0.0.1::8081 "$IMAGE" >/dev/null
-trap 'docker rm -f "$name" >/dev/null 2>&1' EXIT
+bundle="$(mktemp)"
+trap 'docker rm -f "$name" >/dev/null 2>&1; rm -f "$bundle"' EXIT
 ex() { docker exec "$name" "$@"; }
+# The image has no content: push the built-in one, as the manager does
+# (CrowdSec starts once it has it, again after every restart).
+go run ./cmd/openpicket-manager hub-bundle > "$bundle"
 wait_lapi() {
+  for _ in $(seq 1 30); do
+    docker exec -i -e OPENPICKET_ACQUIS_TOKEN=test-token "$name" openpicket-crowdsec-sync put < "$bundle" >/dev/null 2>&1 && break
+    sleep 1
+  done
   for _ in $(seq 1 90); do
     ex cscli lapi status >/dev/null 2>&1 && return 0
     sleep 1

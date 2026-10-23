@@ -1,0 +1,26 @@
+[
+  {
+    "type": "parsers",
+    "name": "crowdsecurity/syslog-logs",
+    "path": "parsers/s00-raw/crowdsecurity/syslog-logs.yaml",
+    "version": "1.0",
+    "digest": "66ab30693dfb6c55ca9c1d28132c6bd69bcb1f9f7accf01f2d0bc1361b3d55d9",
+    "stage": "s00-raw"
+  },
+  {
+    "type": "parsers",
+    "name": "crowdsecurity/dateparse-enrich",
+    "path": "parsers/s02-enrich/crowdsecurity/dateparse-enrich.yaml",
+    "version": "0.2",
+    "digest": "3f51a6c389bbf1c38f49d8824b6bffd9a265d0fa78a98af71628256019847951",
+    "stage": "s02-enrich"
+  },
+  {
+    "type": "parsers",
+    "name": "crowdsecurity/whitelists",
+    "path": "parsers/s02-enrich/crowdsecurity/whitelists.yaml",
+    "version": "0.3",
+    "digest": "940322deea257698388981529bbd59a62dc963e4dd489db44fccbfd127903a5d",
+    "stage": "s02-enrich"
+  }
+]

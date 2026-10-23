@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package openpicket.api.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1";
+
+// CrowdSec content: parsers, scenarios, collections... stored by the
+// manager and pushed to the log processors (docs/ARCHITECTURE.md §8).
+service HubService {
+  rpc ListHubItems(ListHubItemsRequest) returns (ListHubItemsResponse);
+  // The item file.
+  rpc GetHubItem(GetHubItemRequest) returns (GetHubItemResponse);
+  rpc SetHubItemState(SetHubItemStateRequest) returns (SetHubItemStateResponse);
+  // What the log processors run.
+  rpc GetHubRollout(GetHubRolloutRequest) returns (GetHubRolloutResponse);
+}
+
+message HubRef {
+  string type = 1;
+  string name = 2;
+}
+
+message HubItem {
+  // parsers | scenarios | postoverflows | collections | contexts |
+  // appsec-configs | appsec-rules
+  string type = 1;
+  string name = 2;
+  // builtin | hub | custom
+  string source = 3;
+  string version = 4;
+  string stage = 5;
+  string description = 6;
+  // enabled | simulation (scenarios, collections) | disabled
+  string state = 7;
+  repeated HubRef members = 8;
+  // Collections having the item.
+  repeated string member_of = 9;
+  // Data files it reads.
+  repeated string data = 10;
+  // Installed on its own (not only as a collection member).
+  bool explicit = 11;
+  string digest = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  string updated_by = 14;
+}
+
+message ListHubItemsRequest {
+  // Empty: every type.
+  string type = 1;
+}
+
+message ListHubItemsResponse {
+  repeated HubItem items = 1;
+}
+
+message GetHubItemRequest {
+  HubRef ref = 1;
+}
+
+message GetHubItemResponse {
+  HubItem item = 1;
+  string content = 2;
+}
+
+message SetHubItemStateRequest {
+  HubRef ref = 1;
+  string state = 2;
+}
+
+message SetHubItemStateResponse {}
+
+message GetHubRolloutRequest {}
+
+message HubLogProcessor {
+  string endpoint = 1;
+  int64 revision = 2;
+  bool running = 3;
+  string error = 4;
+  google.protobuf.Timestamp seen_at = 5;
+}
+
+message GetHubRolloutResponse {
+  // Current content revision.
+  int64 revision = 1;
+  // Last revision a log processor accepted (pushed while a newer one is
+  // refused).
+  int64 good_revision = 2;
+  // A revision CrowdSec refused, and why.
+  int64 failed_revision = 3;
+  string failed_error = 4;
+  repeated HubLogProcessor log_processors = 5;
+}

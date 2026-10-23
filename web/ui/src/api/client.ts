@@ -9,6 +9,7 @@ import { LogService } from "../gen/openpicket/api/v1/logs_pb";
 import { MetricsService } from "../gen/openpicket/api/v1/metrics_pb";
 import { NotificationService } from "../gen/openpicket/api/v1/notifications_pb";
 import { IntelService } from "../gen/openpicket/api/v1/intel_pb";
+import { HubService } from "../gen/openpicket/api/v1/hub_pb";
 
 /** Base URL of the API (same origin). */
 export const apiBase = new URL("/api", window.location.origin).href;
@@ -34,6 +35,7 @@ export const api = {
   metrics: createClient(MetricsService, transport),
   notifications: createClient(NotificationService, transport),
   intel: createClient(IntelService, transport),
+  hub: createClient(HubService, transport),
 };
 
 /** Uploads a MaxMind database (multipart; not a Connect call). */
