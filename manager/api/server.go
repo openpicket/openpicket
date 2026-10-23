@@ -28,6 +28,7 @@ import (
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/csmetrics"
 	"github.com/openpicket/openpicket/manager/geo"
+	"github.com/openpicket/openpicket/manager/hub"
 	"github.com/openpicket/openpicket/manager/misp"
 	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/policy"
@@ -49,7 +50,9 @@ type Config struct {
 	TrustProxyHeaders bool
 	Geo               *geo.Store
 	Policies          *policy.Service
-	Settings          *settings.Store
+	// Hub is the CrowdSec content store.
+	Hub      *hub.Store
+	Settings *settings.Store
 	// HostKey is the manager public key line agents pin.
 	HostKey string
 	Replica string
@@ -185,6 +188,11 @@ var procedures = map[string]spec{
 
 	apiv1connect.MetricsServiceGetCrowdSecMetricsProcedure: read,
 
+	apiv1connect.HubServiceListHubItemsProcedure:    read,
+	apiv1connect.HubServiceGetHubItemProcedure:      read,
+	apiv1connect.HubServiceGetHubRolloutProcedure:   read,
+	apiv1connect.HubServiceSetHubItemStateProcedure: adm,
+
 	apiv1connect.NotificationServiceListNotificationsProcedure:     read,
 	apiv1connect.NotificationServiceMarkNotificationsReadProcedure: own,
 	apiv1connect.NotificationServiceListRulesProcedure:             read,
@@ -225,6 +233,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(apiv1connect.NewDashboardServiceHandler(&dashboardService{s}, opts...))
 	mux.Handle(apiv1connect.NewLogServiceHandler(&logService{s}, opts...))
 	mux.Handle(apiv1connect.NewMetricsServiceHandler(&metricsService{s}, opts...))
+	mux.Handle(apiv1connect.NewHubServiceHandler(&hubService{s}, opts...))
 	mux.Handle(apiv1connect.NewNotificationServiceHandler(&notificationService{s}, opts...))
 	mux.Handle(apiv1connect.NewIntelServiceHandler(&intelService{s}, opts...))
 	mux.HandleFunc("POST "+geoUploadPath, s.uploadGeo)
@@ -397,9 +406,9 @@ func toConnectError(err error) error {
 	switch {
 	case errors.As(err, &ce):
 		return err
-	case errors.Is(err, policy.ErrNotFound), errors.Is(err, pgx.ErrNoRows), errors.Is(err, errNotFound):
+	case errors.Is(err, policy.ErrNotFound), errors.Is(err, pgx.ErrNoRows), errors.Is(err, errNotFound), errors.Is(err, hub.ErrNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, policy.ErrInvalid), errors.Is(err, errInvalid):
+	case errors.Is(err, policy.ErrInvalid), errors.Is(err, errInvalid), errors.Is(err, hub.ErrInvalid):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, errExists):
 		return connect.NewError(connect.CodeAlreadyExists, err)

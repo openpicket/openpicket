@@ -11,9 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -33,6 +35,7 @@ import (
 	"github.com/openpicket/openpicket/manager/db"
 	"github.com/openpicket/openpicket/manager/gateway"
 	"github.com/openpicket/openpicket/manager/geo"
+	"github.com/openpicket/openpicket/manager/hub"
 	"github.com/openpicket/openpicket/manager/lapi"
 	"github.com/openpicket/openpicket/manager/misp"
 	"github.com/openpicket/openpicket/manager/notify"
@@ -63,6 +66,9 @@ type Options struct {
 	// the push URL's host).
 	LokiQueryURL string
 	CrowdSec     crowdsec.Config
+	// CrowdSecSync locates the log processors' content sync
+	// (openpicket-crowdsec-sync).
+	CrowdSecSync CrowdSecSync
 	// LAPI is the primary CrowdSec Local API (decision relay). An empty URL
 	// disables decision distribution.
 	LAPI lapi.Config
@@ -111,6 +117,15 @@ type Options struct {
 	Registry *prometheus.Registry
 }
 
+// CrowdSecSync locates the content sync of the log processors.
+type CrowdSecSync struct {
+	// Endpoints are sync base URLs (http://lp:8082); empty: every log
+	// processor of the CrowdSec sink on Port.
+	Endpoints []string
+	// Port of the sync on the log processors (default 8082).
+	Port int
+}
+
 // MISPOptions configure the MISP integration.
 type MISPOptions struct {
 	Client           misp.ClientConfig
@@ -143,6 +158,8 @@ type Manager struct {
 	relay      *relay.Relay
 	dist       *relay.Distributor
 	geo        *geo.Store
+	hub        *hub.Store
+	rollout    *hub.Rollout
 	policies   *policy.Service
 	alerts     *alerts.Syncer
 	lokiQuery  *loki.Querier
@@ -204,6 +221,10 @@ func New(opts Options) (*Manager, error) {
 	}
 	ack = append(ack, m.cs)
 	m.geo = geo.New(opts.DB, opts.Logger)
+	m.hub = hub.NewStore(opts.DB, opts.Logger)
+	header, token := m.cs.Auth()
+	m.rollout = &hub.Rollout{Store: m.hub, Targets: m.syncTargets, Header: header, Token: token, Logger: opts.Logger}
+	m.rollout.Init()
 	m.policies = policy.New(opts.DB, m.geo, opts.Logger)
 	// Policies compile against the GeoIP data this replica loaded: a
 	// reload (first successful load after a failure, new upload) recompiles.
@@ -227,6 +248,8 @@ func New(opts Options) (*Manager, error) {
 		m.policies.Notified("")
 	})
 	m.listener.Handle(db.ChannelGeo, m.geo.Notified)
+	m.listener.Handle(db.ChannelHub, m.rollout.Notified)
+	m.listener.OnResync(func() { m.rollout.Notified("") })
 	m.listener.Handle(db.ChannelPolicy, m.policies.Notified)
 	m.listener.OnResync(func() {
 		m.geo.Notified("")
@@ -381,6 +404,11 @@ func (m *Manager) Run(ctx context.Context) error {
 	if err := m.geo.Load(ctx); err != nil {
 		m.log.Warn("load geo databases", "err", err)
 	}
+	// The CrowdSec image carries no content: the built-in items come from
+	// this binary (hub.Builtin).
+	if err := m.hub.SeedBuiltin(ctx); err != nil {
+		m.log.Error("store built-in CrowdSec content", "err", err)
+	}
 	// One lock connection for every leader task of this replica.
 	el := db.NewElector(m.opts.DB, m.opts.ReplicaID, m.log)
 	if m.relay != nil {
@@ -395,6 +423,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		el.Add("misp", func(ctx context.Context, l *db.Leadership) { m.misp.Run(ctx, l) })
 	}
 	el.Add("notify", func(ctx context.Context, l *db.Leadership) { m.notify.Run(ctx, l) })
+	el.Add("hub", func(ctx context.Context, l *db.Leadership) { m.rollout.Run(ctx, l) })
 	if m.alerts != nil {
 		el.Add("alerts", func(ctx context.Context, l *db.Leadership) { m.alerts.Run(ctx, l) })
 	}
@@ -431,6 +460,29 @@ func (m *Manager) Run(ctx context.Context) error {
 	wg.Wait()
 	return nil
 }
+
+// syncTargets returns the content sync URLs of the log processors.
+func (m *Manager) syncTargets() []string {
+	if len(m.opts.CrowdSecSync.Endpoints) > 0 {
+		return m.opts.CrowdSecSync.Endpoints
+	}
+	port := m.opts.CrowdSecSync.Port
+	if port == 0 {
+		port = 8082
+	}
+	var out []string
+	for _, e := range m.cs.Endpoints() {
+		u, err := url.Parse(e)
+		if err != nil || u.Hostname() == "" {
+			continue
+		}
+		out = append(out, "http://"+net.JoinHostPort(u.Hostname(), strconv.Itoa(port)))
+	}
+	return out
+}
+
+// Hub returns the CrowdSec content store.
+func (m *Manager) Hub() *hub.Store { return m.hub }
 
 // Handler serves the agent endpoint and the health checks.
 func (m *Manager) Handler() http.Handler {

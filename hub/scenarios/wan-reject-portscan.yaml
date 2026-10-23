@@ -1,0 +1,25 @@
+# WAN-REJECT scenarios (docs/ARCHITECTURE.md §4.5): new WAN connections the
+# node's firewall refused (closed or filtered ports; accepted services and
+# port forwards are not logged). Sources of such packets can be spoofed, so
+# UDP never leads to a decision and TCP decisions stay short.
+
+# One source probing many closed ports of one node.
+type: leaky
+name: openpicket/wan-reject-portscan
+description: "Port scan of a node (10 distinct closed TCP ports)"
+filter: |
+  evt.Meta.log_type == "openpicket_nflog" && evt.Meta.nflog_prefix == "WAN-REJECT" && evt.Meta.source_ip != "" && evt.Parsed.proto == "TCP"
+groupby: evt.Meta.source_ip + "/" + evt.Meta.node_id
+distinct: evt.Meta.dest_port
+capacity: 9
+leakspeed: 30s
+blackhole: 5m
+labels:
+  service: openpicket
+  remediation: true
+  confidence: 2
+  spoofable: 2
+  classification:
+    - attack.T1046
+  behavior: "tcp:scan"
+  label: "Port scan (refused WAN connections)"

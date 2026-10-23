@@ -1,0 +1,29 @@
+# Direction-aware Suricata scenarios (docs/ARCHITECTURE.md §4.7). They replace
+# the crowdsecurity/suricata scenarios, which ban eve's src_ip. Here
+# evt.Meta.source_ip is the remote party, and the scenario name tells the
+# relay how to block: openpicket/suricata-outbound-* is blocked both ways
+# (BOTH), everything else inbound only.
+
+# Inbound, severity 2: three different signatures within the bucket.
+type: leaky
+name: openpicket/suricata-inbound-high-medium
+description: "Inbound exploit attempts (3 distinct Suricata severity 2 signatures)"
+filter: |
+  evt.Meta.log_type == "suricata_alert" && evt.Meta.openpicket_direction == "inbound" && evt.Meta.source_ip != "" &&
+  evt.Parsed.proto == "TCP" && evt.Meta.suricata_rule_severity == "2"
+groupby: evt.Meta.source_ip
+distinct: evt.Meta.suricata_alert_signature_id
+capacity: 2
+leakspeed: 20s
+blackhole: 1m
+reprocess: true
+labels:
+  service: suricata
+  remediation: true
+  confidence: 2
+  spoofable: 1
+  classification:
+    - attack.T1190
+    - attack.T1595
+  behavior: "generic:exploit"
+  label: "Suricata inbound severity 2"

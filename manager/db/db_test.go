@@ -157,9 +157,12 @@ func TestElectorSharesOneConnection(t *testing.T) {
 			time.Sleep(20 * time.Millisecond)
 		}
 	}
+	// pg_locks spans the cluster: other test packages take advisory locks
+	// in their own databases at the same time (migrations, seeding).
 	lockHolders := func() int {
 		var n int
-		if err := pool.QueryRow(ctx, `SELECT count(DISTINCT pid) FROM pg_locks WHERE locktype = 'advisory' AND granted`).Scan(&n); err != nil {
+		if err := pool.QueryRow(ctx, `SELECT count(DISTINCT pid) FROM pg_locks WHERE locktype = 'advisory' AND granted
+			AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		return n
