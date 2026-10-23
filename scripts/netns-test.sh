@@ -8,7 +8,7 @@ IMAGE=openpicket-nftcheck:2
 if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
   printf 'FROM alpine:3.22\nRUN apk add --no-cache nftables iproute2 netcat-openbsd\n' | docker build --network host -q -t "$IMAGE" - >/dev/null
 fi
-pkgs=("${@:-./agent/nflog/ ./agent/nft/ ./agent/enforcer/ ./agent/policy/}")
+pkgs=("${@:-./agent/nflog/ ./agent/nft/ ./agent/enforcer/ ./agent/policy/ ./agent/natmap/}")
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 for p in ${pkgs[@]}; do

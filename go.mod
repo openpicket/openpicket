@@ -5,12 +5,13 @@ go 1.26.0
 require (
 	connectrpc.com/connect v1.21.0
 	github.com/coder/websocket v1.8.15
+	github.com/florianl/go-conntrack v0.7.0
 	github.com/florianl/go-nflog/v2 v2.3.0
 	github.com/flynn/noise v1.1.0
 	github.com/go-jose/go-jose/v4 v4.1.3
 	github.com/hashicorp/yamux v0.1.2
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/jc-lab/suricontroller v0.0.3-0.20261022231444-15db942879ea
+	github.com/jc-lab/suricontroller v0.0.3-0.20261023001717-f41a0435f6ff
 	github.com/klauspost/compress v1.20.3
 	github.com/maxmind/mmdbwriter v1.2.0
 	github.com/oschwald/maxminddb-golang/v2 v2.1.1

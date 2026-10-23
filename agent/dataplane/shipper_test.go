@@ -3,7 +3,9 @@ package dataplane
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
+	"net/netip"
 	"testing"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	agentv1 "github.com/jc-lab/suricontroller/gen/suricontroller/agent/v1"
 	"github.com/jc-lab/suricontroller/pkg/wire"
 
+	"github.com/openpicket/openpicket/agent/natmap"
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/pkg/direction"
 	"github.com/openpicket/openpicket/pkg/record"
@@ -147,6 +150,66 @@ func TestConvertTagsAlertsAndKeepsLinesStable(t *testing.T) {
 	}
 	if recs[0].TimeUnixNano != time.Date(2026, 10, 20, 1, 59, 1, 0, time.UTC).UnixNano() {
 		t.Fatalf("time = %d", recs[0].TimeUnixNano)
+	}
+}
+
+// TestConvertAddsNAT: an outbound alert captured on the WAN (after SNAT)
+// names the inside host; a reply packet (to_client) is turned around for
+// the lookup; a fresh record without a translation waits once per batch.
+func TestConvertAddsNAT(t *testing.T) {
+	nets, _ := direction.NewNets([]string{"192.168.1.0/24", "125.131.127.16"})
+	tbl := natmap.NewTable(time.Minute, 10)
+	tbl.Add(natmap.Flow{ID: 1, Proto: natmap.ProtoTCP, SNAT: true,
+		OrigSrc: netip.MustParseAddrPort("192.168.1.50:51515"), OrigDst: netip.MustParseAddrPort("162.243.103.246:443"),
+		ReplySrc: netip.MustParseAddrPort("162.243.103.246:443"), ReplyDst: netip.MustParseAddrPort("125.131.127.16:40123")})
+	var lookups int
+	s := NewShipper(ShipperConfig{NodeID: "n1", BootID: "b", Nets: func() *direction.Nets { return nets },
+		NAT: func(proto uint8, c, sv netip.AddrPort) (natmap.Mapping, bool) {
+			lookups++
+			return tbl.Lookup(proto, c, sv)
+		}})
+	now := time.Date(2026, 10, 23, 1, 0, 0, 0, time.UTC)
+	var slept []time.Duration
+	s.now, s.sleep = func() time.Time { return now }, func(d time.Duration) { slept = append(slept, d) }
+	line := func(ts, src string, sport int, dst string, dport int, dir string) collector.Record {
+		return collector.Record{Line: []byte(fmt.Sprintf(`{"timestamp":%q,"event_type":"alert","proto":"TCP","src_ip":%q,"src_port":%d,"dest_ip":%q,"dest_port":%d,"direction":%q}`,
+			ts, src, sport, dst, dport, dir))}
+	}
+	fresh := "2026-10-23T01:00:00.000000+0000"
+	b := &collector.Batch{Type: agentv1.LogType_LOG_TYPE_EVE, Records: []collector.Record{
+		line(fresh, "125.131.127.16", 40123, "162.243.103.246", 443, "to_server"),
+		line(fresh, "162.243.103.246", 443, "125.131.127.16", 40123, "to_client"),
+		// An inbound scan of the node itself: no translation.
+		line(fresh, "198.51.100.4", 50000, "125.131.127.16", 22, "to_server"),
+		line(fresh, "198.51.100.4", 50001, "125.131.127.16", 23, "to_server"),
+	}}
+	recs := s.convert(b)
+	tag := func(i int) *record.Tag {
+		var e record.Eve
+		if err := json.Unmarshal(recs[i].Line, &e); err != nil {
+			t.Fatal(err)
+		}
+		return e.OpenPicket
+	}
+	for i := range 2 {
+		tg := tag(i)
+		if tg.Direction != direction.Outbound || tg.LocalIP != "192.168.1.50" || tg.RemoteIP != "162.243.103.246" || tg.NAT == nil ||
+			*tg.NAT != (record.NAT{Type: "snat", PublicIP: "125.131.127.16", PublicPort: 40123, LocalPort: 51515}) {
+			t.Fatalf("record %d: tag = %+v nat = %+v", i, tg, tg.NAT)
+		}
+	}
+	if tg := tag(2); tg.NAT != nil || tg.LocalIP != "125.131.127.16" || tg.Direction != direction.Inbound {
+		t.Fatalf("scan: %+v", tg)
+	}
+	if len(slept) != 1 || slept[0] != time.Second {
+		t.Fatalf("waits = %v", slept)
+	}
+	// Old records do not wait.
+	slept = nil
+	old := &collector.Batch{Type: agentv1.LogType_LOG_TYPE_EVE, Records: []collector.Record{line("2026-10-23T00:50:00.000000+0000", "198.51.100.4", 1, "125.131.127.16", 22, "to_server")}}
+	s.convert(old)
+	if len(slept) != 0 {
+		t.Fatalf("waited for an old record: %v", slept)
 	}
 }
 

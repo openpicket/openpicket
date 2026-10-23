@@ -90,11 +90,24 @@ type OpenPicket struct {
 		Enabled     bool `yaml:"enabled"`
 		MaxElements int  `yaml:"max_elements"`
 	} `yaml:"policy"`
+
+	// NATLookup names the other side of the node's NAT in Suricata alerts
+	// from conntrack events: the inside host behind an outbound alert
+	// captured on the WAN, the public port of a port forward.
+	NATLookup struct {
+		Enabled bool `yaml:"enabled"`
+		// Retention keeps ended connections for records read late.
+		Retention  time.Duration `yaml:"retention"`
+		MaxEntries int           `yaml:"max_entries"`
+	} `yaml:"nat_lookup"`
 }
 
 func defaults() OpenPicket {
 	var o OpenPicket
 	o.Fw4Zones = []string{"wan"}
+	o.NATLookup.Enabled = true
+	o.NATLookup.Retention = 10 * time.Minute
+	o.NATLookup.MaxEntries = 100000
 	o.Logs.InflightMaxBytes = 4 << 20
 	o.Nflog.Enabled = true
 	o.Nflog.InstallRule = "auto"
@@ -267,6 +280,9 @@ func (c *Config) validate() error {
 	}
 	if slices.Contains(o.Nflog.IgnorePorts, 0) {
 		errs = append(errs, errors.New("openpicket.nflog.ignore_ports: ports are 1-65535"))
+	}
+	if o.NATLookup.Retention <= 0 || o.NATLookup.MaxEntries < 1 {
+		errs = append(errs, errors.New("openpicket.nat_lookup: retention and max_entries must be positive"))
 	}
 	if o.Enforcer.MaxElements < 1 || o.Policy.MaxElements < 1 {
 		errs = append(errs, errors.New("openpicket: max_elements must be positive"))

@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net/netip"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 	agentv1 "github.com/jc-lab/suricontroller/gen/suricontroller/agent/v1"
 	"github.com/jc-lab/suricontroller/pkg/wire"
 
+	"github.com/openpicket/openpicket/agent/natmap"
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/pkg/direction"
 	"github.com/openpicket/openpicket/pkg/record"
@@ -34,7 +37,9 @@ type Shipper struct {
 	maxInflight int64
 	log         *slog.Logger
 	nets        func() *direction.Nets
+	nat         func(proto uint8, client, server netip.AddrPort) (natmap.Mapping, bool)
 	now         func() time.Time
+	sleep       func(time.Duration)
 
 	mu            sync.Mutex
 	changed       chan struct{} // closed and replaced on every state change
@@ -64,9 +69,16 @@ type ShipperConfig struct {
 	// MaxInflightBytes bounds the unacknowledged compressed batches.
 	MaxInflightBytes int64
 	// Nets returns the node's inside networks for direction judgement.
-	Nets   func() *direction.Nets
+	Nets func() *direction.Nets
+	// NAT finds the translation of a connection seen as client -> server
+	// (nil: no lookup).
+	NAT    func(proto uint8, client, server netip.AddrPort) (natmap.Mapping, bool)
 	Logger *slog.Logger
 }
+
+// natWait bounds the wait for conntrack events when a fresh record finds
+// no translation: the event can arrive just after the record.
+const natWait = time.Second
 
 // NewShipper creates a shipper.
 func NewShipper(cfg ShipperConfig) *Shipper {
@@ -82,7 +94,7 @@ func NewShipper(cfg ShipperConfig) *Shipper {
 	enc, _ := zstd.NewWriter(nil, zstd.WithEncoderConcurrency(1), zstd.WithEncoderLevel(zstd.SpeedFastest))
 	return &Shipper{
 		nodeID: cfg.NodeID, bootID: cfg.BootID, maxInflight: cfg.MaxInflightBytes,
-		log: cfg.Logger.With("component", "shipper"), nets: cfg.Nets, now: time.Now,
+		log: cfg.Logger.With("component", "shipper"), nets: cfg.Nets, nat: cfg.NAT, now: time.Now, sleep: time.Sleep,
 		changed: make(chan struct{}), enc: enc,
 	}
 }
@@ -203,6 +215,7 @@ func (s *Shipper) convert(b *collector.Batch) []*dataplanev1.Record {
 	typ := record.TypeName(b.Type)
 	now := s.now()
 	nets := s.nets()
+	waited := false
 	out := make([]*dataplanev1.Record, 0, len(b.Records))
 	for _, r := range b.Records {
 		rec := &dataplanev1.Record{Line: r.Line, TimeUnixNano: now.UnixNano()}
@@ -217,7 +230,7 @@ func (s *Shipper) convert(b *collector.Batch) []*dataplanev1.Record {
 			}
 			switch record.StringField(r.Line, "event_type") {
 			case "alert", "anomaly":
-				rec.Line = tagEve(r.Line, rec.Rid, nets)
+				rec.Line = s.tagEve(r.Line, rec.Rid, nets, time.Unix(0, rec.TimeUnixNano), &waited)
 			}
 		}
 		out = append(out, rec)
@@ -225,8 +238,10 @@ func (s *Shipper) convert(b *collector.Batch) []*dataplanev1.Record {
 	return out
 }
 
-// tagEve appends the direction tag to an eve alert/anomaly line.
-func tagEve(line []byte, rid string, nets *direction.Nets) []byte {
+// tagEve appends the direction tag to an eve alert/anomaly line, with
+// the other side of the node's NAT when conntrack knows it. A fresh record
+// without one waits for conntrack once per batch (*waited).
+func (s *Shipper) tagEve(line []byte, rid string, nets *direction.Nets, at time.Time, waited *bool) []byte {
 	e, err := record.ParseEve(line)
 	if err != nil || e.OpenPicket != nil {
 		return line
@@ -236,7 +251,54 @@ func tagEve(line []byte, rid string, nets *direction.Nets) []byte {
 		p.FlowSrcIP = e.Flow.SrcIP
 	}
 	res := direction.Judge(nets, p)
-	return record.AppendTag(line, record.Tag{RID: rid, Direction: res.Direction, Confidence: res.Confidence, RemoteIP: res.RemoteIP, LocalIP: res.LocalIP})
+	tag := record.Tag{RID: rid, Direction: res.Direction, Confidence: res.Confidence, RemoteIP: res.RemoteIP, LocalIP: res.LocalIP}
+	if s.nat != nil && (res.Direction == direction.Inbound || res.Direction == direction.Outbound) {
+		if proto, client, server, ok := flowView(e); ok {
+			m, found := s.nat(proto, client, server)
+			if !found && !*waited {
+				if d := at.Add(natWait).Sub(s.now()); d > 0 {
+					*waited = true
+					s.sleep(min(d, natWait))
+					m, found = s.nat(proto, client, server)
+				}
+			}
+			if found {
+				tag.LocalIP = m.Inside.Addr().String()
+				tag.NAT = &record.NAT{Type: m.Type, PublicIP: m.Public.Addr().String(), PublicPort: m.Public.Port(), LocalPort: m.Inside.Port()}
+			}
+		}
+	}
+	return record.AppendTag(line, tag)
+}
+
+// flowView returns an eve record's connection as client -> server.
+func flowView(e *record.Eve) (uint8, netip.AddrPort, netip.AddrPort, bool) {
+	var proto uint8
+	switch strings.ToUpper(e.Proto) {
+	case "TCP":
+		proto = natmap.ProtoTCP
+	case "UDP":
+		proto = natmap.ProtoUDP
+	case "SCTP":
+		proto = natmap.ProtoSCTP
+	default:
+		return 0, netip.AddrPort{}, netip.AddrPort{}, false
+	}
+	src, err1 := netip.ParseAddr(e.SrcIP)
+	dst, err2 := netip.ParseAddr(e.DestIP)
+	if err1 != nil || err2 != nil || e.SrcPort <= 0 || e.DestPort <= 0 || e.SrcPort > 65535 || e.DestPort > 65535 {
+		return 0, netip.AddrPort{}, netip.AddrPort{}, false
+	}
+	a, b := netip.AddrPortFrom(src.Unmap(), uint16(e.SrcPort)), netip.AddrPortFrom(dst.Unmap(), uint16(e.DestPort))
+	// The packet's source is the client unless it is the server's reply.
+	swapped := e.Direction == "to_client"
+	if e.Flow != nil && e.Flow.SrcIP != "" {
+		swapped = e.Flow.SrcIP != e.SrcIP
+	}
+	if swapped {
+		a, b = b, a
+	}
+	return proto, a, b, true
 }
 
 // ack releases every batch with seq <= upTo and commits collector batches.

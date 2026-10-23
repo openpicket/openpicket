@@ -57,7 +57,23 @@ type Tag struct {
 	Direction  string `json:"direction,omitempty"`
 	Confidence string `json:"direction_confidence,omitempty"`
 	RemoteIP   string `json:"remote_ip,omitempty"`
-	LocalIP    string `json:"local_ip,omitempty"`
+	// LocalIP is the inside party: behind a NAT, the inside host (NAT).
+	LocalIP string `json:"local_ip,omitempty"`
+	// NAT is the translation the node applied to the connection, when the
+	// record was seen on the other side of it.
+	NAT *NAT `json:"nat,omitempty"`
+}
+
+// NAT describes a translation from the node's conntrack.
+type NAT struct {
+	// Type is "snat" (an inside host reaching out) or "dnat" (a port
+	// forward to an inside host).
+	Type string `json:"type"`
+	// PublicIP and PublicPort face the remote party.
+	PublicIP   string `json:"public_ip"`
+	PublicPort uint16 `json:"public_port"`
+	// LocalPort is the inside host's port (LocalIP).
+	LocalPort uint16 `json:"local_port"`
 }
 
 // AppendTag returns line with `,"openpicket":{...}` inserted before its

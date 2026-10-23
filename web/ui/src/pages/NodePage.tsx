@@ -266,6 +266,28 @@ function StatusPanel(props: { node: Node }) {
             </Alert>
           )}
         </Section>
+        <Section
+          title={t("NAT lookup")}
+          right={<Badge color={st.nat?.enabled ? (st.nat.ready ? "teal" : "orange") : "gray"}>{st.nat?.enabled ? (st.nat.ready ? t("enabled") : t("starting")) : t("disabled")}</Badge>}
+        >
+          <Text size="xs" c="dimmed" mb="xs">
+            {t("Names the inside host of alerts seen on the other side of the node's NAT (conntrack).")}
+          </Text>
+          <KeyValue
+            rows={[
+              [t("Translated connections"), formatNumber(st.nat?.flows)],
+              [t("Alerts with a translation"), formatNumber(st.nat?.hits)],
+              [t("Alerts without one"), formatNumber(st.nat?.misses)],
+              [t("Connections not kept (table full)"), <Text size="sm" c={toNumber(st.nat?.dropped) > 0 ? "red" : undefined}>{formatNumber(st.nat?.dropped)}</Text>],
+              [t("Full listings"), formatNumber(st.nat?.resyncs)],
+            ]}
+          />
+          {st.nat?.lastError && (
+            <Alert color="red" mt="xs" title={t("Last error")}>
+              {st.nat.lastError}
+            </Alert>
+          )}
+        </Section>
         <Section title={t("Local networks")}>
           <KeyValue
             rows={[
