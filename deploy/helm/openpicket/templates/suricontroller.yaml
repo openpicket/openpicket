@@ -41,21 +41,17 @@ spec:
         fsGroup: 10001
         seccompProfile: { type: RuntimeDefault }
       initContainers:
-        # The principal key is derived from the manager host key: print its
-        # public half for the token checks.
+        # The principal key is derived from the manager's key secret: print
+        # its public half for the token checks.
         - name: principal-key
           image: {{ include "openpicket.image" (list . .Values.manager.image) }}
           command: [sh, -c, "openpicket-manager principal-pubkey > /shared/principal.pub"]
           env:
-            - name: OPENPICKET_HOST_KEY_FILE
-              value: /secrets/host_key/host_key
+            {{- include "openpicket.keySecretEnv" . | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities: { drop: [ALL] }
           volumeMounts:
-            - name: host-key
-              mountPath: /secrets/host_key
-              readOnly: true
             - name: shared
               mountPath: /shared
       containers:
@@ -94,10 +90,6 @@ spec:
               mountPath: /shared
               readOnly: true
       volumes:
-        - name: host-key
-          secret:
-            secretName: {{ include "openpicket.hostKeySecret" . }}
-            items: [{ key: host_key, path: host_key }]
         - name: shared
           emptyDir: {}
   volumeClaimTemplates:

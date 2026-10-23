@@ -24,6 +24,14 @@ ingress:
   tls: []
   #  - secretName: openpicket-tls
   #    hosts: [openpicket.example.com]
+  # The UI and API on a separate (internal) host and ingress class: the
+  # ingress above then carries the agents' paths only.
+  ui:
+    enabled: false
+    className: ""
+    host: ""
+    annotations: {}
+    tls: []
 
 # ---------------------------------------------------------------------------
 # PostgreSQL: openpicket-manager, openpicket-suricontroller and the CrowdSec
@@ -34,10 +42,12 @@ database:
   crowdsecDatabase: crowdsec
   # Connection pool size of each pod. Each manager replica also keeps two
   # dedicated connections (LISTEN, leader locks). Size the server (or
-  # pgpool num_init_children) for: replicas x (manager + 2) +
-  # suricontroller + LAPI replicas x crowdsecLAPI.
+  # pgpool num_init_children) for: manager replicas x (manager + 2) +
+  # gateway replicas x (gateway + 1) + suricontroller + LAPI replicas x
+  # crowdsecLAPI.
   maxConnections:
     manager: 6
+    gateway: 6
     suricontroller: 4
     crowdsecLAPI: 10
   builtin:
@@ -63,8 +73,9 @@ database:
     passwordKey: password
 
 # ---------------------------------------------------------------------------
-# openpicket-manager: agents' data plane, log pipeline, decision and policy
-# distribution, UI and API. Every replica is equal.
+# openpicket-manager: UI, API and the leader tasks (decision relay, alert
+# sync, notifications, MISP, CrowdSec content, policy compilation). Without
+# the gateways it also serves the agents. Every replica is equal.
 # ---------------------------------------------------------------------------
 manager:
   replicas: 2
@@ -72,8 +83,9 @@ manager:
     repository: ghcr.io/openpicket/openpicket-manager
     tag: ""
     digest: ""
-  # Channel B host key shared by all replicas (PEM). Empty: generated once
-  # and kept in the chart secret. Or an existing secret with key host_key.
+  # Channel B host key shared by all gateway replicas (PEM). Empty:
+  # generated once and kept in the chart secret. Or an existing secret
+  # with key host_key. With the gateways, the manager pods do not get it.
   hostKey: ""
   existingHostKeySecret: ""
   auth:
@@ -111,6 +123,41 @@ manager:
   # through (this chart's ingress routes it). Or wss://... for another host.
   agentControllerURL: ""
   logLevel: info
+  extraEnv: []
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { memory: 1Gi }
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ---------------------------------------------------------------------------
+# openpicket-gateway: the agents' side of the manager (channel B, log
+# pipeline, decision and policy streams), deployed apart from the UI and
+# API so that what faces the agents holds no login, LAPI or hub
+# credentials. Disabled: the manager pods serve the agents (role all).
+# ---------------------------------------------------------------------------
+gateway:
+  enabled: true
+  replicas: 2
+  database:
+    # The gateways' own database role, which can read what they serve and
+    # write only sessions, acknowledgements and watermarks. The manager
+    # creates it (or sets its password) and grants it on every start: the
+    # built-in PostgreSQL allows that; on an external server the manager's
+    # account needs CREATEROLE, or create the role beforehand
+    # (CREATE ROLE openpicket_gateway LOGIN PASSWORD '...').
+    # Empty: the gateways use the manager's account (the System page warns).
+    user: openpicket_gateway
+    # Empty: generated and kept in the chart secret.
+    password: ""
+    existingSecret: ""
+    passwordKey: password
+  # Empty: manager.logLevel.
+  logLevel: ""
   extraEnv: []
   resources:
     requests: { cpu: 100m, memory: 128Mi }
@@ -301,7 +348,14 @@ monitoring:
     annotations: {}
 
 networkPolicy:
-  # Only the manager may reach the CrowdSec datasource and the database.
+  # Only the gateways (the manager without them) may reach the CrowdSec
+  # datasource; only OpenPicket's pods the database; the gateways reach
+  # nothing but the log sinks and the database.
   enabled: false
+  # Egress rules for the gateways' external targets (database, Loki,
+  # OpenSearch), required when one is used, e.g.:
+  #   - to: [{ ipBlock: { cidr: 10.20.0.0/16 } }]
+  #     ports: [{ port: 5432 }, { port: 3100 }]
+  gatewayEgress: []
 
 fullnameOverride: ""

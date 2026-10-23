@@ -1,12 +1,14 @@
 {{- $full := include "openpicket.fullname" . }}
 {{- $mon := .Values.monitoring }}
 {{- if $mon.serviceMonitor.enabled }}
-{{- range $c := list (dict "component" "manager" "port" "metrics" "path" "/metrics") (dict "component" "crowdsec-lapi" "port" "metrics" "path" "/metrics") (dict "component" "crowdsec-agent" "port" "metrics" "path" "/metrics") }}
+{{- $components := list "manager" "crowdsec-lapi" "crowdsec-agent" }}
+{{- if .Values.gateway.enabled }}{{ $components = append $components "gateway" }}{{ end }}
+{{- range $c := $components }}
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ $full }}-{{ $c.component }}
+  name: {{ $full }}-{{ $c }}
   labels:
     {{- include "openpicket.labels" $ | nindent 4 }}
     {{- with $mon.serviceMonitor.labels }}
@@ -15,10 +17,10 @@ metadata:
 spec:
   selector:
     matchLabels:
-      {{- include "openpicket.selector" (list $ $c.component) | nindent 6 }}
+      {{- include "openpicket.selector" (list $ $c) | nindent 6 }}
   endpoints:
-    - port: {{ $c.port }}
-      path: {{ $c.path }}
+    - port: metrics
+      path: /metrics
       interval: {{ $mon.serviceMonitor.interval }}
 {{- end }}
 {{- if $.Values.loki.builtin.enabled }}
@@ -63,13 +65,32 @@ spec:
           labels: { severity: critical }
           annotations:
             summary: No openpicket-manager replica is up.
+            {{- if .Values.gateway.enabled }}
+            description: The UI and API are down; no new CrowdSec decision or policy change reaches the nodes.
+            {{- else }}
             description: Agents buffer their logs and keep their last blocks, but nothing is processed or distributed.
+            {{- end }}
         - alert: OpenPicketManagerReplicaDown
           expr: count(up{namespace="{{ .Release.Namespace }}", service="{{ $full }}-manager"} == 0) > 0
           for: 10m
           labels: { severity: warning }
           annotations:
             summary: An openpicket-manager replica is down.
+        {{- if .Values.gateway.enabled }}
+        - alert: OpenPicketGatewayDown
+          expr: sum(up{namespace="{{ .Release.Namespace }}", service="{{ $full }}-gateway"}) == 0
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: No openpicket-gateway replica is up.
+            description: Agents buffer their logs and keep their last blocks, but nothing is processed or distributed.
+        - alert: OpenPicketGatewayReplicaDown
+          expr: count(up{namespace="{{ .Release.Namespace }}", service="{{ $full }}-gateway"} == 0) > 0
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: An openpicket-gateway replica is down.
+        {{- end }}
         - alert: OpenPicketSinkFailing
           expr: max by (sink) (openpicket_sink_circuit_open{namespace="{{ .Release.Namespace }}"}) == 1
           for: 5m

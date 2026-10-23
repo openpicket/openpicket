@@ -257,5 +257,5 @@ func (n *nodeService) DeleteNode(ctx context.Context, req *connect.Request[apiv1
 }
 
 func (n *nodeService) GetConnectionInfo(context.Context, *connect.Request[apiv1.GetConnectionInfoRequest]) (*connect.Response[apiv1.GetConnectionInfoResponse], error) {
-	return connect.NewResponse(&apiv1.GetConnectionInfoResponse{ManagerHostKey: n.s.cfg.HostKey, DataPlanePath: dpwire.Path}), nil
+	return connect.NewResponse(&apiv1.GetConnectionInfoResponse{ManagerHostKey: n.s.cfg.HostKey(), DataPlanePath: dpwire.Path}), nil
 }

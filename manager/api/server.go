@@ -57,8 +57,9 @@ type Config struct {
 	// LogPrograms are the generic log programs seen.
 	LogPrograms *logprog.Store
 	Settings    *settings.Store
-	// HostKey is the manager public key line agents pin.
-	HostKey string
+	// HostKey returns the public key line agents pin (the gateways' when
+	// they run apart).
+	HostKey func() string
 	Replica string
 	Version string
 	// Suricontroller is the openpicket-suricontroller base URL proxied at

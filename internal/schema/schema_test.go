@@ -30,6 +30,9 @@ func TestMigrateConcurrentAndIdempotent(t *testing.T) {
 	if err := pool.QueryRow(ctx, "SELECT max(version) FROM public.openpicket_schema_migrations").Scan(&v); err != nil || v != Latest() {
 		t.Fatalf("version = %d, %v", v, err)
 	}
+	if err := pool.QueryRow(ctx, "SELECT openpicket.schema_version()").Scan(&v); err != nil || v != Latest() {
+		t.Fatalf("schema_version() = %d, %v", v, err)
+	}
 	if err := Migrate(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
