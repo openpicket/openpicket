@@ -21,6 +21,7 @@ const (
 	ChannelGeo       = "openpicket_geo"
 	ChannelAlerts    = "openpicket_alerts"
 	ChannelMISP      = "openpicket_misp"
+	ChannelHub       = "openpicket_hub"
 )
 
 // Listener keeps a dedicated connection listening on notification channels

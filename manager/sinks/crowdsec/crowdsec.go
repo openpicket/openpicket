@@ -165,6 +165,16 @@ func (s *Sink) refresh(ctx context.Context) {
 	s.mu.Unlock()
 }
 
+// Endpoints returns the log processors' datasource URLs.
+func (s *Sink) Endpoints() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.endpoints)
+}
+
+// Auth returns the header and value authenticating to the log processors.
+func (s *Sink) Auth() (string, string) { return s.cfg.AuthHeader, s.cfg.AuthValue }
+
 // Health returns the number of endpoints and of those not marked down.
 func (s *Sink) Health() (total, up int) {
 	s.mu.Lock()

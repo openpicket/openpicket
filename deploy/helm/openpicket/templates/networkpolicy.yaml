@@ -1,7 +1,8 @@
 {{- if .Values.networkPolicy.enabled }}
 {{- $full := include "openpicket.fullname" . }}
 # Anyone who can post to the CrowdSec datasource could make the LAPI ban
-# arbitrary addresses: only the manager may reach it.
+# arbitrary addresses, or change its content: only the manager may reach
+# the datasource and the content sync.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -20,6 +21,7 @@ spec:
               {{- include "openpicket.selector" (list . "manager") | nindent 14 }}
       ports:
         - port: 8081
+        - port: 8082
     - ports:
         - port: 6060
 {{- if .Values.database.builtin.enabled }}
