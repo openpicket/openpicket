@@ -1,8 +1,10 @@
 {{- if .Values.networkPolicy.enabled }}
 {{- $full := include "openpicket.fullname" . }}
+{{- $records := ternary "gateway" "manager" .Values.gateway.enabled }}
 # Anyone who can post to the CrowdSec datasource could make the LAPI ban
-# arbitrary addresses, or change its content: only the manager may reach
-# the datasource and the content sync.
+# arbitrary addresses, or change its content: only the gateways (the
+# manager without them) may reach the datasource, only the manager the
+# content sync.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -18,9 +20,14 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "openpicket.selector" (list . "manager") | nindent 14 }}
+              {{- include "openpicket.selector" (list . $records) | nindent 14 }}
       ports:
         - port: 8081
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openpicket.selector" (list . "manager") | nindent 14 }}
+      ports:
         - port: 8082
     - ports:
         - port: 6060
@@ -39,12 +46,62 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
-        {{- range $c := list "manager" "suricontroller" "crowdsec-lapi" }}
+        {{- range $c := list "manager" "gateway" "suricontroller" "crowdsec-lapi" }}
         - podSelector:
             matchLabels:
               {{- include "openpicket.selector" (list $ $c) | nindent 14 }}
         {{- end }}
       ports:
         - port: 5432
+{{- end }}
+{{- if .Values.gateway.enabled }}
+---
+# The gateways face the agents: if one is taken over it reaches only the
+# log sinks and the database (with its restricted role), not the manager,
+# the LAPI or the internet.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $full }}-gateway
+  labels:
+    {{- include "openpicket.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "gateway") | nindent 6 }}
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "openpicket.selector" (list . "crowdsec-agent") | nindent 14 }}
+      ports:
+        - port: 8081
+    {{- if .Values.loki.builtin.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "openpicket.selector" (list . "loki") | nindent 14 }}
+      ports:
+        - port: 3100
+    {{- end }}
+    {{- if .Values.database.builtin.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "openpicket.selector" (list . "postgres") | nindent 14 }}
+      ports:
+        - port: 5432
+    {{- end }}
+    {{- if and (or (not .Values.database.builtin.enabled) (not .Values.loki.builtin.enabled) .Values.opensearch.enabled) (not .Values.networkPolicy.gatewayEgress) }}
+    {{- fail "networkPolicy.gatewayEgress must allow the gateways to reach the external database, Loki or OpenSearch" }}
+    {{- end }}
+    {{- with .Values.networkPolicy.gatewayEgress }}
+    # External database, Loki, OpenSearch.
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 {{- end }}
 {{- end }}

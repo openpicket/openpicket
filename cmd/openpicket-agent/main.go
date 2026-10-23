@@ -10,8 +10,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -101,7 +104,7 @@ func run(configPath string) error {
 		return err
 	}
 	tee := &suriagent.LogTee{}
-	log := newLogger(cfg.Suri.LogLevel, io.MultiWriter(os.Stderr, tee))
+	log := newLogger(cfg.Node.LogLevel, io.MultiWriter(os.Stderr, tee))
 	slog.SetDefault(log)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -123,9 +126,23 @@ func run(configPath string) error {
 func keygen(configPath, id, keyFile string, create bool) error {
 	if id == "" || keyFile == "" {
 		// Decode leniently: keygen runs before the configuration is complete.
-		cfg := suricfg.Default()
+		var cfg struct {
+			NodeID     string `yaml:"node_id"`
+			KeyFile    string `yaml:"key_file"`
+			OpenPicket struct {
+				Suricata struct {
+					Enabled *bool `yaml:"enabled"`
+				} `yaml:"suricata"`
+			} `yaml:"openpicket"`
+		}
 		if b, err := os.ReadFile(configPath); err == nil {
-			_ = yaml.Unmarshal(b, cfg)
+			_ = yaml.Unmarshal(b, &cfg)
+		}
+		if cfg.KeyFile == "" {
+			cfg.KeyFile = suricfg.Default().KeyFile
+			if e := cfg.OpenPicket.Suricata.Enabled; e != nil && !*e {
+				cfg.KeyFile = config.DefaultKeyFile
+			}
 		}
 		if id == "" {
 			id = cfg.NodeID
@@ -168,18 +185,48 @@ func check(configPath string) error {
 	if err != nil {
 		return errors.New("configuration is invalid")
 	}
-	key, err := sshkey.LoadPrivateKey(cfg.Suri.KeyFile)
+	for _, src := range cfg.OpenPicket.LogSources {
+		switch {
+		case src.Journal != nil:
+			_, err := exec.LookPath("journalctl")
+			report("log journal", err, "journalctl")
+			continue
+		case src.Listen != "":
+			// The agent holds the address while it runs: only a free one is
+			// reported (run check before starting it).
+			l, err := net.ListenPacket("udp", src.Listen)
+			if err == nil {
+				l.Close()
+			}
+			report("log listen", err, "udp "+src.Listen)
+			continue
+		}
+		path := src.Path
+		if cfg.Node.Docker() {
+			path = filepath.Join(cfg.Node.Platform.HostRoot, path)
+		}
+		matches, err := filepath.Glob(path)
+		switch {
+		case err != nil:
+			report("log "+src.Program, err, "")
+		case len(matches) == 0:
+			report("log "+src.Program, fmt.Errorf("no file matches %s (yet)", src.Path), "")
+		default:
+			report("log "+src.Program, nil, fmt.Sprintf("%s: %d file(s)", src.Path, len(matches)))
+		}
+	}
+	key, err := sshkey.LoadPrivateKey(cfg.Node.KeyFile)
 	if err != nil {
 		report("key", err, "")
 		return errors.New("some checks failed")
 	}
-	report("key", nil, key.Public(cfg.Suri.NodeID).String())
+	report("key", nil, key.Public(cfg.Node.NodeID).String())
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	hostKey, _ := sshkey.ParsePublicKey(cfg.OpenPicket.HostKey)
 	sess, err := dataplane.Dial(ctx, dataplane.DialConfig{
-		URL: cfg.OpenPicket.URL, Key: key, ServerKey: hostKey, NodeID: cfg.Suri.NodeID, Version: version.Version,
-	}, &dataplanev1.Hello{NodeId: cfg.Suri.NodeID, AgentVersion: version.Version, BootId: "check"})
+		URL: cfg.OpenPicket.URL, Key: key, ServerKey: hostKey, NodeID: cfg.Node.NodeID, Version: version.Version,
+	}, &dataplanev1.Hello{NodeId: cfg.Node.NodeID, AgentVersion: version.Version, BootId: "check"})
 	if err == nil {
 		report("manager", nil, cfg.OpenPicket.URL+" (manager "+sess.HelloAck().ManagerVersion+")")
 		sess.Close()
@@ -187,6 +234,8 @@ func check(configPath string) error {
 		report("manager", err, "")
 	}
 	switch {
+	case cfg.Suri == nil:
+		report("controller", nil, "not used (openpicket.suricata.enabled: false)")
 	case !cfg.ControllerFromManager():
 		report("controller", nil, cfg.Suri.Controller.URL+" (agent.yaml)")
 	case err != nil:

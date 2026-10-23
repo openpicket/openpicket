@@ -36,6 +36,18 @@ data:
       reject_old_samples: true
       reject_old_samples_max_age: {{ .Values.loki.maxAge }}
       retention_period: {{ .Values.loki.builtin.retention }}
+      {{- $b := .Values.loki.builtin }}
+      {{- if or $b.programRetention $b.retentionStreams }}
+      retention_stream:
+        {{- range $program, $period := $b.programRetention }}
+        - selector: '{type="log", program="{{ $program }}"}'
+          priority: 1
+          period: {{ $period }}
+        {{- end }}
+        {{- with $b.retentionStreams }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
     compactor:
       working_directory: /var/loki/compactor
       retention_enabled: true

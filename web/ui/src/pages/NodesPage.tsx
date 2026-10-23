@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Code, Group, Modal, Stack, Table, Text, Textarea, TextInput, Tooltip } from "@mantine/core";
+import { Badge, Button, Code, Group, Modal, Select, Stack, Table, Text, Textarea, TextInput, Tooltip } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlugConnected, IconPlus } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -8,8 +8,9 @@ import { api } from "../api/client";
 import { useAccess, useNodes } from "../api/hooks";
 import { queryClient } from "../api/queryClient";
 import { CopyIcon, EmptyState, ErrorAlert, LoadingBlock, PageHeader, StatusDot, TimeAgo } from "../components/common";
-import { LabelBadges, LabelsEditor, SyncBadge, rowsToLabels, type LabelRow } from "../components/nodes";
+import { CAPABILITIES, CapabilityBadges, LabelBadges, LabelsEditor, SyncBadge, rowsToLabels, type LabelRow } from "../components/nodes";
 import { t } from "../lib/i18n";
+import { useUrlState } from "../lib/urlState";
 
 function RegisterModal(props: { opened: boolean; onClose: () => void }) {
   const [key, setKey] = useState("");
@@ -120,7 +121,9 @@ export default function NodesPage() {
   const navigate = useNavigate();
   const [registering, setRegistering] = useState(false);
   const [connection, setConnection] = useState(false);
-  const list = nodes.data ?? [];
+  const [feature, setFeature] = useUrlState("feature");
+  const all = nodes.data ?? [];
+  const list = feature ? all.filter((n) => n.dataPlane?.capabilities.includes(feature)) : all;
   const online = list.filter((n) => n.dataPlane?.connected).length;
   return (
     <>
@@ -129,6 +132,14 @@ export default function NodesPage() {
         description={nodes.data ? t("{online} of {total} nodes online", { online, total: list.length }) : undefined}
         right={
           <>
+            <Select
+              placeholder={t("All features")}
+              data={CAPABILITIES.map((c) => ({ value: c.value, label: t(c.label) }))}
+              value={feature || null}
+              onChange={(v) => setFeature(v ?? "")}
+              clearable
+              w={180}
+            />
             <Button variant="default" leftSection={<IconPlugConnected size={16} />} onClick={() => setConnection(true)}>
               {t("Connection info")}
             </Button>
@@ -163,6 +174,7 @@ export default function NodesPage() {
               <Table.Tr>
                 <Table.Th>{t("Node")}</Table.Th>
                 <Table.Th>{t("Labels")}</Table.Th>
+                <Table.Th>{t("Features")}</Table.Th>
                 <Table.Th>{t("Agent")}</Table.Th>
                 <Table.Th>{t("Replica")}</Table.Th>
                 <Table.Th>{t("Last seen")}</Table.Th>
@@ -195,6 +207,9 @@ export default function NodesPage() {
                     </Table.Td>
                     <Table.Td>
                       <LabelBadges labels={n.labels} />
+                    </Table.Td>
+                    <Table.Td>
+                      <CapabilityBadges capabilities={n.dataPlane?.capabilities} />
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm">{dp?.agentVersion || "-"}</Text>

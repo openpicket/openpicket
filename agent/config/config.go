@@ -1,5 +1,8 @@
 // Package config loads agent.yaml: the suricontroller agent settings plus an
-// "openpicket" section for channel B, NFLOG, the enforcer and port policies.
+// "openpicket" section for channel B, NFLOG, the enforcer, port policies
+// and log sources. With openpicket.suricata.enabled false the agent runs
+// without Suricata and without the suricontroller agent; the top level
+// then holds the node settings only (Node).
 package config
 
 import (
@@ -7,8 +10,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/netip"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -17,17 +22,117 @@ import (
 	"go.yaml.in/yaml/v3"
 
 	suricfg "github.com/jc-lab/suricontroller/agent/config"
+	"github.com/jc-lab/suricontroller/pkg/nodeid"
 	"github.com/jc-lab/suricontroller/pkg/sshkey"
 
 	"github.com/openpicket/openpicket/agent/nft"
+	"github.com/openpicket/openpicket/pkg/record"
 )
 
 // Config is the whole agent configuration.
 type Config struct {
-	// Suri is the suricontroller agent configuration (channel A).
+	// Suri is the suricontroller agent configuration (channel A); nil when
+	// Suricata is disabled.
 	Suri *suricfg.Config
+	// Node holds the settings used whether or not Suricata runs.
+	Node Node
 	// OpenPicket is the "openpicket" section.
 	OpenPicket OpenPicket
+}
+
+// Node is the node's identity and local paths.
+type Node struct {
+	NodeID   string `yaml:"node_id"`
+	KeyFile  string `yaml:"key_file"`
+	StateDir string `yaml:"state_dir"`
+	LogLevel string `yaml:"log_level"`
+	Platform struct {
+		// Profile: docker (host reached through HostRoot) or a direct
+		// install (systemd-native, openwrt-native).
+		Profile  string `yaml:"profile"`
+		HostRoot string `yaml:"host_root"`
+		Firewall string `yaml:"firewall"`
+	} `yaml:"platform"`
+}
+
+// Docker reports the docker profile: host files under HostRoot.
+func (n Node) Docker() bool { return n.Platform.Profile == suricfg.ProfileDocker }
+
+// LogSource is a generic log the agent ships: a file (path), the systemd
+// journal or a local syslog listener.
+type LogSource struct {
+	// Program wrote the lines (nginx, postgres); "syslog" for files in
+	// syslog format (auth.log), whose lines name their program. The
+	// journal and a listener are "syslog" (the default for them).
+	Program string `yaml:"program"`
+	// Path of the file; a glob takes every match (new files too).
+	Path string `yaml:"path"`
+	// Journal follows the systemd journal with journalctl, from the last
+	// acknowledged entry (new entries only the first time).
+	Journal *JournalSource `yaml:"journal"`
+	// Listen receives syslog datagrams on a UDP address, e.g. OpenWrt's
+	// system log (system.@system[0].log_ip/log_port). Nothing replays
+	// them: messages sent while the agent is down are lost.
+	Listen string `yaml:"listen"`
+}
+
+// JournalSource selects journal entries.
+type JournalSource struct {
+	// Matches are journalctl matches ("_SYSTEMD_UNIT=sshd.service",
+	// "SYSLOG_IDENTIFIER=sshd", "+" between alternatives); none: all.
+	Matches []string `yaml:"matches"`
+}
+
+// Kind names the source in errors.
+func (s LogSource) Kind() string {
+	switch {
+	case s.Journal != nil:
+		return "journal"
+	case s.Listen != "":
+		return "listen " + s.Listen
+	}
+	return s.Path
+}
+
+func validLogSource(s LogSource) error {
+	kinds := 0
+	for _, set := range []bool{s.Path != "", s.Journal != nil, s.Listen != ""} {
+		if set {
+			kinds++
+		}
+	}
+	if kinds != 1 {
+		return errors.New("set one of path, journal and listen")
+	}
+	if s.Path == "" {
+		// The journal and listeners give syslog lines.
+		if s.Program != "" && s.Program != "syslog" {
+			return fmt.Errorf("program %q: the journal and listeners give syslog lines (program syslog)", s.Program)
+		}
+	} else if record.NormalizeProgram(s.Program) != strings.ToLower(strings.TrimSpace(s.Program)) || s.Program == "" {
+		return fmt.Errorf("program %q: letters, digits, '.', '_', '-' only", s.Program)
+	}
+	switch {
+	case s.Path != "":
+		if !filepath.IsAbs(s.Path) {
+			return fmt.Errorf("path %q must be absolute", s.Path)
+		}
+		if _, err := filepath.Match(s.Path, ""); err != nil {
+			return err
+		}
+	case s.Journal != nil:
+		for _, m := range s.Journal.Matches {
+			// Matches go to journalctl as arguments: no options.
+			if m != "+" && (!strings.Contains(m, "=") || strings.HasPrefix(m, "-")) {
+				return fmt.Errorf("journal match %q: FIELD=value or +", m)
+			}
+		}
+	default:
+		if _, _, err := net.SplitHostPort(s.Listen); err != nil {
+			return fmt.Errorf("listen %q: host:port (UDP)", s.Listen)
+		}
+	}
+	return nil
 }
 
 // OpenPicket configures the OpenPicket parts of the agent.
@@ -91,6 +196,15 @@ type OpenPicket struct {
 		MaxElements int  `yaml:"max_elements"`
 	} `yaml:"policy"`
 
+	// Suricata: false runs the agent without Suricata (a server shipping
+	// its logs, a host blocking for itself).
+	Suricata struct {
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"suricata"`
+
+	// LogSources are generic logs shipped to the manager (§4.8).
+	LogSources []LogSource `yaml:"log_sources"`
+
 	// NATLookup names the other side of the node's NAT in Suricata alerts
 	// from conntrack events: the inside host behind an outbound alert
 	// captured on the WAN, the public port of a port forward.
@@ -118,6 +232,7 @@ func defaults() OpenPicket {
 	o.Enforcer.MaxElements = 100000
 	o.Policy.Enabled = true
 	o.Policy.MaxElements = 200000
+	o.Suricata.Enabled = true
 	return o
 }
 
@@ -161,6 +276,9 @@ func Parse(b []byte) (*Config, error) {
 			break
 		}
 	}
+	if !op.Suricata.Enabled {
+		return parseWithoutSuricata(rest, op)
+	}
 	// OpenPicket supports nftables only (§7.3): "auto" means nftables.
 	var fw struct {
 		Platform struct {
@@ -184,6 +302,8 @@ func Parse(b []byte) (*Config, error) {
 		return nil, err
 	}
 	c := &Config{Suri: suri, OpenPicket: op}
+	c.Node.NodeID, c.Node.KeyFile, c.Node.StateDir, c.Node.LogLevel = suri.NodeID, suri.KeyFile, suri.StateDir, suri.LogLevel
+	c.Node.Platform.Profile, c.Node.Platform.HostRoot, c.Node.Platform.Firewall = suri.Platform.Profile, suri.Platform.HostRoot, suri.Platform.Firewall
 	if c.ControllerFromManager() {
 		// Channel A then goes the way of channel B (same host by default).
 		sc := &c.Suri.Controller
@@ -201,7 +321,35 @@ func Parse(b []byte) (*Config, error) {
 // ControllerFromManager reports an agent.yaml without controller url and
 // host_key: the manager hands out the endpoint.
 func (c *Config) ControllerFromManager() bool {
-	return c.Suri.Controller.URL == "" && c.Suri.Controller.HostKey == ""
+	return c.Suri != nil && c.Suri.Controller.URL == "" && c.Suri.Controller.HostKey == ""
+}
+
+// Defaults of an agent without Suricata (a direct install).
+const (
+	DefaultKeyFile  = "/etc/openpicket-agent/agent_ed25519"
+	DefaultStateDir = "/var/lib/openpicket-agent"
+)
+
+// parseWithoutSuricata reads the top level as node settings only: the
+// suricontroller sections (controller, interfaces, ips, suricata, logs)
+// are refused, so a configuration does not look like it runs Suricata.
+func parseWithoutSuricata(rest []byte, op OpenPicket) (*Config, error) {
+	c := &Config{OpenPicket: op}
+	n := &c.Node
+	n.KeyFile, n.StateDir, n.LogLevel = DefaultKeyFile, DefaultStateDir, "info"
+	n.Platform.Profile, n.Platform.HostRoot, n.Platform.Firewall = "systemd-native", "/", "nftables"
+	dec := yaml.NewDecoder(bytes.NewReader(rest))
+	dec.KnownFields(true)
+	if err := dec.Decode(n); err != nil && !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("%w (without Suricata, the top level only has node_id, key_file, state_dir, log_level and platform)", err)
+	}
+	if n.Platform.Firewall == "" || n.Platform.Firewall == "auto" {
+		n.Platform.Firewall = "nftables"
+	}
+	if n.Platform.Firewall != "nftables" && n.Platform.Firewall != "none" {
+		return nil, fmt.Errorf("platform.firewall: %q is not supported by OpenPicket (nftables or none)", n.Platform.Firewall)
+	}
+	return c, c.validate()
 }
 
 func setFirewall(b []byte, value string) ([]byte, error) {
@@ -236,6 +384,21 @@ func setFirewall(b []byte, value string) ([]byte, error) {
 func (c *Config) validate() error {
 	o := &c.OpenPicket
 	var errs []error
+	if err := nodeid.Validate(c.Node.NodeID); err != nil {
+		errs = append(errs, fmt.Errorf("node_id: %w", err))
+	}
+	if c.Node.KeyFile == "" || c.Node.StateDir == "" {
+		errs = append(errs, errors.New("key_file and state_dir are required"))
+	}
+	seen := map[string]bool{}
+	for _, s := range o.LogSources {
+		if err := validLogSource(s); err != nil {
+			errs = append(errs, fmt.Errorf("openpicket.log_sources: %s: %w", s.Kind(), err))
+		} else if seen[s.Kind()] {
+			errs = append(errs, fmt.Errorf("openpicket.log_sources: %s listed twice", s.Kind()))
+		}
+		seen[s.Kind()] = true
+	}
 	if o.URL == "" {
 		errs = append(errs, errors.New("openpicket.url is required"))
 	} else if !strings.HasPrefix(o.URL, "ws://") && !strings.HasPrefix(o.URL, "wss://") {
@@ -287,7 +450,7 @@ func (c *Config) validate() error {
 	if o.Enforcer.MaxElements < 1 || o.Policy.MaxElements < 1 {
 		errs = append(errs, errors.New("openpicket: max_elements must be positive"))
 	}
-	if c.Suri.Platform.Firewall == "none" && (o.Enforcer.Enabled || o.Policy.Enabled) {
+	if c.Node.Platform.Firewall == "none" && (o.Enforcer.Enabled || o.Policy.Enabled) {
 		errs = append(errs, errors.New("platform.firewall none: disable openpicket.enforcer and openpicket.policy"))
 	}
 	return errors.Join(errs...)

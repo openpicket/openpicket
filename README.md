@@ -7,7 +7,7 @@ enforcement on every node, and a central manager with a web UI.
 | Component | Role |
 |---|---|
 | **openpicket-agent** | Edge (docker, OpenWrt or Linux). Runs Suricata through the embedded suricontroller agent, collects eve and NFLOG records, enforces CrowdSec decisions and port policies with nftables. |
-| **openpicket-manager** | Data plane and UI (N replicas, state in PostgreSQL). Receives logs (at-least-once) and forwards them to Grafana Loki and CrowdSec, distributes decisions and port policies, serves the UI. |
+| **openpicket-manager** | Data plane and UI (N replicas, state in PostgreSQL). Receives logs (at-least-once) and syslog from devices without an agent, forwards them to Grafana Loki and CrowdSec, distributes decisions and port policies, serves the UI. |
 | **openpicket-suricontroller** | Suricata control plane (1 replica): rules, configuration, bundles, deployment. [suricontroller](https://github.com/jc-lab/suricontroller) with its store in the shared PostgreSQL. |
 
 Each agent keeps two outbound connections with one key: channel A to

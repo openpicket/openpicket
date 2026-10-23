@@ -1,0 +1,160 @@
+{{- if .Values.gateway.enabled }}
+{{- $full := include "openpicket.fullname" . }}
+{{- $g := .Values.gateway }}
+# The agents' side of the manager (channel B, log pipeline, decision and
+# policy streams), apart from the UI and API: it holds the channel B host
+# key but no login, LAPI or hub credentials, and its database role cannot
+# change what the API manages.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}-gateway
+  labels:
+    {{- include "openpicket.componentLabels" (list . "gateway") | nindent 4 }}
+spec:
+  selector:
+    {{- include "openpicket.selector" (list . "gateway") | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $full }}-gateway
+  labels:
+    {{- include "openpicket.componentLabels" (list . "gateway") | nindent 4 }}
+spec:
+  replicas: {{ $g.replicas }}
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "gateway") | nindent 6 }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "openpicket.componentLabels" (list . "gateway") | nindent 8 }}
+    spec:
+      {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      # Agents move to another replica; the replica saves its watermarks
+      # first (graceful drain).
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: gateway
+          image: {{ include "openpicket.image" (list . .Values.manager.image) }}
+          args: [serve]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          env:
+            {{- include "openpicket.gatewayDBEnv" . | nindent 12 }}
+            - name: OPENPICKET_ROLE
+              value: gateway
+            - name: OPENPICKET_REPLICA_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPENPICKET_HOST_KEY_FILE
+              value: /secrets/host_key/host_key
+            - name: OPENPICKET_LOG_LEVEL
+              value: {{ default .Values.manager.logLevel $g.logLevel | quote }}
+            - name: OPENPICKET_TRUST_PROXY_HEADERS
+              value: {{ .Values.manager.trustProxyHeaders | quote }}
+            {{- include "openpicket.lokiEnv" . | nindent 12 }}
+            {{- include "openpicket.crowdsecSinkEnv" . | nindent 12 }}
+            {{- include "openpicket.opensearchEnv" . | nindent 12 }}
+            {{- include "openpicket.syslogDefaultEnv" . | nindent 12 }}
+            {{- include "openpicket.syslogEnv" . | nindent 12 }}
+            {{- with $g.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: metrics
+              containerPort: 9090
+            {{- include "openpicket.syslogPorts" . | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+          resources:
+            {{- toYaml $g.resources | nindent 12 }}
+          volumeMounts:
+            - name: host-key
+              mountPath: /secrets/host_key
+              readOnly: true
+            {{- if and .Values.opensearch.enabled .Values.opensearch.caSecret }}
+            - name: opensearch-ca
+              mountPath: /secrets/opensearch-ca
+              readOnly: true
+            {{- end }}
+            {{- include "openpicket.syslogMounts" . | nindent 12 }}
+      volumes:
+        - name: host-key
+          secret:
+            secretName: {{ include "openpicket.hostKeySecret" . }}
+            items: [{ key: host_key, path: host_key }]
+        {{- if and .Values.opensearch.enabled .Values.opensearch.caSecret }}
+        - name: opensearch-ca
+          secret:
+            secretName: {{ .Values.opensearch.caSecret }}
+        {{- end }}
+        {{- include "openpicket.syslogVolumes" . | nindent 8 }}
+      {{- with $g.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $g.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $g.affinity }}
+      affinity:
+        {{- toYaml $g.affinity | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    {{- include "openpicket.selector" (list . "gateway") | nindent 20 }}
+      {{- end }}
+{{- if and $g.podDisruptionBudget.enabled (gt (int $g.replicas) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $full }}-gateway
+  labels:
+    {{- include "openpicket.componentLabels" (list . "gateway") | nindent 4 }}
+spec:
+  minAvailable: {{ $g.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "openpicket.selector" (list . "gateway") | nindent 6 }}
+{{- end }}
+{{- end }}

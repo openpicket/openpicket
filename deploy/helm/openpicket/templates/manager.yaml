@@ -1,6 +1,11 @@
 {{- $full := include "openpicket.fullname" . }}
 {{- $secret := include "openpicket.secret" . }}
 {{- $m := .Values.manager }}
+{{- $split := .Values.gateway.enabled }}
+{{- $osCA := and .Values.opensearch.enabled .Values.opensearch.caSecret }}
+{{- $mispCA := and .Values.misp.enabled .Values.misp.external.url .Values.misp.external.caSecret }}
+{{- $volumes := or (not $split) $m.auth.config $osCA $mispCA }}
+{{- $syslog := and (not $split) .Values.syslog.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -42,9 +47,11 @@ spec:
     spec:
       {{- include "openpicket.imagePullSecrets" . | nindent 6 }}
       enableServiceLinks: false
+      {{- if not $split }}
       # Agents move to another replica; the replica saves its watermarks
       # first (graceful drain).
       terminationGracePeriodSeconds: 45
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -63,8 +70,23 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            # UI, API and leader tasks; with the gateways split off, the
+            # agents connect to them instead (gateway.yaml).
+            - name: OPENPICKET_ROLE
+              value: {{ ternary "api" "all" $split }}
+            {{- include "openpicket.keySecretEnv" . | nindent 12 }}
+            {{- if not $split }}
             - name: OPENPICKET_HOST_KEY_FILE
               value: /secrets/host_key/host_key
+            {{- else if .Values.gateway.database.user }}
+            # Created (or its password set) and granted on every start.
+            - name: OPENPICKET_DB_GATEWAY_ROLE
+              value: {{ .Values.gateway.database.user | quote }}
+            - name: OPENPICKET_DB_GATEWAY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- include "openpicket.gatewayDBPasswordRef" . | nindent 18 }}
+            {{- end }}
             - name: OPENPICKET_LOG_LEVEL
               value: {{ $m.logLevel | quote }}
             - name: OPENPICKET_PUBLIC_URL
@@ -92,40 +114,9 @@ spec:
             - name: OPENPICKET_AUTH_CONFIG_FILE
               value: /secrets/auth/auth-config
             {{- end }}
-            # Loki
-            - name: OPENPICKET_LOKI_URL
-              value: {{ include "openpicket.lokiURL" . | quote }}
-            - name: OPENPICKET_LOKI_MAX_AGE
-              value: {{ .Values.loki.maxAge | quote }}
-            {{- if not .Values.loki.builtin.enabled }}
-            - name: OPENPICKET_LOKI_TENANT
-              value: {{ .Values.loki.external.tenant | quote }}
-            {{- with .Values.loki.external.queryURL }}
-            - name: OPENPICKET_LOKI_QUERY_URL
-              value: {{ . | quote }}
-            {{- end }}
-            {{- if .Values.loki.external.username }}
-            - name: OPENPICKET_LOKI_USERNAME
-              value: {{ .Values.loki.external.username | quote }}
-            - name: OPENPICKET_LOKI_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ default $secret .Values.loki.external.existingSecret }}
-                  key: {{ ternary .Values.loki.external.passwordKey "loki-password" (not (empty .Values.loki.external.existingSecret)) }}
-            {{- end }}
-            {{- end }}
-            # CrowdSec agents (records) and LAPI (decisions, alerts)
-            - name: OPENPICKET_CROWDSEC_DISCOVERY_HOST
-              value: {{ $full }}-crowdsec-agents
-            - name: OPENPICKET_CROWDSEC_DISCOVERY_PORT
-              value: "8081"
-            - name: OPENPICKET_CROWDSEC_AUTH_HEADER
-              value: X-OpenPicket-Token
-            - name: OPENPICKET_CROWDSEC_AUTH_VALUE
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $secret }}
-                  key: acquis-token
+            {{- include "openpicket.lokiEnv" . | nindent 12 }}
+            {{- include "openpicket.crowdsecSinkEnv" . | nindent 12 }}
+            # CrowdSec LAPI (decisions, alerts) and hub
             {{- with .Values.crowdsec.hub }}
             {{- if .url }}
             - name: OPENPICKET_HUB_URL
@@ -197,28 +188,10 @@ spec:
             {{- end }}
             {{- end }}
             {{- end }}
-            {{- if .Values.opensearch.enabled }}
-            - name: OPENPICKET_OPENSEARCH_URL
-              value: {{ required "opensearch.url is required" .Values.opensearch.url | quote }}
-            - name: OPENPICKET_OPENSEARCH_RETENTION
-              value: {{ .Values.opensearch.retention | quote }}
-            - name: OPENPICKET_OPENSEARCH_REPLICAS
-              value: {{ .Values.opensearch.replicas | quote }}
-            - name: OPENPICKET_OPENSEARCH_INSECURE_SKIP_VERIFY
-              value: {{ .Values.opensearch.insecureSkipVerify | quote }}
-            {{- if .Values.opensearch.username }}
-            - name: OPENPICKET_OPENSEARCH_USERNAME
-              value: {{ .Values.opensearch.username | quote }}
-            - name: OPENPICKET_OPENSEARCH_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ default $secret .Values.opensearch.existingSecret }}
-                  key: {{ ternary .Values.opensearch.passwordKey "opensearch-password" (not (empty .Values.opensearch.existingSecret)) }}
-            {{- end }}
-            {{- if .Values.opensearch.caSecret }}
-            - name: OPENPICKET_OPENSEARCH_CA_FILE
-              value: /secrets/opensearch-ca/ca.crt
-            {{- end }}
+            {{- include "openpicket.opensearchEnv" . | nindent 12 }}
+            {{- include "openpicket.syslogDefaultEnv" . | nindent 12 }}
+            {{- if $syslog }}
+            {{- include "openpicket.syslogEnv" . | nindent 12 }}
             {{- end }}
             {{- with $m.extraEnv }}
             {{- toYaml . | nindent 12 }}
@@ -228,6 +201,9 @@ spec:
               containerPort: 8080
             - name: metrics
               containerPort: 9090
+            {{- if $syslog }}
+            {{- include "openpicket.syslogPorts" . | nindent 12 }}
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /readyz
@@ -240,46 +216,60 @@ spec:
             periodSeconds: 20
           resources:
             {{- toYaml $m.resources | nindent 12 }}
+          {{- if $volumes }}
           volumeMounts:
+            {{- if not $split }}
             - name: host-key
               mountPath: /secrets/host_key
               readOnly: true
+            {{- end }}
             {{- if $m.auth.config }}
             - name: auth
               mountPath: /secrets/auth
               readOnly: true
             {{- end }}
-            {{- if and .Values.opensearch.enabled .Values.opensearch.caSecret }}
+            {{- if $osCA }}
             - name: opensearch-ca
               mountPath: /secrets/opensearch-ca
               readOnly: true
             {{- end }}
-            {{- if and .Values.misp.enabled .Values.misp.external.url .Values.misp.external.caSecret }}
+            {{- if $mispCA }}
             - name: misp-ca
               mountPath: /secrets/misp-ca
               readOnly: true
             {{- end }}
+            {{- if $syslog }}
+            {{- include "openpicket.syslogMounts" . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+      {{- if $volumes }}
       volumes:
+        {{- if not $split }}
         - name: host-key
           secret:
             secretName: {{ include "openpicket.hostKeySecret" . }}
             items: [{ key: host_key, path: host_key }]
+        {{- end }}
         {{- if $m.auth.config }}
         - name: auth
           secret:
             secretName: {{ $secret }}
             items: [{ key: auth-config, path: auth-config }]
         {{- end }}
-        {{- if and .Values.opensearch.enabled .Values.opensearch.caSecret }}
+        {{- if $osCA }}
         - name: opensearch-ca
           secret:
             secretName: {{ .Values.opensearch.caSecret }}
         {{- end }}
-        {{- if and .Values.misp.enabled .Values.misp.external.url .Values.misp.external.caSecret }}
+        {{- if $mispCA }}
         - name: misp-ca
           secret:
             secretName: {{ .Values.misp.external.caSecret }}
         {{- end }}
+        {{- if $syslog }}
+        {{- include "openpicket.syslogVolumes" . | nindent 8 }}
+        {{- end }}
+      {{- end }}
       {{- with $m.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

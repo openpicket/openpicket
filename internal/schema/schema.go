@@ -10,9 +10,11 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -102,5 +104,32 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 			return fmt.Errorf("schema: apply %s: %w", m.name, err)
 		}
 	}
+	// The gateways read the version through this function: their account
+	// has no access to the migrations table (it runs as its owner).
+	if _, err := conn.Exec(ctx, `CREATE OR REPLACE FUNCTION openpicket.schema_version() RETURNS int
+		LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog
+		AS 'SELECT COALESCE(max(version), 0) FROM public.openpicket_schema_migrations'`); err != nil {
+		return fmt.Errorf("schema: version function: %w", err)
+	}
 	return nil
+}
+
+// Wait blocks until the database has this binary's schema (a gateway,
+// whose account cannot migrate, waits for the API replicas). A newer
+// schema is fine: migrations only add.
+func Wait(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) error {
+	want := Latest()
+	for {
+		var v int
+		err := pool.QueryRow(ctx, "SELECT openpicket.schema_version()").Scan(&v)
+		if err == nil && v >= want {
+			return nil
+		}
+		log.Info("waiting for the database schema (migrated by the API replicas)", "have", v, "want", want, "err", err)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(5 * time.Second):
+		}
+	}
 }

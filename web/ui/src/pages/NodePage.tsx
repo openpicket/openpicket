@@ -27,7 +27,7 @@ import { api } from "../api/client";
 import { useAccess, useNode } from "../api/hooks";
 import { queryClient } from "../api/queryClient";
 import { CopyText, ErrorAlert, KeyValue, LoadingBlock, PageHeader, TimeAgo } from "../components/common";
-import { LabelBadges, LabelsEditor, ListValue, SyncBadge, labelsToRows, refusalReason, rowsToLabels, type LabelRow } from "../components/nodes";
+import { CapabilityBadges, LabelBadges, LabelsEditor, ListValue, SyncBadge, labelsToRows, refusalReason, rowsToLabels, type LabelRow } from "../components/nodes";
 import { BundlePreview } from "../components/policyEditor";
 import type { Node, SyncState } from "../gen/openpicket/api/v1/nodes_pb";
 import { formatBytes, formatDateTime, formatNumber, toNumber } from "../lib/format";
@@ -108,7 +108,7 @@ function Overview(props: { node: Node }) {
             [t("Remote address"), dp?.remoteAddr ? <CopyText value={dp.remoteAddr} /> : "-"],
             [t("Boot id"), dp?.bootId ? <CopyText value={dp.bootId} size="xs" /> : "-"],
             [t("Agent version"), dp?.agentVersion || "-"],
-            [t("Capabilities"), <ListValue values={dp?.capabilities} />],
+            [t("Features"), <CapabilityBadges capabilities={dp?.capabilities} />],
             [t("WAN interfaces"), <ListValue values={dp?.wanInterfaces} />],
           ]}
         />
@@ -288,6 +288,53 @@ function StatusPanel(props: { node: Node }) {
             </Alert>
           )}
         </Section>
+        {st.logSources.length > 0 && (
+          <Section title={t("Log sources")}>
+            <Table fz="sm" verticalSpacing={4}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>{t("Program")}</Table.Th>
+                  <Table.Th>{t("Path")}</Table.Th>
+                  <Table.Th ta="right">{t("Files")}</Table.Th>
+                  <Table.Th ta="right">{t("Lines")}</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {st.logSources.map((s) => (
+                  <Table.Tr key={s.path}>
+                    <Table.Td ff="monospace">{s.program}</Table.Td>
+                    <Table.Td>
+                      <Text size="xs" ff="monospace">
+                        {s.path}
+                      </Text>
+                      {s.lastError && (
+                        <Text size="xs" c="red">
+                          {s.lastError}
+                        </Text>
+                      )}
+                      {toNumber(s.truncated) > 0 && (
+                        <Text size="xs" c="orange">
+                          {t("{n} lines cut at 64 KiB", { n: formatNumber(s.truncated) })}
+                        </Text>
+                      )}
+                      {toNumber(s.dropped) > 0 && (
+                        <Text size="xs" c="orange">
+                          {t("{n} messages dropped (queue full)", { n: formatNumber(s.dropped) })}
+                        </Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <Text size="sm" c={s.files === 0 ? "orange" : undefined}>
+                        {s.files}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td ta="right">{formatNumber(s.lines)}</Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Section>
+        )}
         <Section title={t("Local networks")}>
           <KeyValue
             rows={[
@@ -379,6 +426,9 @@ export default function NodePage() {
   if (node.isPending) return <LoadingBlock h={300} />;
   if (node.isError) return <ErrorAlert error={node.error} onRetry={() => node.refetch()} />;
   const n = node.data;
+  // Agents before the "suricata" capability always ran it; suricontroller
+  // knowing the node says the same.
+  const hasSuricata = !!n.dataPlane?.capabilities.includes("suricata") || !!n.suricataLastSeenAt;
   const confirmDelete = () =>
     modals.openConfirmModal({
       title: t("Delete node {id}?", { id }),
@@ -429,7 +479,7 @@ export default function NodePage() {
           <Tabs.Tab value="overview">{t("Overview")}</Tabs.Tab>
           <Tabs.Tab value="status">{t("Status")}</Tabs.Tab>
           <Tabs.Tab value="sync">{t("Sync")}</Tabs.Tab>
-          {access.features?.suricata && <Tabs.Tab value="suricata">{t("Suricata")}</Tabs.Tab>}
+          {access.features?.suricata && hasSuricata && <Tabs.Tab value="suricata">{t("Suricata")}</Tabs.Tab>}
         </Tabs.List>
         <Tabs.Panel value="overview">
           <Overview node={n} />
@@ -440,7 +490,7 @@ export default function NodePage() {
         <Tabs.Panel value="sync">
           <SyncPanel node={n} />
         </Tabs.Panel>
-        {access.features?.suricata && (
+        {access.features?.suricata && hasSuricata && (
           <Tabs.Panel value="suricata">
             <Section title={t("Suricata")}>
               <Stack align="flex-start">

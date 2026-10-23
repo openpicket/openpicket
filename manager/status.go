@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -24,8 +25,10 @@ func (m *Manager) API(cfg api.Config) (*api.Server, error) {
 	cfg.Policies = m.policies
 	cfg.Hub = m.hub
 	cfg.HubRemote = m.hubRemote
+	cfg.LogPrograms = m.programs
 	cfg.Settings = m.settings
-	cfg.HostKey = m.HostPublicKey()
+	cfg.SyslogUnregistered = m.opts.Syslog.Unregistered
+	cfg.HostKey = m.HostPublicKey
 	cfg.Replica = m.opts.ReplicaID
 	cfg.Version = version.Version
 	cfg.Status = m.componentStatus
@@ -80,12 +83,37 @@ func (m *Manager) pokeAlerts(instance string) {
 	_, _ = m.opts.DB.Exec(ctx, `SELECT pg_notify($1, $2)`, db.ChannelAlerts, instance)
 }
 
-// sinksDown reports the log sinks whose deliveries fail on this replica.
-func (m *Manager) sinksDown() map[string]string {
+// localSinksDown reports the log sinks whose deliveries fail on this
+// replica (a gateway).
+func (m *Manager) localSinksDown() map[string]string {
 	out := map[string]string{}
+	if m.pipe == nil {
+		return out
+	}
 	for _, sink := range []string{"loki", "crowdsec"} {
 		if br := m.pipe.Breaker(sink); br != nil && br.Open() {
 			out[sink] = "Deliveries to " + sink + " are failing on " + m.opts.ReplicaID + "; batches are retried and agents buffer."
+		}
+	}
+	return out
+}
+
+// sinksDown reports failing log sinks: on this replica, or on the gateway
+// replicas (as they recorded it) when this one runs the API only.
+func (m *Manager) sinksDown() map[string]string {
+	if m.opts.Role.Gateway() {
+		return m.localSinksDown()
+	}
+	out := map[string]string{}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	gws, err := m.Gateways(ctx)
+	if err != nil {
+		return out
+	}
+	for _, g := range gws {
+		for _, sink := range g.SinksDown {
+			out[sink] = "Deliveries to " + sink + " are failing on " + g.Replica + "; batches are retried and agents buffer."
 		}
 	}
 	return out
@@ -122,19 +150,10 @@ func (m *Manager) componentStatus(ctx context.Context) []*apiv1.ComponentStatus 
 			out = append(out, c("opensearch", "degraded", "cluster "+h))
 		}
 	}
-	if m.search != nil {
-		switch h, err := m.search.Health(pctx); {
-		case err != nil:
-			out = append(out, c("opensearch", "down", err.Error()))
-		case h == "green" || h == "yellow":
-			out = append(out, c("opensearch", "ok", "cluster "+h))
-		default:
-			out = append(out, c("opensearch", "degraded", "cluster "+h))
-		}
-	}
+	down := m.sinksDown()
 	for _, sink := range []string{"loki", "crowdsec"} {
-		if br := m.pipe.Breaker(sink); br != nil && br.Open() {
-			out = append(out, c(sink, "down", "deliveries are failing; batches are retried"))
+		if d, ok := down[sink]; ok {
+			out = append(out, c(sink, "down", d))
 		} else {
 			out = append(out, c(sink, "ok", ""))
 		}
@@ -197,6 +216,38 @@ func (m *Manager) componentStatus(ctx context.Context) []*apiv1.ComponentStatus 
 	default:
 		out = append(out, c("geoip", "degraded", "no MaxMind database uploaded: country and AS policies are skipped"))
 	}
-	out = append(out, c("agents", "ok", fmt.Sprintf("%d sessions on this replica", len(m.gw.Sessions()))))
+	if m.opts.Role.Gateway() {
+		out = append(out, c("agents", "ok", fmt.Sprintf("%d sessions on this replica", len(m.gw.Sessions()))))
+	}
+	if m.opts.Role == RoleAPI {
+		out = append(out, m.gatewayStatus(ctx))
+	}
 	return out
+}
+
+// gatewayStatus reports the gateway replicas (role api): whether any runs,
+// and whether their database accounts are restricted.
+func (m *Manager) gatewayStatus(ctx context.Context) *apiv1.ComponentStatus {
+	c := func(state, detail string) *apiv1.ComponentStatus {
+		return &apiv1.ComponentStatus{Name: "gateway", State: state, Detail: detail, CheckedAt: timestamppb.Now()}
+	}
+	gws, err := m.Gateways(ctx)
+	if err != nil {
+		return c("down", err.Error())
+	}
+	if len(gws) == 0 {
+		return c("down", "no gateway replica seen in the last 3 minutes: agents cannot connect")
+	}
+	sessions := 0
+	var open []string
+	for _, g := range gws {
+		sessions += g.Sessions
+		if !g.DBRestricted {
+			open = append(open, g.Replica+" ("+g.DBUser+")")
+		}
+	}
+	if len(open) > 0 {
+		return c("degraded", fmt.Sprintf("database privileges not separated: %s can change what the API manages (set a gateway database role)", strings.Join(open, ", ")))
+	}
+	return c("ok", fmt.Sprintf("%d replicas, %d agent sessions, database account restricted", len(gws), sessions))
 }

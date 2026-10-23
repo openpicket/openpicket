@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -138,5 +139,36 @@ func TestNflogPrefixFilter(t *testing.T) {
 	}
 	if a.count("/openpicket") != 1 {
 		t.Fatalf("nflog = %d", a.count("/openpicket"))
+	}
+}
+
+// TestGenericLogs: generic log lines go out wrapped (program, message,
+// node) and all lines of a node to one log processor.
+func TestGenericLogs(t *testing.T) {
+	a, b := newLP(t), newLP(t)
+	now := time.Unix(1000, 0)
+	s, err := New(Config{Endpoints: []string{a.srv.URL, b.srv.URL}, AuthValue: "secret", Now: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, node := range []string{"web-01", "web-02", "web-03", "web-04"} {
+		var recs []*pipeline.Record
+		for i := 0; i < 10; i++ {
+			line := fmt.Sprintf(`198.51.100.%d - - [x] "GET / HTTP/1.1" 404 0`, i)
+			recs = append(recs, &pipeline.Record{Line: []byte(line), Time: now, Program: "nginx", Message: line})
+		}
+		batch := &pipeline.Batch{NodeID: node, Type: record.TypeLog, Program: "nginx", Received: now, Node: &registry.Node{ID: node}, Records: recs}
+		if err := s.Deliver(context.Background(), batch); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if a.count("/openpicket")+b.count("/openpicket") != 40 || a.count("/openpicket")%10 != 0 {
+		t.Fatalf("a=%d b=%d: a node's lines were split", a.count("/openpicket"), b.count("/openpicket"))
+	}
+	got := append(a.got["/openpicket"], b.got["/openpicket"]...)
+	l := got[0]["openpicket_log"].(map[string]any)
+	m := got[0]["openpicket_meta"].(map[string]any)
+	if l["program"] != "nginx" || !strings.HasPrefix(l["message"].(string), "198.51.100.") || !strings.HasPrefix(m["node_id"].(string), "web-0") {
+		t.Fatalf("envelope = %v", got[0])
 	}
 }
