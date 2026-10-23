@@ -201,3 +201,12 @@ func DataSourceAllowed(url string, hosts []string) bool {
 	host, _, _ := strings.Cut(rest, "/")
 	return slices.Contains(hosts, strings.ToLower(host))
 }
+
+// ParseDescription returns the description of an item's first document.
+func ParseDescription(content []byte) (string, error) {
+	var h struct {
+		Description string `yaml:"description"`
+	}
+	err := yaml.NewDecoder(bytes.NewReader(content)).Decode(&h)
+	return h.Description, err
+}

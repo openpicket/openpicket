@@ -2,7 +2,12 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"path"
 	"sort"
 	"strings"
 
@@ -268,4 +273,92 @@ func hubFetchError(err error) error {
 		return toConnectError(err)
 	}
 	return connect.NewError(connect.CodeUnavailable, err)
+}
+
+// Upload limits: an item file and its data files.
+const (
+	hubUploadMaxData  = 64 << 20
+	hubUploadMaxTotal = 128 << 20
+)
+
+// uploadHub stores a custom item (multipart: fields "type" and "stage",
+// file "item", files "data" named as the item's data files).
+func (s *Server) uploadHub(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.Hub == nil {
+		http.Error(w, "CrowdSec content is not configured", http.StatusServiceUnavailable)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, hubUploadMaxTotal)
+	mr, err := r.MultipartReader()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var (
+		typ, stage string
+		item       []byte
+		data       = map[string][]byte{}
+	)
+	for {
+		part, err := mr.NextPart()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		switch part.FormName() {
+		case "type", "stage":
+			v, _ := io.ReadAll(io.LimitReader(part, 64))
+			if part.FormName() == "type" {
+				typ = strings.TrimSpace(string(v))
+			} else {
+				stage = strings.TrimSpace(string(v))
+			}
+		case "item":
+			if item, err = io.ReadAll(io.LimitReader(part, hubitem.MaxItemSize+1)); err != nil || len(item) > hubitem.MaxItemSize {
+				http.Error(w, "the item file is larger than 1 MiB", http.StatusRequestEntityTooLarge)
+				return
+			}
+		case "data":
+			name := path.Base(part.FileName())
+			b, err := io.ReadAll(io.LimitReader(part, hubUploadMaxData+1))
+			if err != nil || len(b) > hubUploadMaxData {
+				http.Error(w, "a data file is larger than 64 MiB", http.StatusRequestEntityTooLarge)
+				return
+			}
+			data[name] = b
+		}
+	}
+	if len(item) == 0 {
+		http.Error(w, "no item file", http.StatusBadRequest)
+		return
+	}
+	// Data files are named by their base name; the item says where they go.
+	if doc, err := hubitem.ParseDoc(typ, item); err == nil {
+		named := map[string][]byte{}
+		for _, ref := range doc.Data {
+			if b, ok := data[path.Base(ref.DestFile)]; ok {
+				named[ref.DestFile] = b
+				delete(data, path.Base(ref.DestFile))
+			}
+		}
+		for extra, b := range data {
+			named[extra] = b // refused by Upload, with the expected names
+		}
+		data = named
+	}
+	ref, err := s.cfg.Hub.Upload(r.Context(), typ, stage, item, data, by(r.Context()))
+	if err != nil {
+		code := http.StatusInternalServerError
+		if errors.Is(err, hub.ErrInvalid) {
+			code = http.StatusBadRequest
+		}
+		http.Error(w, err.Error(), code)
+		return
+	}
+	s.audit(r.Context(), "HubService.Upload", ref.Type+" "+ref.Name, fmt.Sprintf(`{"sha256":%q,"data":%d}`, hub.Digest(item), len(data)))
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"type": ref.Type, "name": ref.Name})
 }

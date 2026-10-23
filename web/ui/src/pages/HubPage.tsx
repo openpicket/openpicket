@@ -6,6 +6,7 @@ import {
   Badge,
   Button,
   Code,
+  FileInput,
   Group,
   Modal,
   Pagination,
@@ -23,9 +24,10 @@ import {
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconDownload, IconRefresh, IconSearch, IconTrash } from "@tabler/icons-react";
+import { IconAlertTriangle, IconDownload, IconRefresh, IconSearch, IconTrash, IconUpload } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { api } from "../api/client";
+import { api, uploadHubItem } from "../api/client";
+import { errorMessage } from "../api/errors";
 import { useAccess } from "../api/hooks";
 import { queryClient } from "../api/queryClient";
 import { EmptyState, ErrorAlert, LoadingBlock, PageHeader, StatusDot, TimeAgo } from "../components/common";
@@ -287,15 +289,17 @@ export default function HubPage() {
       />
       <Stack>
         <Rollout />
-        <SegmentedControl
-          w="fit-content"
-          value={view}
-          onChange={setView}
-          data={[
-            { value: "installed", label: t("Installed") },
-            { value: "hub", label: t("CrowdSec hub") },
-          ]}
-        />
+        <Group justify="space-between">
+          <SegmentedControl
+            value={view}
+            onChange={setView}
+            data={[
+              { value: "installed", label: t("Installed") },
+              { value: "hub", label: t("CrowdSec hub") },
+            ]}
+          />
+          {access.canAdmin && <UploadButton />}
+        </Group>
         {view === "hub" ? (
           <HubBrowser />
         ) : (
@@ -691,5 +695,80 @@ function PreviewModal(props: { entry: HubIndexEntry | null; onClose: () => void 
         </Stack>
       )}
     </Modal>
+  );
+}
+
+const STAGES: Record<string, string[]> = {
+  parsers: ["s00-raw", "s01-parse", "s02-enrich"],
+  postoverflows: ["s00-enrich", "s01-whitelist"],
+};
+
+/** Uploads an item file (offline installs, own content). */
+function UploadButton() {
+  const [opened, setOpened] = useState(false);
+  const [type, setType] = useState("scenarios");
+  const [stage, setStage] = useState("s01-parse");
+  const [item, setItem] = useState<File | null>(null);
+  const [data, setData] = useState<File[]>([]);
+  const [error, setError] = useState("");
+  const upload = useMutation({
+    mutationFn: () => uploadHubItem(type, STAGES[type] ? stage : "", item!, data),
+    meta: { silent: true },
+    onSuccess: (r) => {
+      invalidate();
+      notifications.show({ color: "teal", message: t("{name} uploaded", { name: r.name }) });
+      setOpened(false);
+      setItem(null);
+      setData([]);
+      setError("");
+    },
+    onError: (err) => setError(errorMessage(err)),
+  });
+  return (
+    <>
+      <Button size="xs" variant="default" leftSection={<IconUpload size={14} />} onClick={() => setOpened(true)}>
+        {t("Upload an item")}
+      </Button>
+      <Modal opened={opened} onClose={() => setOpened(false)} title={t("Upload an item")} size="lg">
+        <Stack>
+          <Text size="sm" c="dimmed">
+            {t("A parser, scenario, collection... file in CrowdSec's format. Its name comes from the file. New scenarios start in simulation.")}
+          </Text>
+          <Group grow>
+            <Select
+              label={t("Type")}
+              data={TYPES.map((ty) => ({ value: ty.value, label: t(ty.label) }))}
+              value={type}
+              onChange={(v) => {
+                if (!v) return;
+                setType(v);
+                if (STAGES[v]) setStage(STAGES[v][Math.min(1, STAGES[v].length - 1)]);
+              }}
+              allowDeselect={false}
+            />
+            {STAGES[type] && <Select label={t("Stage")} data={STAGES[type]} value={stage} onChange={(v) => v && setStage(v)} allowDeselect={false} />}
+          </Group>
+          <FileInput label={t("Item file (YAML)")} accept=".yaml,.yml" value={item} onChange={setItem} clearable />
+          <FileInput
+            label={t("Data files")}
+            description={t("The files its data entries name (dest_file), if not stored yet.")}
+            multiple
+            value={data}
+            onChange={setData}
+            clearable
+          />
+          {error && (
+            <Alert color="red" icon={<IconAlertTriangle size={16} />}>
+              {error}
+            </Alert>
+          )}
+          <Group justify="flex-end">
+            <Button leftSection={<IconUpload size={16} />} disabled={!item} loading={upload.isPending} onClick={() => upload.mutate()}>
+              {t("Upload")}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
   );
 }

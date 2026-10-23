@@ -51,3 +51,20 @@ export async function uploadGeoDatabase(file: File): Promise<{ kind: string; dat
   if (!res.ok) throw new Error((await res.text()).trim() || `upload failed (${res.status})`);
   return res.json();
 }
+
+/** Uploads a CrowdSec item with the data files it reads (multipart). */
+export async function uploadHubItem(type: string, stage: string, item: File, data: File[]): Promise<{ type: string; name: string }> {
+  const body = new FormData();
+  body.append("type", type);
+  body.append("stage", stage);
+  body.append("item", item);
+  for (const f of data) body.append("data", f);
+  const res = await fetch(`${apiBase}/hub/upload`, {
+    method: "POST",
+    body,
+    credentials: "same-origin",
+    headers: { "X-OpenPicket-Request": "1" },
+  });
+  if (!res.ok) throw new Error((await res.text()).trim() || `upload failed (${res.status})`);
+  return res.json();
+}
