@@ -17,6 +17,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -67,6 +68,11 @@ type Options struct {
 	// the push URL's host).
 	LokiQueryURL string
 	CrowdSec     crowdsec.Config
+	// Role selects what this replica runs (default RoleAll).
+	Role Role
+	// Keys of the UI and API (session, suricontroller principal); nil
+	// derives them from HostKey (setups without OPENPICKET_KEY_SECRET).
+	Keys *Keys
 	// CrowdSecSync locates the log processors' content sync
 	// (openpicket-crowdsec-sync).
 	CrowdSecSync CrowdSecSync
@@ -119,6 +125,27 @@ type Options struct {
 	// Registry for metrics; nil creates one (served by MetricsHandler).
 	Registry *prometheus.Registry
 }
+
+// Role is what a replica runs (docs/ARCHITECTURE.md §5.10).
+type Role string
+
+const (
+	// RoleAll runs everything (single deployment, docker compose).
+	RoleAll Role = "all"
+	// RoleGateway runs what faces the agents: channel B, the log pipeline,
+	// the decision and policy streams (and the syslog receiver). It holds
+	// the channel B host key, and nothing of the UI and API.
+	RoleGateway Role = "gateway"
+	// RoleAPI runs the UI and API and the leader tasks (LAPI, alerts,
+	// notifications, MISP, CrowdSec content, policy compilation).
+	RoleAPI Role = "api"
+)
+
+// Gateway reports whether the role faces the agents.
+func (r Role) Gateway() bool { return r != RoleAPI }
+
+// API reports whether the role runs the UI, API and leader tasks.
+func (r Role) API() bool { return r != RoleGateway }
 
 // CrowdSecSync locates the content sync of the log processors.
 type CrowdSecSync struct {
@@ -173,14 +200,39 @@ type Manager struct {
 	misp       *misp.Service
 	lapis      []api.LAPI
 	controller *controllerEndpoint
+	// ctlEP is the suricontroller endpoint a gateway hands agents: kept by
+	// the API replicas in the settings (role gateway).
+	ctlEP    atomic.Pointer[dataplanev1.ControllerEndpoint]
+	ackSinks []pipeline.Sink
 
 	runOnce sync.Once
 }
 
 // New creates a manager; call Run.
 func New(opts Options) (*Manager, error) {
-	if opts.DB == nil || opts.HostKey == nil {
-		return nil, errors.New("manager: DB and HostKey are required")
+	if opts.Role == "" {
+		opts.Role = RoleAll
+	}
+	switch opts.Role {
+	case RoleAll, RoleGateway, RoleAPI:
+	default:
+		return nil, fmt.Errorf("manager: unknown role %q", opts.Role)
+	}
+	if opts.DB == nil {
+		return nil, errors.New("manager: DB is required")
+	}
+	if opts.HostKey == nil && opts.Role.Gateway() {
+		return nil, errors.New("manager: the channel B host key is required (role " + string(opts.Role) + ")")
+	}
+	if opts.Keys == nil && opts.Role.API() {
+		if opts.HostKey == nil {
+			return nil, errors.New("manager: OPENPICKET_KEY_SECRET is required for role api")
+		}
+		keys, err := DeriveKeys(opts.HostKey)
+		if err != nil {
+			return nil, err
+		}
+		opts.Keys = keys
 	}
 	if opts.Logger == nil {
 		opts.Logger = slog.Default()
@@ -201,75 +253,80 @@ func New(opts Options) (*Manager, error) {
 	m.listener = db.NewListener(opts.DB, opts.Logger)
 	m.settings = settings.New(opts.DB)
 
-	static, err := noiseconn.KeyPair(opts.HostKey.X25519())
-	if err != nil {
-		return nil, err
-	}
-	m.gw = gateway.New(gateway.Config{
-		StaticKey: static, Nodes: m.nodes, Handler: (*handler)(m), Logger: opts.Logger, TrustProxyHeaders: opts.TrustProxyHeaders,
-	})
-	m.reg.MustRegister(&nodeCollector{gw: m.gw, nodes: m.nodes})
-	m.presence = &presence{db: opts.DB, replica: opts.ReplicaID, gw: m.gw, log: opts.Logger.With("component", "presence")}
-
-	var ack []pipeline.Sink
+	var err error
 	m.programs = logprog.New(opts.DB, m.settings, opts.Logger)
-	lokiCfg := opts.Loki
-	lokiCfg.Registerer = m.reg
-	lokiCfg.Skip = m.programs.Skip
-	lk, err := loki.New(lokiCfg)
-	if err != nil {
-		return nil, err
-	}
-	ack = append(ack, lk)
 	csCfg := opts.CrowdSec
 	csCfg.Logger = opts.Logger
 	if m.cs, err = crowdsec.New(csCfg); err != nil {
 		return nil, err
 	}
-	ack = append(ack, m.cs)
 	m.geo = geo.New(opts.DB, opts.Logger)
-	m.hub = hub.NewStore(opts.DB, opts.Logger)
-	m.hubRemote = hub.NewHub(m.hub, opts.Hub)
-	header, token := m.cs.Auth()
-	m.rollout = &hub.Rollout{Store: m.hub, Targets: m.syncTargets, Header: header, Token: token, Logger: opts.Logger}
-	m.rollout.Init()
 	m.policies = policy.New(opts.DB, m.geo, opts.Logger)
+	// Compilation results (last good versions, errors) are written by the
+	// API replicas; a gateway compiles for its streams only.
+	m.policies.ReadOnly = !opts.Role.API()
+	if opts.Role.API() {
+		m.hub = hub.NewStore(opts.DB, opts.Logger)
+		m.hubRemote = hub.NewHub(m.hub, opts.Hub)
+		header, token := m.cs.Auth()
+		m.rollout = &hub.Rollout{Store: m.hub, Targets: m.syncTargets, Header: header, Token: token, Logger: opts.Logger}
+		m.rollout.Init()
+		m.listener.Handle(db.ChannelHub, m.rollout.Notified)
+		m.listener.OnResync(func() { m.rollout.Notified("") })
+	}
+	if opts.Role.Gateway() {
+		if err := m.setupGateway(); err != nil {
+			return nil, err
+		}
+	}
 	// Policies compile against the GeoIP data this replica loaded: a
 	// reload (first successful load after a failure, new upload) recompiles.
 	m.geo.OnChange = func() { m.policies.Notified("") }
-	m.watermarks = pipeline.NewWatermarks(opts.DB, opts.Logger)
-	var async []pipeline.Sink
 	if opts.OpenSearch != nil && opts.OpenSearch.URL != "" {
+		// The sink (gateway) and the alert indexing leader (api).
 		if m.search, err = opensearch.New(*opts.OpenSearch); err != nil {
 			return nil, err
 		}
-		async = append(async, m.search)
 	}
-	m.pipe = pipeline.New(pipeline.Config{
-		AckSinks: ack, AsyncSinks: async, Watermarks: m.watermarks, Geo: m.geo, Programs: m.programs, Logger: opts.Logger, Registerer: m.reg, OpenAfter: opts.PipelineOpenAfter,
-	})
-
-	m.nodes.OnRevoked = func(id string) { m.gw.Disconnect(id, "") }
+	if opts.Role.Gateway() {
+		var async []pipeline.Sink
+		if m.search != nil {
+			async = append(async, m.search)
+		}
+		m.pipe = pipeline.New(pipeline.Config{
+			AckSinks: m.ackSinks, AsyncSinks: async, Watermarks: m.watermarks, Geo: m.geo, Programs: m.programs, Logger: opts.Logger, Registerer: m.reg, OpenAfter: opts.PipelineOpenAfter,
+		})
+	}
 	m.listener.Handle(db.ChannelNodes, func(id string) {
 		m.nodes.Changed(context.Background(), id)
 		// Bundles depend on node labels.
 		m.policies.Notified("")
 	})
 	m.listener.Handle(db.ChannelGeo, m.geo.Notified)
-	m.listener.Handle(db.ChannelHub, m.rollout.Notified)
-	m.listener.OnResync(func() { m.rollout.Notified("") })
 	m.listener.Handle(db.ChannelPolicy, m.policies.Notified)
 	m.listener.OnResync(func() {
 		m.geo.Notified("")
 		m.policies.Notified("")
 	})
-	m.listener.Handle(db.ChannelSessions, m.presence.notified)
 	m.listener.Handle(db.ChannelSettings, m.settings.Notified)
-	m.dist = relay.NewDistributor(opts.DB, opts.Logger)
-	m.listener.Handle(db.ChannelDecisions, m.dist.Notified)
-	// After a reconnect notifications may have been missed: wake the
-	// decision streams so they compare versions.
-	m.listener.OnResync(func() { m.dist.Notified("") })
+	m.listener.OnResync(func() { m.nodes.Resync(context.Background()) })
+	m.settings.OnChange = func(key string) {
+		switch key {
+		case settings.KeyLogPolicy:
+			if opts.Role.Gateway() {
+				m.pushLogPolicy()
+			}
+		case logprog.KeyStorage:
+			m.programs.Load(context.Background())
+		case keyControllerEndpoint:
+			if !opts.Role.API() {
+				m.loadControllerEndpoint(context.Background(), true)
+			}
+		}
+	}
+	if !opts.Role.API() {
+		return m, nil
+	}
 	if opts.LAPI.URL != "" {
 		lc, err := lapi.New(opts.LAPI)
 		if err != nil {
@@ -302,23 +359,42 @@ func New(opts Options) (*Manager, error) {
 			m.alerts.Poke(payload)
 		})
 	}
-	m.listener.OnResync(func() { m.nodes.Resync(context.Background()) })
 	if opts.Suricontroller != nil {
-		keys, err := DeriveKeys(opts.HostKey)
-		if err != nil {
-			return nil, err
-		}
-		m.controller = newControllerEndpoint(opts.Suricontroller, keys.Principal, opts.AgentControllerURL, opts.ControllerPollInterval, opts.Logger)
-	}
-	m.settings.OnChange = func(key string) {
-		switch key {
-		case settings.KeyLogPolicy:
-			m.pushLogPolicy()
-		case logprog.KeyStorage:
-			m.programs.Load(context.Background())
-		}
+		m.controller = newControllerEndpoint(opts.Suricontroller, opts.Keys.Principal, opts.AgentControllerURL, opts.ControllerPollInterval, opts.Logger)
 	}
 	return m, nil
+}
+
+// setupGateway creates what faces the agents: channel B, presence, the
+// log pipeline's sinks and the decision streams.
+func (m *Manager) setupGateway() error {
+	opts := m.opts
+	static, err := noiseconn.KeyPair(opts.HostKey.X25519())
+	if err != nil {
+		return err
+	}
+	m.gw = gateway.New(gateway.Config{
+		StaticKey: static, Nodes: m.nodes, Handler: (*handler)(m), Logger: opts.Logger, TrustProxyHeaders: opts.TrustProxyHeaders,
+	})
+	m.reg.MustRegister(&nodeCollector{gw: m.gw, nodes: m.nodes})
+	m.presence = &presence{db: opts.DB, replica: opts.ReplicaID, gw: m.gw, log: opts.Logger.With("component", "presence")}
+	lokiCfg := opts.Loki
+	lokiCfg.Registerer = m.reg
+	lokiCfg.Skip = m.programs.Skip
+	lk, err := loki.New(lokiCfg)
+	if err != nil {
+		return err
+	}
+	m.ackSinks = []pipeline.Sink{lk, m.cs}
+	m.watermarks = pipeline.NewWatermarks(opts.DB, opts.Logger)
+	m.nodes.OnRevoked = func(id string) { m.gw.Disconnect(id, "") }
+	m.listener.Handle(db.ChannelSessions, m.presence.notified)
+	m.dist = relay.NewDistributor(opts.DB, opts.Logger)
+	m.listener.Handle(db.ChannelDecisions, m.dist.Notified)
+	// After a reconnect notifications may have been missed: wake the
+	// decision streams so they compare versions.
+	m.listener.OnResync(func() { m.dist.Notified("") })
+	return nil
 }
 
 // setupAlerts creates the watcher clients and the alert syncer for every
@@ -387,8 +463,20 @@ func (m *Manager) setupMISP() error {
 	return nil
 }
 
-// HostPublicKey returns the line agents pin as openpicket.host_key.
-func (m *Manager) HostPublicKey() string { return m.opts.HostKey.Public(HostKeyComment).String() }
+// HostPublicKey returns the line agents pin as openpicket.host_key. An API
+// replica without the host key reads the one the gateways published.
+func (m *Manager) HostPublicKey() string {
+	if m.opts.HostKey != nil {
+		return m.opts.HostKey.Public(HostKeyComment).String()
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	var line string
+	if err := m.opts.DB.QueryRow(ctx, `SELECT host_key FROM openpicket.gateway_info ORDER BY seen_at DESC LIMIT 1`).Scan(&line); err != nil {
+		return ""
+	}
+	return line
+}
 
 // Gateway returns the channel B gateway.
 func (m *Manager) Gateway() *gateway.Gateway { return m.gw }
@@ -415,48 +503,53 @@ func (m *Manager) Run(ctx context.Context) error {
 	if err := m.geo.Load(ctx); err != nil {
 		m.log.Warn("load geo databases", "err", err)
 	}
-	// The CrowdSec image carries no content: the built-in items come from
-	// this binary (hub.Builtin).
 	m.programs.Load(ctx)
-	if err := m.hub.SeedBuiltin(ctx); err != nil {
-		m.log.Error("store built-in CrowdSec content", "err", err)
-	}
-	// One lock connection for every leader task of this replica.
-	el := db.NewElector(m.opts.DB, m.opts.ReplicaID, m.log)
-	if m.relay != nil {
-		el.Add("relay", func(ctx context.Context, l *db.Leadership) { m.relay.Run(ctx, l) })
-	}
-	if m.search != nil {
-		el.Add("opensearch", func(ctx context.Context, _ *db.Leadership) {
-			m.search.RunLeader(ctx, m.opts.DB, m.log.With("component", "opensearch"), 30*time.Second)
+	workers := []func(context.Context){m.listener.Run, m.cs.Run}
+	if m.opts.Role.API() {
+		// The CrowdSec image carries no content: the built-in items come
+		// from this binary (hub.Builtin).
+		if err := m.hub.SeedBuiltin(ctx); err != nil {
+			m.log.Error("store built-in CrowdSec content", "err", err)
+		}
+		// One lock connection for every leader task of this replica.
+		el := db.NewElector(m.opts.DB, m.opts.ReplicaID, m.log)
+		if m.relay != nil {
+			el.Add("relay", func(ctx context.Context, l *db.Leadership) { m.relay.Run(ctx, l) })
+		}
+		if m.search != nil {
+			el.Add("opensearch", func(ctx context.Context, _ *db.Leadership) {
+				m.search.RunLeader(ctx, m.opts.DB, m.log.With("component", "opensearch"), 30*time.Second)
+			})
+		}
+		if m.misp != nil {
+			el.Add("misp", func(ctx context.Context, l *db.Leadership) { m.misp.Run(ctx, l) })
+		}
+		el.Add("notify", func(ctx context.Context, l *db.Leadership) { m.notify.Run(ctx, l) })
+		el.Add("hub", func(ctx context.Context, l *db.Leadership) {
+			go m.hubRemote.RunRefresh(ctx)
+			m.rollout.Run(ctx, l)
 		})
+		if m.alerts != nil {
+			el.Add("alerts", func(ctx context.Context, l *db.Leadership) { m.alerts.Run(ctx, l) })
+		}
+		workers = append(workers, el.Run, m.policies.RunCompiler)
+		if m.controller != nil {
+			onChange := m.pushController
+			if !m.opts.Role.Gateway() {
+				onChange = m.storeControllerEndpoint
+			}
+			workers = append(workers, func(ctx context.Context) { m.controller.run(ctx, onChange) })
+		}
 	}
-	if m.misp != nil {
-		el.Add("misp", func(ctx context.Context, l *db.Leadership) { m.misp.Run(ctx, l) })
-	}
-	el.Add("notify", func(ctx context.Context, l *db.Leadership) { m.notify.Run(ctx, l) })
-	el.Add("hub", func(ctx context.Context, l *db.Leadership) {
-		go m.hubRemote.RunRefresh(ctx)
-		m.rollout.Run(ctx, l)
-	})
-	if m.alerts != nil {
-		el.Add("alerts", func(ctx context.Context, l *db.Leadership) { m.alerts.Run(ctx, l) })
+	if m.opts.Role.Gateway() {
+		if !m.opts.Role.API() {
+			m.loadControllerEndpoint(ctx, false)
+		}
+		workers = append(workers, m.pipe.Run, m.watermarks.Run, m.programs.Run, m.runGatewayInfo,
+			func(ctx context.Context) { m.presence.run(ctx, 30*time.Second) })
 	}
 	var wg sync.WaitGroup
-	for _, fn := range []func(context.Context){
-		m.listener.Run,
-		m.pipe.Run,
-		m.watermarks.Run,
-		m.programs.Run,
-		m.cs.Run,
-		el.Run,
-		func(ctx context.Context) { m.presence.run(ctx, 30*time.Second) },
-		func(ctx context.Context) {
-			if m.controller != nil {
-				m.controller.run(ctx, m.pushController)
-			}
-		},
-	} {
+	for _, fn := range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -464,14 +557,17 @@ func (m *Manager) Run(ctx context.Context) error {
 		}()
 	}
 	<-ctx.Done()
-	// Graceful handover: stop processing while the agents stay connected,
-	// save the watermarks, then let the agents move to another replica.
-	m.pipe.Drain()
-	fctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	m.watermarks.Flush(fctx)
-	cancel()
-	for _, s := range m.gw.Sessions() {
-		s.Close()
+	if m.opts.Role.Gateway() {
+		// Graceful handover: stop processing while the agents stay
+		// connected, save the watermarks, then let the agents move to
+		// another replica.
+		m.pipe.Drain()
+		fctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		m.watermarks.Flush(fctx)
+		cancel()
+		for _, s := range m.gw.Sessions() {
+			s.Close()
+		}
 	}
 	wg.Wait()
 	return nil
@@ -509,7 +605,9 @@ func (m *Manager) Handler() http.Handler {
 
 // Mount adds the agent endpoint and the health checks to mux.
 func (m *Manager) Mount(mux *http.ServeMux) {
-	mux.Handle(dpwire.Path, m.gw)
+	if m.gw != nil {
+		mux.Handle(dpwire.Path, m.gw)
+	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok\n")) })
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -563,9 +661,7 @@ func (h *handler) OnConnect(ctx context.Context, s *gateway.Session) (*dataplane
 		StatusIntervalSeconds: uint32(m.opts.StatusInterval / time.Second),
 		LogPolicy:             m.settings.LogPolicy(ctx),
 	}
-	if m.controller != nil {
-		ack.Controller = m.controller.Get()
-	}
+	ack.Controller = m.controllerEndpoint()
 	return ack, nil
 }
 
