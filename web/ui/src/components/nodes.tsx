@@ -168,3 +168,32 @@ export function refusalReason(reason: string): string {
   }
   return t(reason);
 }
+
+/** What a node runs, from the capabilities its agent reports. */
+export const CAPABILITIES: { value: string; label: string; color: string }[] = [
+  { value: "suricata", label: "Suricata", color: "grape" },
+  { value: "log_sources", label: "Log sources", color: "cyan" },
+  { value: "enforcer", label: "Bans", color: "red" },
+  { value: "policy", label: "Port policies", color: "indigo" },
+  { value: "nflog", label: "NFLOG", color: "orange" },
+];
+
+export function CapabilityBadges(props: { capabilities: string[] | undefined }) {
+  const caps = CAPABILITIES.filter((c) => props.capabilities?.includes(c.value));
+  if (caps.length === 0) {
+    return (
+      <Text size="xs" c="dimmed">
+        -
+      </Text>
+    );
+  }
+  return (
+    <Group gap={4}>
+      {caps.map((c) => (
+        <Badge key={c.value} size="xs" variant="light" color={c.color}>
+          {t(c.label)}
+        </Badge>
+      ))}
+    </Group>
+  );
+}

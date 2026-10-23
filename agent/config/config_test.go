@@ -118,3 +118,43 @@ func TestControllerFromManager(t *testing.T) {
 		t.Fatalf("half controller section: %v", err)
 	}
 }
+
+func withoutSuricata(top, extra string) string {
+	m, _ := sshkey.Generate()
+	return fmt.Sprintf(`%s
+openpicket:
+  url: wss://picket.example.com/agent/data/v1/connect
+  host_key: %q
+  suricata: { enabled: false }
+%s
+`, top, m.Public("openpicket-manager").String(), extra)
+}
+
+func TestWithoutSuricata(t *testing.T) {
+	c, err := Parse([]byte(withoutSuricata("node_id: web-01", "  log_sources:\n    - { program: nginx, path: \"/var/log/nginx/*access.log\" }\n    - { program: syslog, path: /var/log/auth.log }")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Suri != nil || c.Node.NodeID != "web-01" || c.Node.KeyFile != DefaultKeyFile || c.Node.StateDir != DefaultStateDir ||
+		c.Node.Docker() || len(c.OpenPicket.LogSources) != 2 || c.ControllerFromManager() {
+		t.Fatalf("config = %+v %+v", c.Node, c.OpenPicket.LogSources)
+	}
+	for name, cfg := range map[string]string{
+		"suricontroller section": withoutSuricata("node_id: web-01\ninterfaces: [{name: eth0}]", ""),
+		"no node id":             withoutSuricata("key_file: /k", ""),
+		"relative path":          withoutSuricata("node_id: web-01", "  log_sources: [{program: nginx, path: access.log}]"),
+		"bad program":            withoutSuricata("node_id: web-01", "  log_sources: [{program: \"Nginx Logs\", path: /a.log}]"),
+		"same path twice":        withoutSuricata("node_id: web-01", "  log_sources: [{program: a, path: /a.log}, {program: b, path: /a.log}]"),
+		"bad glob":               withoutSuricata("node_id: web-01", "  log_sources: [{program: a, path: \"/a/[x\"}]"),
+		"iptables":               withoutSuricata("node_id: web-01\nplatform: {firewall: iptables}", ""),
+	} {
+		if _, err := Parse([]byte(cfg)); err == nil {
+			t.Errorf("%s accepted", name)
+		}
+	}
+	// With Suricata, log sources work too and Node mirrors the top level.
+	c, err = Parse([]byte(sample("", "  log_sources: [{program: uhttpd, path: /var/log/uhttpd.log}]")))
+	if err != nil || c.Suri == nil || c.Node.NodeID != "router-01" || len(c.OpenPicket.LogSources) != 1 {
+		t.Fatalf("with Suricata: %v %+v", err, c.Node)
+	}
+}

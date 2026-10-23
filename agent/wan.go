@@ -18,7 +18,7 @@ import (
 // zoneDevices is the saved list of fw4 zone devices: at boot, bans and
 // policies are restored before fw4 may have loaded its rules.
 func (a *Agent) zoneDevicesFile() string {
-	return filepath.Join(a.cfg.Suri.StateDir, "openpicket", "wan.json")
+	return a.statePath("wan.json")
 }
 
 func (a *Agent) loadZoneDevices() []string {
