@@ -36,7 +36,9 @@ func child(n *yaml.Node, key string) *yaml.Node {
 }
 
 // HomeNet returns the positive entries of vars.address-groups.HOME_NET,
-// resolving $VAR references to other address groups. Negations ("!x") are
+// resolving $VAR references to other address groups. Groups nest
+// ("[[192.168.0.0/16,!192.168.1.5],203.0.113.10]", as suricontroller
+// renders the interface addresses in). Negations ("!x", "![...]") are
 // ignored: they only narrow the set.
 func HomeNet(effective *yaml.Node) []string {
 	groups := child(child(effective, "vars"), "address-groups")
@@ -47,12 +49,9 @@ func HomeNet(effective *yaml.Node) []string {
 		if v == nil || v.Kind != yaml.ScalarNode || depth > 8 {
 			return
 		}
-		s := strings.TrimSpace(v.Value)
-		s = strings.TrimSuffix(strings.TrimPrefix(s, "["), "]")
-		for _, item := range strings.Split(s, ",") {
-			item = strings.TrimSpace(item)
+		for _, item := range positiveItems(v.Value) {
 			switch {
-			case item == "" || strings.HasPrefix(item, "!") || item == "any":
+			case item == "any":
 			case strings.HasPrefix(item, "$"):
 				resolve(strings.TrimPrefix(item, "$"), depth+1)
 			default:
@@ -61,6 +60,46 @@ func HomeNet(effective *yaml.Node) []string {
 		}
 	}
 	resolve("HOME_NET", 0)
+	return out
+}
+
+// positiveItems splits a Suricata address value into its entries, leaving
+// out negated ones and everything inside a negated group.
+func positiveItems(s string) []string {
+	var (
+		out     []string
+		item    strings.Builder
+		negated []bool // per open group
+		neg     bool   // the current entry or group is negated
+	)
+	inNegated := func() bool { return slices.Contains(negated, true) }
+	flush := func() {
+		if v := strings.TrimSpace(item.String()); v != "" && !neg && !inNegated() {
+			out = append(out, v)
+		}
+		item.Reset()
+		neg = false
+	}
+	for _, c := range s {
+		switch c {
+		case '[':
+			negated = append(negated, neg)
+			neg = false
+		case ']':
+			flush()
+			if len(negated) > 0 {
+				negated = negated[:len(negated)-1]
+			}
+		case ',':
+			flush()
+		case '!':
+			neg = true
+		case ' ', '\t':
+		default:
+			item.WriteRune(c)
+		}
+	}
+	flush()
 	return out
 }
 
