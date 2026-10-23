@@ -5,7 +5,7 @@ Installs the management side of OpenPicket:
 | Component | Kind | Notes |
 |---|---|---|
 | openpicket-manager | Deployment (2+) | UI, API, decision relay, alert sync, notifications, CrowdSec content, policy compilation. Every replica is equal. |
-| openpicket-gateway | Deployment (2+) | The agents' data plane, log pipeline, decision and policy distribution (same image, `OPENPICKET_ROLE=gateway`). Optional: `gateway.enabled=false` lets the manager serve the agents. |
+| openpicket-gateway | Deployment (2+) | The agents' data plane, log pipeline, decision and policy distribution, syslog receiver (same image, `OPENPICKET_ROLE=gateway`). Optional: `gateway.enabled=false` lets the manager serve the agents. |
 | openpicket-suricontroller | StatefulSet (1) | Suricata management, proxied at `/suricata/`. |
 | CrowdSec LAPI | Deployment (2) | Shares PostgreSQL. Registers the agents' machine, the manager's watcher and bouncer keys. |
 | CrowdSec agents | Deployment (2+) | Receive the manager's records (HTTP datasource, token-protected). |
@@ -69,6 +69,24 @@ Agents only need the manager's URL and host key: the manager hands them the
 channel A endpoint (`/agent/v1/connect` on the same host, and the
 suricontroller host key). When agents reach suricontroller through another
 host, set `manager.agentControllerURL`.
+
+## Syslog (optional)
+
+`syslog.enabled` lets devices without an agent (switches, firewalls, NAS)
+send syslog to the gateways: UDP and TCP 514 (newline or octet-counting
+framing) and, with `syslog.tls.enabled` and a certificate secret, TLS
+6514. A LoadBalancer Service (`<release>-openpicket-syslog`) exposes them
+with `externalTrafficPolicy: Local`: the device is recognized by the
+sender's address, which must reach the pods unchanged.
+
+Register devices on the **Syslog devices** page (address or network,
+labels, program names for the CrowdSec parsers). `syslog.unregistered`
+decides what happens to other senders until an admin changes it there:
+`drop` counts them per address, `accept` takes them in as a temporary
+device named after the address. Their lines go to CrowdSec and Loki like
+the agents' generic logs, and alerts ban addresses as usual: UDP senders
+can be spoofed, so expose syslog on internal networks only
+(`syslog.service.loadBalancerSourceRanges`).
 
 ## Network policies
 

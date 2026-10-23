@@ -15,6 +15,7 @@ const IpPage = lazy(() => import("./pages/IpPage"));
 const LogsPage = lazy(() => import("./pages/LogsPage"));
 const NodesPage = lazy(() => import("./pages/NodesPage"));
 const NodePage = lazy(() => import("./pages/NodePage"));
+const SyslogPage = lazy(() => import("./pages/SyslogPage"));
 const PoliciesPage = lazy(() => import("./pages/PoliciesPage"));
 const GeoIpPage = lazy(() => import("./pages/GeoIpPage"));
 const MetricsPage = lazy(() => import("./pages/MetricsPage"));
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
       { path: "logs", element: page(<LogsPage />) },
       { path: "nodes", element: page(<NodesPage />) },
       { path: "nodes/:id", element: page(<NodePage />) },
+      { path: "syslog", element: page(<SyslogPage />) },
       { path: "policies", element: page(<PoliciesPage />) },
       { path: "geoip", element: page(<GeoIpPage />) },
       { path: "metrics", element: page(<MetricsPage />) },

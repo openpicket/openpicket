@@ -57,6 +57,9 @@ type Config struct {
 	// LogPrograms are the generic log programs seen.
 	LogPrograms *logprog.Store
 	Settings    *settings.Store
+	// SyslogUnregistered is the default for unregistered syslog senders
+	// until one is stored.
+	SyslogUnregistered string
 	// HostKey returns the public key line agents pin (the gateways' when
 	// they run apart).
 	HostKey func() string
@@ -206,6 +209,13 @@ var procedures = map[string]spec{
 	apiv1connect.HubServiceListLogProgramsProcedure:      read,
 	apiv1connect.HubServiceSetLogProgramStorageProcedure: adm,
 
+	apiv1connect.SyslogServiceListSyslogDevicesProcedure:  read,
+	apiv1connect.SyslogServiceListSyslogSendersProcedure:  read,
+	apiv1connect.SyslogServiceGetSyslogSettingsProcedure:  read,
+	apiv1connect.SyslogServicePutSyslogDeviceProcedure:    op,
+	apiv1connect.SyslogServiceDeleteSyslogDeviceProcedure: op,
+	apiv1connect.SyslogServiceSetSyslogSettingsProcedure:  adm,
+
 	apiv1connect.NotificationServiceListNotificationsProcedure:     read,
 	apiv1connect.NotificationServiceMarkNotificationsReadProcedure: own,
 	apiv1connect.NotificationServiceListRulesProcedure:             read,
@@ -252,6 +262,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(apiv1connect.NewHubServiceHandler(&hubService{s}, opts...))
 	mux.Handle(apiv1connect.NewNotificationServiceHandler(&notificationService{s}, opts...))
 	mux.Handle(apiv1connect.NewIntelServiceHandler(&intelService{s}, opts...))
+	mux.Handle(apiv1connect.NewSyslogServiceHandler(&syslogService{s}, opts...))
 	mux.HandleFunc("POST "+geoUploadPath, s.uploadGeo)
 	mux.HandleFunc("POST "+hubUploadPath, s.uploadHub)
 	return s.middleware(mux)

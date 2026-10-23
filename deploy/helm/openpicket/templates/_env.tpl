@@ -115,3 +115,89 @@ key: {{ ternary .Values.gateway.database.passwordKey "gateway-database-password"
       name: {{ include "openpicket.secret" . }}
       key: key-secret
 {{- end -}}
+
+{{/*
+Syslog receiver of the pods facing the agents (gateway, or the manager
+without gateways): listen addresses, TLS files, ports and volumes.
+*/}}
+{{- define "openpicket.syslogEnv" -}}
+{{- $s := .Values.syslog -}}
+{{- if $s.enabled }}
+{{- if $s.udp.enabled }}
+- name: OPENPICKET_SYSLOG_UDP_LISTEN
+  value: ":5514"
+{{- end }}
+{{- if $s.tcp.enabled }}
+- name: OPENPICKET_SYSLOG_TCP_LISTEN
+  value: ":5514"
+{{- end }}
+{{- if $s.tls.enabled }}
+- name: OPENPICKET_SYSLOG_TLS_LISTEN
+  value: ":6514"
+- name: OPENPICKET_SYSLOG_TLS_CERT_FILE
+  value: /secrets/syslog-tls/tls.crt
+- name: OPENPICKET_SYSLOG_TLS_KEY_FILE
+  value: /secrets/syslog-tls/tls.key
+{{- if $s.tls.clientCASecret }}
+- name: OPENPICKET_SYSLOG_TLS_CLIENT_CA_FILE
+  value: /secrets/syslog-ca/ca.crt
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/* The default for unregistered syslog senders (gateways and the UI). */}}
+{{- define "openpicket.syslogDefaultEnv" -}}
+- name: OPENPICKET_SYSLOG_UNREGISTERED
+  value: {{ .Values.syslog.unregistered | quote }}
+{{- end -}}
+
+{{- define "openpicket.syslogPorts" -}}
+{{- $s := .Values.syslog -}}
+{{- if $s.enabled }}
+{{- if $s.udp.enabled }}
+- name: syslog-udp
+  containerPort: 5514
+  protocol: UDP
+{{- end }}
+{{- if $s.tcp.enabled }}
+- name: syslog-tcp
+  containerPort: 5514
+  protocol: TCP
+{{- end }}
+{{- if $s.tls.enabled }}
+- name: syslog-tls
+  containerPort: 6514
+  protocol: TCP
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "openpicket.syslogMounts" -}}
+{{- $s := .Values.syslog -}}
+{{- if and $s.enabled $s.tls.enabled }}
+- name: syslog-tls
+  mountPath: /secrets/syslog-tls
+  readOnly: true
+{{- if $s.tls.clientCASecret }}
+- name: syslog-ca
+  mountPath: /secrets/syslog-ca
+  readOnly: true
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "openpicket.syslogVolumes" -}}
+{{- $s := .Values.syslog -}}
+{{- if and $s.enabled $s.tls.enabled }}
+- name: syslog-tls
+  secret:
+    secretName: {{ required "syslog.tls.secretName is required (tls.crt, tls.key)" $s.tls.secretName }}
+{{- if $s.tls.clientCASecret }}
+- name: syslog-ca
+  secret:
+    secretName: {{ $s.tls.clientCASecret }}
+    items: [{ key: ca.crt, path: ca.crt }]
+{{- end }}
+{{- end }}
+{{- end -}}

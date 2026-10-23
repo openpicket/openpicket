@@ -31,6 +31,7 @@ import {
   IconLogout,
   IconMapPin,
   IconMoon,
+  IconNetwork,
   IconRadar2,
   IconRouter,
   IconSearch,
@@ -77,6 +78,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
     section: "Edge",
     items: [
       { to: "/nodes", label: "Nodes", icon: IconRouter },
+      { to: "/syslog", label: "Syslog devices", icon: IconNetwork },
       { to: "/policies", label: "Port policies", icon: IconShieldLock },
       { to: "/geoip", label: "GeoIP", icon: IconMapPin },
       { to: "/suricata/", label: "Suricata", icon: IconWorld, feature: "suricata", external: true },

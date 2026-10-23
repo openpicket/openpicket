@@ -195,6 +195,14 @@ func (n *nodeService) RegisterNode(ctx context.Context, req *connect.Request[api
 	if err != nil {
 		return nil, toConnectError(fmt.Errorf("%w: %v", errInvalid, err))
 	}
+	// Syslog devices share the namespace (log labels, CrowdSec node_id).
+	var device bool
+	if err := n.s.cfg.DB.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM openpicket.syslog_devices WHERE id = $1)`, pk.Comment).Scan(&device); err != nil {
+		return nil, toConnectError(err)
+	}
+	if device {
+		return nil, toConnectError(fmt.Errorf("%w: a syslog device with id %q exists", errExists, pk.Comment))
+	}
 	labels, _ := json.Marshal(nonNil(req.Msg.GetLabels()))
 	_, err = n.s.cfg.DB.Exec(ctx, `INSERT INTO openpicket.nodes (id, public_key, x25519, fingerprint, description, labels) VALUES ($1,$2,$3,$4,$5,$6)`,
 		pk.Comment, pk.String(), x, pk.Fingerprint(), req.Msg.GetDescription(), labels)

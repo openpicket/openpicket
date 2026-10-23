@@ -81,6 +81,9 @@ type Batch struct {
 	Received time.Time
 	Records  []*Record
 	Dropped  uint64
+	// NoWatermarks marks a batch without an agent behind it (syslog): it
+	// is delivered at most once, nothing records its sequence.
+	NoWatermarks bool
 
 	state sync.Map
 }
@@ -303,20 +306,49 @@ func (p *Pipeline) decode(node *registry.Node, lb *dataplanev1.LogBatch) (*Batch
 		}
 		b.Records = append(b.Records, rec)
 	}
+	p.ingested(b)
+	if lb.DroppedSinceLast > 0 {
+		p.m.agentDropped.WithLabelValues(node.ID).Add(float64(lb.DroppedSinceLast))
+	}
+	return b, nil
+}
+
+// ingested counts a decoded batch and its programs.
+func (p *Pipeline) ingested(b *Batch) {
 	if b.Program != "" && p.cfg.Programs != nil {
 		counts := map[string]int{}
 		for _, r := range b.Records {
 			counts[r.Program]++
 		}
 		for prog, n := range counts {
-			p.cfg.Programs.Seen(node.ID, prog, n)
+			p.cfg.Programs.Seen(b.NodeID, prog, n)
 		}
 	}
-	p.m.ingested.WithLabelValues(lb.Type).Add(float64(len(b.Records)))
-	if lb.DroppedSinceLast > 0 {
-		p.m.agentDropped.WithLabelValues(node.ID).Add(float64(lb.DroppedSinceLast))
+	p.m.ingested.WithLabelValues(b.Type).Add(float64(len(b.Records)))
+}
+
+// Ingest processes a batch received without an agent behind it (syslog):
+// it is delivered at most once, without watermarks. Generic log records
+// carry their Program and Message. It reports false while draining.
+func (p *Pipeline) Ingest(ctx context.Context, b *Batch) (bool, error) {
+	p.active.Add(1)
+	defer p.active.Done()
+	if p.drainCtx.Err() != nil {
+		return false, nil
 	}
-	return b, nil
+	b.NoWatermarks = true
+	p.ingested(b)
+	pctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stop := context.AfterFunc(p.drainCtx, cancel)
+	defer stop()
+	if err := p.Process(pctx, b); err != nil {
+		if ctx.Err() == nil && p.drainCtx.Err() != nil {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // Process delivers a batch to every acknowledgement sink (in parallel), then
@@ -353,7 +385,8 @@ func (p *Pipeline) Process(ctx context.Context, b *Batch) error {
 // ctx ends.
 func (p *Pipeline) deliver(ctx context.Context, s Sink, b *Batch) error {
 	name := s.Name()
-	if p.cfg.Watermarks != nil && b.Seq <= p.cfg.Watermarks.Get(ctx, b.NodeID, b.BootID, name) {
+	watermarks := p.cfg.Watermarks != nil && !b.NoWatermarks
+	if watermarks && b.Seq <= p.cfg.Watermarks.Get(ctx, b.NodeID, b.BootID, name) {
 		// Delivered by a previous session (possibly on another replica).
 		p.m.skipped.WithLabelValues(name).Add(float64(len(b.Records)))
 		return nil
@@ -375,7 +408,7 @@ func (p *Pipeline) deliver(ctx context.Context, s Sink, b *Batch) error {
 				p.log.Warn("sink rejected batch", "sink", name, "node", b.NodeID, "seq", b.Seq, "err", err)
 				p.m.rejected.WithLabelValues(name).Add(float64(len(b.Records)))
 			}
-			if p.cfg.Watermarks != nil {
+			if watermarks {
 				p.cfg.Watermarks.Set(b.NodeID, b.BootID, name, b.Seq)
 			}
 			return nil
