@@ -316,7 +316,10 @@ jobs:
               install -m 0755 "$dir/$cmd" "$out/$name/$cmd"
               cp README.md "$out/$name/"
               if [[ $cmd == openpicket-agent ]]; then
+                # Docker (with Suricata) and server (without) examples.
                 cp deploy/images/agent/agent.yaml.example "$out/$name/"
+                cp deploy/server/agent.yaml.example "$out/$name/agent-server.yaml.example"
+                cp deploy/server/openpicket-agent.service docs/server.md "$out/$name/"
               fi
               tar -C "$out" -czf "$out/$name.tar.gz" "$name"
               rm -rf "${out:?}/$name"

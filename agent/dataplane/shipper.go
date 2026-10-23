@@ -17,6 +17,7 @@ import (
 	agentv1 "github.com/jc-lab/suricontroller/gen/suricontroller/agent/v1"
 	"github.com/jc-lab/suricontroller/pkg/wire"
 
+	"github.com/openpicket/openpicket/agent/logsrc"
 	"github.com/openpicket/openpicket/agent/natmap"
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/pkg/direction"
@@ -56,10 +57,12 @@ type Shipper struct {
 }
 
 type pending struct {
-	seq   uint64
-	msg   *dataplanev1.LogBatch
-	batch *collector.Batch // nil for records not from the collector
-	size  int64
+	seq uint64
+	msg *dataplanev1.LogBatch
+	// commit saves the source positions once acknowledged (nil for
+	// in-memory records).
+	commit func()
+	size   int64
 }
 
 // ShipperConfig configures a Shipper.
@@ -158,9 +161,36 @@ func (s *Shipper) ShipLogs(ctx context.Context, c *collector.Collector) error {
 			return err
 		}
 		for _, b := range batches {
-			if err := s.add(record.TypeName(b.Type), b.Instance, s.convert(b), b.Dropped, b); err != nil {
+			if err := s.add(record.TypeName(b.Type), b.Instance, "", s.convert(b), b.Dropped, func() { c.Commit(b) }); err != nil {
 				s.log.Warn("drop batch", "err", err)
 				c.Commit(b) // cannot be encoded; do not re-read it forever
+			}
+		}
+	}
+}
+
+// ShipSources moves the generic log batches (logsrc) into the window
+// until ctx is cancelled.
+func (s *Shipper) ShipSources(ctx context.Context, c *logsrc.Collector) error {
+	for {
+		if err := s.waitRoom(ctx); err != nil {
+			return nil
+		}
+		batches, err := c.Next(ctx, 2000, 512<<10)
+		if err != nil {
+			if ctx.Err() != nil || errors.Is(err, context.Canceled) {
+				return nil
+			}
+			return err
+		}
+		for _, b := range batches {
+			recs := make([]*dataplanev1.Record, 0, len(b.Records))
+			for _, r := range b.Records {
+				recs = append(recs, &dataplanev1.Record{Line: r.Line, Rid: record.FileRID(s.nodeID, r.Path, r.Inode, r.Offset), TimeUnixNano: r.Time.UnixNano()})
+			}
+			if err := s.add(record.TypeLog, "", b.Program, recs, 0, func() { c.Commit(b) }); err != nil {
+				s.log.Warn("drop batch", "program", b.Program, "err", err)
+				c.Commit(b)
 			}
 		}
 	}
@@ -175,7 +205,7 @@ func (s *Shipper) Push(ctx context.Context, typ string, recs []*dataplanev1.Reco
 		s.mu.Unlock()
 		return false
 	}
-	if err := s.add(typ, "", recs, dropped, nil); err != nil {
+	if err := s.add(typ, "", "", recs, dropped, nil); err != nil {
 		s.log.Warn("drop records", "type", typ, "err", err)
 		return false
 	}
@@ -190,7 +220,7 @@ func (s *Shipper) NextMemoryRID() string {
 	return record.MemoryRID(s.bootID, s.memCounter)
 }
 
-func (s *Shipper) add(typ, instance string, recs []*dataplanev1.Record, dropped uint64, b *collector.Batch) error {
+func (s *Shipper) add(typ, instance, program string, recs []*dataplanev1.Record, dropped uint64, commit func()) error {
 	raw, err := proto.Marshal(&dataplanev1.RecordList{Records: recs})
 	if err != nil {
 		return err
@@ -199,8 +229,8 @@ func (s *Shipper) add(typ, instance string, recs []*dataplanev1.Record, dropped 
 	defer s.mu.Unlock()
 	z := s.enc.EncodeAll(raw, nil)
 	s.seq++
-	p := &pending{seq: s.seq, batch: b, size: int64(len(z)) + 64, msg: &dataplanev1.LogBatch{
-		BootId: s.bootID, Seq: s.seq, Type: typ, Instance: instance, ZstdRecords: z,
+	p := &pending{seq: s.seq, commit: commit, size: int64(len(z)) + 64, msg: &dataplanev1.LogBatch{
+		BootId: s.bootID, Seq: s.seq, Type: typ, Instance: instance, Program: program, ZstdRecords: z,
 		RecordCount: uint32(len(recs)), DroppedSinceLast: dropped,
 	}}
 	s.inflight = append(s.inflight, p)
@@ -308,13 +338,13 @@ func (s *Shipper) ack(bootID string, upTo uint64) {
 	}
 	s.mu.Lock()
 	n := 0
-	var commit []*collector.Batch
+	var commit []func()
 	for n < len(s.inflight) && s.inflight[n].seq <= upTo {
 		p := s.inflight[n]
 		s.inflightBytes -= p.size
 		s.sent += uint64(p.msg.RecordCount)
-		if p.batch != nil {
-			commit = append(commit, p.batch)
+		if p.commit != nil {
+			commit = append(commit, p.commit)
 		}
 		n++
 	}
@@ -323,11 +353,10 @@ func (s *Shipper) ack(bootID string, upTo uint64) {
 		return
 	}
 	s.inflight = slices.Delete(s.inflight, 0, n)
-	col := s.col
 	s.signalLocked()
 	s.mu.Unlock()
-	for _, b := range commit {
-		col.Commit(b)
+	for _, fn := range commit {
+		fn()
 	}
 }
 

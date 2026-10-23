@@ -1,0 +1,22 @@
+# openpicket-agent on a server, without Suricata: it ships the logs below
+# to openpicket-manager, where CrowdSec reads them with the parsers of the
+# CrowdSec content page (install e.g. the crowdsecurity/nginx collection).
+node_id: web-01                          # must match the node registered in OpenPicket
+key_file: /etc/openpicket-agent/agent_ed25519   # `openpicket-agent keygen` creates it
+state_dir: /var/lib/openpicket-agent
+
+openpicket:
+  url: wss://openpicket.example.com/agent/data/v1/connect
+  host_key: "ssh-ed25519 AAAA... openpicket-manager"   # Nodes > Connection info
+  suricata: { enabled: false }
+  # program: the program that writes the lines (it selects the CrowdSec
+  # parser); "syslog" for files in syslog format, whose lines name their
+  # program (auth.log: sshd, sudo...). A glob takes every match, new files
+  # too. Files present at the first start are read from their end.
+  log_sources:
+    - { program: nginx, path: "/var/log/nginx/*access.log" }
+    - { program: nginx, path: "/var/log/nginx/*error.log" }
+    - { program: syslog, path: /var/log/auth.log }
+    # - { program: postgres, path: "/var/log/postgresql/*.log" }
+  local_nets: []                         # inside networks beyond the interface addresses
+  # wan_interfaces: [eth0]               # set to also block CrowdSec bans on this host (nftables)
