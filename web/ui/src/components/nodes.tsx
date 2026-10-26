@@ -173,6 +173,7 @@ export function refusalReason(reason: string): string {
 export const CAPABILITIES: { value: string; label: string; color: string }[] = [
   { value: "suricata", label: "Suricata", color: "grape" },
   { value: "log_sources", label: "Log sources", color: "cyan" },
+  { value: "kubernetes", label: "Kubernetes", color: "blue" },
   { value: "enforcer", label: "Bans", color: "red" },
   { value: "policy", label: "Port policies", color: "indigo" },
   { value: "nflog", label: "NFLOG", color: "orange" },

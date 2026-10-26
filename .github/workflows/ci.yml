@@ -115,7 +115,7 @@ jobs:
           out="$RUNNER_TEMP/bin"
           for platform in linux/amd64 linux/arm64; do
             IFS=/ read -r os arch <<<"$platform"
-            for cmd in openpicket-manager openpicket-suricontroller openpicket-agent openpicket-crowdsec-sync; do
+            for cmd in openpicket-manager openpicket-suricontroller openpicket-agent openpicket-agent-k8s-collector openpicket-crowdsec-sync; do
               CGO_ENABLED=0 GOOS=$os GOARCH=$arch \
                 go build -trimpath -ldflags "$ldflags" -o "$out/${os}_${arch}/$cmd" "./cmd/$cmd"
             done
@@ -164,7 +164,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [openpicket-manager, openpicket-suricontroller, openpicket-agent, openpicket-crowdsec]
+        image: [openpicket-manager, openpicket-suricontroller, openpicket-agent, openpicket-agent-k8s-collector, openpicket-crowdsec]
         platform: [linux/amd64, linux/arm64]
         include:
           - { platform: linux/amd64, runner: ubuntu-24.04 }
@@ -172,6 +172,7 @@ jobs:
           - { image: openpicket-manager, file: deploy/images/manager/Dockerfile }
           - { image: openpicket-suricontroller, file: deploy/images/suricontroller/Dockerfile }
           - { image: openpicket-agent, file: deploy/images/agent/Dockerfile }
+          - { image: openpicket-agent-k8s-collector, file: deploy/images/k8s-collector/Dockerfile }
           - { image: openpicket-crowdsec, file: deploy/images/crowdsec/Dockerfile }
     runs-on: ${{ matrix.runner }}
     permissions:
@@ -240,7 +241,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [openpicket-manager, openpicket-suricontroller, openpicket-agent, openpicket-crowdsec]
+        image: [openpicket-manager, openpicket-suricontroller, openpicket-agent, openpicket-agent-k8s-collector, openpicket-crowdsec]
     permissions:
       contents: read
       packages: write

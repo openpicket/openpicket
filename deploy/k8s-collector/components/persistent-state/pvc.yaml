@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k8s-collector-state
+  namespace: openpicket-k8s-collector
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: { storage: 64Mi }

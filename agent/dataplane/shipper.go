@@ -169,9 +169,16 @@ func (s *Shipper) ShipLogs(ctx context.Context, c *collector.Collector) error {
 	}
 }
 
+// LogSource yields batches of generic logs and saves their positions once
+// the manager acknowledged them (logsrc.Collector, k8slogs.Collector).
+type LogSource interface {
+	Next(ctx context.Context, maxRecords, maxBytes int) ([]*logsrc.Batch, error)
+	Commit(b *logsrc.Batch)
+}
+
 // ShipSources moves the generic log batches (logsrc) into the window
 // until ctx is cancelled.
-func (s *Shipper) ShipSources(ctx context.Context, c *logsrc.Collector) error {
+func (s *Shipper) ShipSources(ctx context.Context, c LogSource) error {
 	for {
 		if err := s.waitRoom(ctx); err != nil {
 			return nil

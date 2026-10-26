@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-collector
+  namespace: openpicket-k8s-collector
+---
+# Pods, their logs, and the selectors of the workloads targets name.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: openpicket-k8s-collector
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [list]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets, replicasets]
+    verbs: [get]
+---
+# One RoleBinding per namespace of the targets: the collector reads those
+# namespaces only.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openpicket-k8s-collector
+  namespace: ingress-nginx
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: openpicket-k8s-collector
+subjects:
+  - kind: ServiceAccount
+    name: k8s-collector
+    namespace: openpicket-k8s-collector

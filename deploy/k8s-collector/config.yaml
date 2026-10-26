@@ -1,0 +1,30 @@
+# openpicket-agent-k8s-collector: the pods whose logs go to OpenPicket.
+# Register the node (Nodes > Register node) with the public key of the
+# k8s-collector-key secret; its comment is node_id.
+node_id: k8s-logs
+key_file: /etc/openpicket-agent-k8s-collector/key/agent_ed25519
+# Positions acknowledged by the manager. On the default emptyDir they
+# survive container restarts; with the persistent-state component (a PVC)
+# pod restarts too. Remove the line to keep no state at all: a restart then
+# starts at the containers' current ends.
+state_file: /var/lib/openpicket-agent-k8s-collector/positions.json
+openpicket:
+  # In the manager's cluster, the gateway Service; elsewhere the public
+  # wss:// URL. Nodes > Connection info shows the host key.
+  url: ws://openpicket-gateway.openpicket.svc:8080/agent/data/v1/connect
+  host_key: "ssh-ed25519 AAAA... openpicket-manager"
+scan_interval: 10s
+# Each target selects pods of a namespace; its selections combine. Its
+# lines get the program (the CrowdSec parser), by default the container
+# name. Each namespace needs a RoleBinding (rbac.yaml).
+targets:
+  - namespace: ingress-nginx
+    workload: deployment/ingress-nginx-controller
+    containers: [controller]
+    program: nginx
+  # - namespace: web
+  #   service_account: api
+  #   program: myapp
+  # - namespace: db
+  #   selector: app.kubernetes.io/name=postgresql
+  #   program: postgres

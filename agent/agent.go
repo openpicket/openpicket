@@ -7,8 +7,6 @@ package agent
 import (
 	"context"
 	"crypto/rand"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -277,22 +275,11 @@ func (a *Agent) statePath(name string) string {
 }
 
 func httpClient(o config.OpenPicket) (*http.Client, error) {
-	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: o.TLSInsecureSkipVerify}
-	if o.CAFile != "" {
-		pem, err := os.ReadFile(o.CAFile)
-		if err != nil {
-			return nil, err
-		}
-		pool, err := x509.SystemCertPool()
-		if err != nil {
-			pool = x509.NewCertPool()
-		}
-		if !pool.AppendCertsFromPEM(pem) {
-			return nil, errors.New("openpicket.ca_file: no certificates found")
-		}
-		tlsCfg.RootCAs = pool
+	c, err := dataplane.NewHTTPClient(o.CAFile, o.TLSInsecureSkipVerify)
+	if err != nil {
+		return nil, fmt.Errorf("openpicket.ca_file: %w", err)
 	}
-	return &http.Client{Transport: &http.Transport{Proxy: http.ProxyFromEnvironment, TLSClientConfig: tlsCfg}}, nil
+	return c, nil
 }
 
 // PublicKey returns the agent public key line (same key on both channels).

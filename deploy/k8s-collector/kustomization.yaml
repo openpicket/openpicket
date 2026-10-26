@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# No kustomize namespace: it would also move the RoleBindings, which belong
+# to the target namespaces.
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - deployment.yaml
+configMapGenerator:
+  - name: k8s-collector-config
+    namespace: openpicket-k8s-collector
+    files: [config.yaml]
+# Positions on a PVC (they survive pod restarts):
+# components:
+#   - components/persistent-state
