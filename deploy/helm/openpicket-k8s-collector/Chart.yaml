@@ -1,0 +1,10 @@
+apiVersion: v2
+name: openpicket-k8s-collector
+description: >-
+  openpicket-agent-k8s-collector: ships the logs of selected Kubernetes pods
+  to OpenPicket under the program of each target.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords: [openpicket, crowdsec, logs, kubernetes]
+home: https://github.com/openpicket/openpicket

@@ -92,6 +92,9 @@ helm-lint:
 	helm template t deploy/helm/openpicket --set ingress.enabled=true --set networkPolicy.enabled=true \
 	  --set monitoring.serviceMonitor.enabled=true --set monitoring.prometheusRule.enabled=true \
 	  --set monitoring.grafanaDashboards.enabled=true --set misp.enabled=true >/dev/null
+	helm lint deploy/helm/openpicket-k8s-collector -f deploy/helm/openpicket-k8s-collector/ci/test-values.yaml
+	helm template t deploy/helm/openpicket-k8s-collector -f deploy/helm/openpicket-k8s-collector/ci/test-values.yaml \
+	  --set rbac.clusterWide=true --set key.existingSecret=k >/dev/null
 
 airgap:
 	./scripts/airgap-bundle.sh $(VERSION)

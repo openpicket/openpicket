@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # openpicket-agent-k8s-collector image: ships the logs of Kubernetes pods
-# to OpenPicket (deploy/k8s-collector, docs/kubernetes.md).
+# to OpenPicket (deploy/helm/openpicket-k8s-collector, docs/kubernetes.md).
 # Build from the repository root:
 #   docker build -f deploy/images/k8s-collector/Dockerfile -t openpicket-agent-k8s-collector .
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build

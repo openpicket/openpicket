@@ -1,0 +1,96 @@
+# openpicket-agent-k8s-collector: ships the logs of selected pods to
+# OpenPicket (docs/kubernetes.md). One node: one key, one replica.
+
+image:
+  # Registry prefix (air-gapped mirrors), e.g. registry.local:5000.
+  registry: ""
+  repository: ghcr.io/openpicket/openpicket-agent-k8s-collector
+  tag: ""        # default: the chart's appVersion
+  digest: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# The node in OpenPicket; it is the comment of the registered public key.
+nodeId: k8s-logs
+
+key:
+  # An existing secret holding the node's ed25519 private key (OpenSSH or
+  # PKCS#8 PEM), e.g. from `openpicket-agent-k8s-collector keygen`.
+  existingSecret: ""
+  secretKey: agent_ed25519
+  # Or the key itself. Both empty: the chart generates one and keeps it
+  # (the secret survives upgrades and uninstall).
+  privateKey: ""
+
+openpicket:
+  # The gateways' channel B endpoint: in the manager's cluster its Service
+  # (ws://openpicket-gateway.openpicket.svc:8080/agent/data/v1/connect),
+  # elsewhere the public wss:// URL.
+  url: ""
+  # The manager's host key (Nodes > Connection info).
+  hostKey: ""
+  # Extra HTTP headers of the WebSocket request (an access proxy's token).
+  headers: {}
+  # CA certificate (PEM) of the wss:// endpoint, when not a public one.
+  caCert: ""
+  # Skip TLS verification (Noise still authenticates the manager).
+  tlsInsecureSkipVerify: false
+  # Bound of the unacknowledged batches in bytes (0: 4MiB).
+  inflightMaxBytes: 0
+
+logLevel: info
+# How often the targets' pods are listed.
+scanInterval: 10s
+
+# Each target takes the running pods of a namespace; its selections
+# combine (all must match), none takes every pod. Fields: selector,
+# field_selector, workload (deployment|statefulset|daemonset|replicaset/<name>),
+# service_account, pod, containers, program (the CrowdSec parser; default
+# the container name). The chart binds the collector in each namespace.
+targets: []
+#  - namespace: ingress-nginx
+#    workload: deployment/ingress-nginx-controller
+#    containers: [controller]
+#    program: nginx
+#  - namespace: db
+#    selector: app.kubernetes.io/name=postgresql
+#    program: postgres
+
+# The positions acknowledged by the manager.
+state:
+  # false: stateless, every restart starts at the containers' current ends.
+  enabled: true
+  # On a PVC each container resumes after its last acknowledged line after
+  # a pod restart too, and pods started meanwhile are read from the last
+  # save. Without it (emptyDir) only container restarts resume.
+  persistence:
+    enabled: false
+    existingClaim: ""
+    # "-": storageClassName "" (no dynamic provisioning).
+    storageClass: ""
+    accessModes: [ReadWriteOnce]
+    size: 64Mi
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+rbac:
+  create: true
+  # Read pods and logs in every namespace (ClusterRoleBinding) instead of
+  # a RoleBinding in each target's namespace.
+  clusterWide: false
+  # Namespaces bound besides the targets'.
+  extraNamespaces: []
+
+resources:
+  requests: { cpu: 20m, memory: 32Mi }
+  limits: { memory: 256Mi }
+podAnnotations: {}
+podLabels: {}
+priorityClassName: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+fullnameOverride: ""

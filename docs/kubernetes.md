@@ -6,14 +6,13 @@ It is one node in OpenPicket: one key, one Deployment with a single replica.
 
 ## Configuration
 
+The Helm chart `deploy/helm/openpicket-k8s-collector` writes the configuration file from its values:
+
 ```yaml
-node_id: k8s-logs
-key_file: /etc/openpicket-agent-k8s-collector/key/agent_ed25519
-state_file: /var/lib/openpicket-agent-k8s-collector/positions.json   # optional
+nodeId: k8s-logs
 openpicket:
   url: ws://openpicket-gateway.openpicket.svc:8080/agent/data/v1/connect
-  host_key: "ssh-ed25519 AAAA... openpicket-manager"
-scan_interval: 10s
+  hostKey: "ssh-ed25519 AAAA... openpicket-manager"
 targets:
   - namespace: ingress-nginx
     workload: deployment/ingress-nginx-controller
@@ -25,6 +24,8 @@ targets:
     selector: app.kubernetes.io/name=postgresql
     program: postgres
 ```
+
+`openpicket.url` is the gateways' channel B endpoint: in the manager's cluster its Service, elsewhere the public `wss://` URL (`openpicket.caCert`, `openpicket.headers` for a private CA or an access proxy). **Nodes > Connection info** shows the host key.
 
 A target takes the running pods of a namespace. Its selections combine (all must match); with none it takes every pod of the namespace.
 
@@ -41,41 +42,39 @@ A target takes the running pods of a namespace. Its selections combine (all must
 
 The **CrowdSec content** page lists the programs received (**Log programs**) with the parsers that select them; install the matching collection (e.g. `crowdsecurity/nginx`).
 
-`kubernetes` reaches the API; by default the pod's ServiceAccount (in-cluster). For a test outside a cluster: `kubernetes: {api_url: https://..., token_file: ..., ca_file: ...}`.
+The collector reaches the API with its pod's ServiceAccount. Run outside a cluster (tests), its configuration file takes `kubernetes: {api_url: https://..., token_file: ..., ca_file: ...}`.
 
 ## Positions and restarts
 
 The collector asks for each line's timestamp. After the manager acknowledged a line, its timestamp is the container's position. A stream that ends (container restart, kubelet log rotation) resumes after its last line without repeating it.
 
-| `state_file` | After a restart of the collector |
+| Values | After a restart of the collector |
 |---|---|
-| on a PVC (`components/persistent-state`) | each container resumes after its last acknowledged line; pods that started meanwhile are read from the last save |
-| on the default emptyDir | the same after a container restart; a new pod starts at the containers' current ends |
-| unset | stateless: every restart starts at the containers' current ends |
+| `state.persistence.enabled=true` (a PVC) | each container resumes after its last acknowledged line; pods that started meanwhile are read from the last save |
+| default (an emptyDir) | the same after a container restart; a new pod starts at the containers' current ends |
+| `state.enabled=false` | stateless: every restart starts at the containers' current ends |
 
 The first start (no state) begins at the containers' current ends: their backlog is not sent. Pods that appear later are read from their start. Lines are delivered at least once: lines read but not acknowledged before a restart are sent again (their record ids are stable: `<pod uid>/<container>@<timestamp>#<n>`).
 
 ## Install
 
-The manifests are in `deploy/k8s-collector` (kustomize).
+```sh
+helm install k8s-logs deploy/helm/openpicket-k8s-collector \
+  -n openpicket-k8s-collector --create-namespace -f values.yaml
+```
 
-1. Create the key and register it under **Nodes > Register node**. The comment of the public key is the node id:
+1. The chart generates the node key (secret `<release>-openpicket-k8s-collector-key`, kept on uninstall and upgrades). Print its public key and register it under **Nodes > Register node**; its comment is the node id:
 
    ```sh
-   docker run --rm -v "$PWD:/out" ghcr.io/openpicket/openpicket-agent-k8s-collector \
-     keygen -node-id k8s-logs -key-file /out/agent_ed25519
-   # or: ssh-keygen -t ed25519 -N '' -C k8s-logs -f agent_ed25519
-   kubectl create namespace openpicket-k8s-collector
-   kubectl -n openpicket-k8s-collector create secret generic k8s-collector-key --from-file=agent_ed25519
+   kubectl -n openpicket-k8s-collector exec deploy/k8s-logs-openpicket-k8s-collector -- \
+     openpicket-agent-k8s-collector pubkey -config /etc/openpicket-agent-k8s-collector/config.yaml
    ```
 
-2. Edit `config.yaml` (URL, host key from **Nodes > Connection info**, targets) and `rbac.yaml` (one RoleBinding per namespace of the targets).
-3. For positions on a PVC, enable `components/persistent-state` in `kustomization.yaml`.
-4. Apply and check:
+   Until then the collector retries its connection. To bring your own key instead (`openpicket-agent-k8s-collector keygen` or `ssh-keygen -t ed25519`): `key.existingSecret`, or `key.privateKey`.
+2. Check:
 
    ```sh
-   kubectl apply -k deploy/k8s-collector
-   kubectl -n openpicket-k8s-collector exec deploy/k8s-collector -- \
+   kubectl -n openpicket-k8s-collector exec deploy/k8s-logs-openpicket-k8s-collector -- \
      openpicket-agent-k8s-collector check -config /etc/openpicket-agent-k8s-collector/config.yaml
    ```
 
@@ -83,7 +82,7 @@ The manifests are in `deploy/k8s-collector` (kustomize).
 
 ## Permissions
 
-The ClusterRole lists pods, reads their logs and reads the workloads' selectors; RoleBindings grant it in the target namespaces only. Logs may hold tokens and personal data: bind only what you ship. The container runs as a non-root user with a read-only root filesystem and no capabilities.
+The ClusterRole lists pods, reads their logs and reads the workloads' selectors. The chart grants it with a RoleBinding in each target's namespace only (`rbac.extraNamespaces` adds more; `rbac.clusterWide=true` grants it everywhere). Logs may hold tokens and personal data: bind only what you ship. The container runs as a non-root user with a read-only root filesystem and no capabilities.
 
 ## Limits
 

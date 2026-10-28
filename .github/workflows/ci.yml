@@ -326,7 +326,9 @@ jobs:
               rm -rf "${out:?}/$name"
             done
           done
-          helm package deploy/helm/openpicket --version "${version#v}" --app-version "${version#v}" -d "$out"
+          for chart in openpicket openpicket-k8s-collector; do
+            helm package "deploy/helm/$chart" --version "${version#v}" --app-version "${version#v}" -d "$out"
+          done
           (cd "$out" && sha256sum -- * > SHA256SUMS)
       - name: Publish release
         env:

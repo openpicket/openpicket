@@ -1,0 +1,27 @@
+openpicket-agent-k8s-collector ships the logs of {{ len .Values.targets }} target(s) as node "{{ .Values.nodeId }}".
+
+1. Register the node in OpenPicket (Nodes > Register node) with its public
+   key; its comment is the node id:
+
+   kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "collector.fullname" . }} -- \
+     openpicket-agent-k8s-collector pubkey -config {{ include "collector.configDir" . }}/config.yaml
+
+   Until then the collector retries the connection.
+
+2. Check the targets, the state, the key and the connection:
+
+   kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "collector.fullname" . }} -- \
+     openpicket-agent-k8s-collector check -config {{ include "collector.configDir" . }}/config.yaml
+{{- if not .Values.key.existingSecret }}
+
+The key is in the secret {{ include "collector.keySecret" . }}; it is kept on
+uninstall, so a reinstall keeps the registered node.
+{{- end }}
+{{- if not .Values.state.enabled }}
+
+Stateless (state.enabled=false): every restart starts at the containers' current ends.
+{{- else if not .Values.state.persistence.enabled }}
+
+Positions are on an emptyDir: they survive container restarts, not pod
+restarts (state.persistence.enabled=true puts them on a PVC).
+{{- end }}

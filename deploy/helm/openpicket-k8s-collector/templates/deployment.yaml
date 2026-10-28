@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "collector.fullname" . }}
+  labels: {{- include "collector.labels" . | nindent 4 }}
+spec:
+  # One replica: a second one would ship every line twice, and a node key
+  # has one session at a time.
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: {{- include "collector.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "collector.selector" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/config: {{ include "collector.config" . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "collector.serviceAccount" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range . }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: collector
+          image: {{ include "collector.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: [run, -config, {{ include "collector.configDir" . }}/config.yaml]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - { name: config, mountPath: {{ include "collector.configDir" . }}/config.yaml, subPath: config.yaml, readOnly: true }
+            {{- if .Values.openpicket.caCert }}
+            - { name: config, mountPath: {{ include "collector.configDir" . }}/ca.crt, subPath: ca.crt, readOnly: true }
+            {{- end }}
+            - { name: key, mountPath: {{ include "collector.configDir" . }}/key, readOnly: true }
+            {{- if .Values.state.enabled }}
+            - { name: state, mountPath: {{ include "collector.stateDir" . }} }
+            {{- end }}
+      volumes:
+        - name: config
+          secret: { secretName: {{ include "collector.fullname" . }}-config }
+        - name: key
+          secret:
+            secretName: {{ include "collector.keySecret" . }}
+            defaultMode: 0440
+            items:
+              - { key: {{ include "collector.keyKey" . }}, path: agent_ed25519 }
+        {{- if .Values.state.enabled }}
+        - name: state
+          {{- if .Values.state.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-state" (include "collector.fullname" .)) .Values.state.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
