@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -284,8 +285,8 @@ type meta struct {
 
 // LogEnvelope carries a generic log line to CrowdSec; the openpicket/logs
 // parser (s00-unwrap) unwraps it into evt.Parsed.program and message,
-// which the hub parsers select on. Syslog lines go whole, under program
-// "syslog": openpicket/syslog-logs splits them as
+// which the hub parsers select on. Syslog lines come split (format
+// "syslog"): openpicket/syslog-logs sets their fields as
 // crowdsecurity/syslog-logs does.
 type LogEnvelope struct {
 	Log  LogLine `json:"openpicket_log"`
@@ -296,8 +297,35 @@ type LogEnvelope struct {
 type LogLine struct {
 	Program string `json:"program"`
 	Message string `json:"message"`
-	// ProgramOverride replaces the tag of a syslog line.
-	ProgramOverride string `json:"program_override,omitempty"`
+	// Format "syslog": a syslog line, whose program (the tag, or the
+	// program a syslog device gives it) and message come from its header,
+	// with the header's other fields, named as crowdsecurity/syslog-logs
+	// names them. The timestamp is as written: timestamp for RFC 3164's,
+	// timestamp8601 for the others.
+	Format         string `json:"format,omitempty"`
+	Host           string `json:"logsource,omitempty"`
+	PID            string `json:"pid,omitempty"`
+	Timestamp      string `json:"timestamp,omitempty"`
+	Timestamp8601  string `json:"timestamp8601,omitempty"`
+	SyslogPriority string `json:"syslog_priority,omitempty"`
+}
+
+// syslogLine is the envelope's line of a syslog record.
+func syslogLine(r *pipeline.Record) LogLine {
+	m := r.Syslog
+	l := LogLine{Program: m.Program, Message: m.Message, Format: pipeline.ProgramSyslog, Host: m.Host, PID: m.PID}
+	if r.ProgramOverride != "" {
+		l.Program = r.ProgramOverride
+	}
+	if m.BSDTime {
+		l.Timestamp = m.Timestamp
+	} else {
+		l.Timestamp8601 = m.Timestamp
+	}
+	if m.Priority >= 0 {
+		l.SyslogPriority = strconv.Itoa(m.Priority)
+	}
+	return l
 }
 
 // Line returns the NDJSON line sent for a record.
@@ -308,8 +336,8 @@ func Line(b *pipeline.Batch, r *pipeline.Record) []byte {
 	}
 	if b.Type == record.TypeLog {
 		l := LogLine{Program: r.Program, Message: string(r.Line)}
-		if r.Syslog {
-			l.Program, l.ProgramOverride = pipeline.ProgramSyslog, r.ProgramOverride
+		if r.Syslog != nil {
+			l = syslogLine(r)
 		}
 		out, _ := json.Marshal(LogEnvelope{Log: l, Meta: m})
 		return out

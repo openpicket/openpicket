@@ -1,8 +1,8 @@
 # Generic log lines from openpicket-manager (docs/ARCHITECTURE.md §4.8):
 #   {"openpicket_log":{"program":"nginx","message":"<line>"},"openpicket_meta":{...}}
 # Unwrapped into evt.Parsed.program and evt.Parsed.message, which the hub's
-# s01 parsers select on and read, so they apply unchanged. Lines of
-# program "syslog" are openpicket/syslog-logs's.
+# s01 parsers select on and read, so they apply unchanged. Syslog lines
+# (format "syslog") are openpicket/syslog-logs's.
 #
 # Its own stage, between s00-raw and s01-parse: in s00-raw CrowdSec's
 # built-in non-syslog parser succeeds first (program = the datasource
@@ -13,7 +13,7 @@
 # escapes (\" breaks the groks) and JsonExtractUnescape returns nothing for
 # a nested key (CrowdSec 1.8.1).
 onsuccess: next_stage
-filter: 'JsonExtract(evt.Line.Raw, "openpicket_log.program") != "syslog"'
+filter: 'JsonExtract(evt.Line.Raw, "openpicket_log.format") != "syslog"'
 name: openpicket/logs
 description: "Unwrap generic log lines shipped by OpenPicket"
 statics:

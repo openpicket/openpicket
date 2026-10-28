@@ -7,9 +7,10 @@
 //	template("${YEAR}-${MONTH}-${DAY} ${HOUR}:${MIN}:${SEC} ${LEVEL} ${MSGHDR}${MSG}\n");
 //
 // Lines of syslog files (auth.log) and syslog messages received over the
-// network both go through it for their program (the tag), which the log
-// programs count and syslog devices rename. CrowdSec splits the lines
-// itself (the openpicket/syslog-logs parser).
+// network both go through it: the program (the tag) names them in Loki and
+// the log programs, and CrowdSec gets the fields as
+// crowdsecurity/syslog-logs would give them (openpicket/syslog-logs only
+// unwraps them).
 package syslogfmt
 
 import (
@@ -23,7 +24,12 @@ type Message struct {
 	// Priority is facility*8+severity, -1 when the line has none.
 	Priority int
 	Time     time.Time
-	Host     string
+	// Timestamp is the header's timestamp as written ("" for RFC 5424's
+	// "-"); BSDTime tells RFC 3164's ("Oct 23 10:00:01") from the others
+	// (RFC 3339, "2006-01-02 15:04:05").
+	Timestamp string
+	BSDTime   bool
+	Host      string
 	// Program is the tag or APP-NAME ("sshd"), without the pid.
 	Program string
 	PID     string
@@ -53,13 +59,15 @@ func Parse(line string, now time.Time) (Message, bool) {
 		}
 	}
 	var ok bool
-	if m.Time, rest, ok = bsdTime(rest, now); !ok {
-		if m.Time, rest, ok = isoTime(rest); !ok {
-			if m.Time, rest, ok = localTime(rest, now); !ok {
-				return m, false
-			}
+	header := rest
+	if m.Time, rest, ok = bsdTime(rest, now); ok {
+		m.BSDTime = true
+	} else if m.Time, rest, ok = isoTime(rest); !ok {
+		if m.Time, rest, ok = localTime(rest, now); !ok {
+			return m, false
 		}
 	}
+	m.Timestamp = strings.TrimSuffix(header[:len(header)-len(rest)], " ")
 	// [LEVEL] HOSTNAME TAG[PID]: MSG; some senders leave the host out.
 	if level, after, found := strings.Cut(rest, " "); found && levels[level] {
 		rest = after
@@ -157,7 +165,7 @@ func parse5424(m Message, s string) (Message, bool) {
 		if err != nil {
 			return m, false
 		}
-		m.Time = t
+		m.Time, m.Timestamp = t, f[0]
 	}
 	if f[1] != "-" {
 		m.Host = f[1]

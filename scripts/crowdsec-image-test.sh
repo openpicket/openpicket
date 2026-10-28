@@ -55,9 +55,14 @@ records="$(mktemp)"
   done
   # Generic logs, as openpicket-manager wraps them: nginx probing 12
   # missing paths -> http-probing (openpicket/logs); sshd failed passwords
-  # in each syslog format, whole under program syslog
-  # (openpicket/syslog-logs splits them) -> ssh-bf, one address each.
-  logline() { jq -nc --arg p "$1" --arg m "$2" --arg o "${3:-}" --arg ts "$now" '{openpicket_log: ({program: $p, message: $m} + if $o != "" then {program_override: $o} else {} end), openpicket_meta: {ts: $ts, node_id: "web-01", site: "seoul"}}'; }
+  # as syslog lines, split by the manager with each kind of header
+  # (openpicket/syslog-logs unwraps them) -> ssh-bf, one address each.
+  logline() { jq -nc --arg p "$1" --arg m "$2" --arg ts "$now" '{openpicket_log: {program: $p, message: $m}, openpicket_meta: {ts: $ts, node_id: "web-01", site: "seoul"}}'; }
+  # sysline <program> <message> <host> <timestamp> <timestamp8601> [priority]
+  sysline() { jq -nc --arg p "$1" --arg m "$2" --arg h "$3" --arg t "$4" --arg t8 "$5" --arg pri "${6:-}" --arg ts "$now" '
+    def opt(k; v): if v != "" then {(k): v} else {} end;
+    {openpicket_log: ({format: "syslog", program: $p, message: $m, pid: "42"} + opt("logsource"; $h) + opt("timestamp"; $t)
+      + opt("timestamp8601"; $t8) + opt("syslog_priority"; $pri)), openpicket_meta: {ts: $ts, node_id: "web-01", site: "seoul"}}'; }
   for i in $(seq 1 12); do
     logline nginx "198.51.100.67 - - [$(LC_ALL=C date -u +%d/%b/%Y:%H:%M:%S) +0000] \"GET /probe-$i.php HTTP/1.1\" 404 153 \"-\" \"curl/8.0\""
   done
@@ -65,18 +70,18 @@ records="$(mktemp)"
   ng="$(date -u '+%Y-%m-%d %H:%M:%S')"
   for i in $(seq 1 8); do
     pw="Failed password for root from 198.51.100.%s port 4000$i ssh2"
-    # auth.log
-    logline syslog "$bsd web-01 sshd[812]: $(printf "$pw" 66)"
-    # the journal (openpicket-agent)
-    logline syslog "<38>$now web-01 sshd[812]: $(printf "$pw" 61)"
-    # received, RFC 3164 / RFC 5424 / without the host (OpenWrt)
-    logline syslog "<38>$bsd fw sshd[42]: $(printf "$pw" 62)"
-    logline syslog "<38>1 $now fw sshd 42 - [origin ip=\"10.0.0.1\" note=\"a \\] b\"] $(printf "$pw" 63)"
-    logline syslog "<38>$bsd sshd[42]: $(printf "$pw" 64)"
-    # a device renaming its tag
-    logline syslog "<38>$bsd fw auth[42]: $(printf "$pw" 65)" sshd
-    # a syslog-ng file (Alpine): the level after a local time, no host
-    logline syslog "$ng info sshd[812]: $(printf "$pw" 68)"
+    # auth.log (RFC 3164)
+    sysline sshd "$(printf "$pw" 66)" web-01 "$bsd" ""
+    # the journal (RFC 3339)
+    sysline sshd "$(printf "$pw" 61)" web-01 "" "$now" 38
+    # received from a device
+    sysline sshd "$(printf "$pw" 62)" fw "$bsd" "" 38
+    # without a timestamp (RFC 5424 "-")
+    sysline sshd "$(printf "$pw" 63)" fw "" "" 38
+    # without the host (OpenWrt)
+    sysline sshd "$(printf "$pw" 64)" "" "$bsd" "" 38
+    # a syslog-ng file: local time, no host
+    sysline sshd "$(printf "$pw" 68)" "" "" "$ng"
   done
 } > "$records"
 docker cp "$records" "$name:/tmp/records.ndjson" >/dev/null
@@ -111,11 +116,11 @@ check "alert context has node_id" "$alerts" "map(select(.scenario==\"openpicket/
 check "remote geo on alert source" "$alerts" "map(select(.scenario==\"openpicket/suricata-outbound-c2\")) | .[0].source.cn" "RU"
 check "no alert from lateral traffic" "$alerts" "map(select(.source.value==\"192.168.1.70\")) | length" "0"
 check "generic log: http-probing banned" "$decisions" "$d | map(select(.value==\"198.51.100.67\")) | .[0].scenario" "crowdsecurity/http-probing"
-for ip in 66 61 62 63 64 65 68; do
+for ip in 66 61 62 63 64 68; do
   check "syslog line: ssh-bf banned 198.51.100.$ip" "$decisions" "$d | map(select(.value==\"198.51.100.$ip\")) | .[0].scenario | startswith(\"crowdsecurity/ssh-bf\")" "true"
 done
 check "syslog line: machine from the header" "$alerts" "map(select(.source.value==\"198.51.100.62\")) | .[0].events[0].meta | map(select(.key==\"machine\")) | .[0].value" "fw"
-check "syslog-ng line: the level is not the machine" "$alerts" "map(select(.source.value==\"198.51.100.68\")) | .[0].events[0].meta | map(select(.key==\"machine\")) | .[0].value" "unknownhost"
+check "syslog line without a host: unknownhost" "$alerts" "map(select(.source.value==\"198.51.100.68\")) | .[0].events[0].meta | map(select(.key==\"machine\")) | .[0].value" "unknownhost"
 check "syslog line: node in the alert context" "$alerts" "map(select(.source.value==\"198.51.100.64\")) | .[0].meta | map(select(.key==\"node_id\")) | .[0].value" '["web-01"]'
 check "generic log: node in the alert context" "$alerts" "map(select(.scenario==\"crowdsecurity/http-probing\")) | .[0].meta | map(select(.key==\"node_id\")) | .[0].value" '["web-01"]'
 

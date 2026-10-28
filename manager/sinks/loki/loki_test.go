@@ -13,6 +13,7 @@ import (
 	"github.com/openpicket/openpicket/manager/pipeline"
 	"github.com/openpicket/openpicket/manager/registry"
 	"github.com/openpicket/openpicket/pkg/record"
+	"github.com/openpicket/openpicket/pkg/syslogfmt"
 )
 
 type push struct {
@@ -114,9 +115,9 @@ func TestGenericLogLabelsAndSkip(t *testing.T) {
 	// the metadata; a skipped one is left out.
 	b := mk("syslog")
 	b.Records = []*pipeline.Record{
-		{Line: []byte("dovecot line"), Time: now, Program: "dovecot", Syslog: true},
-		{Line: []byte("smtpd line"), Time: now, Program: "postfix/smtpd", Syslog: true},
-		{Line: []byte("nginx line"), Time: now, Program: "nginx", Syslog: true},
+		{Line: []byte("dovecot line"), Time: now, Program: "dovecot", Syslog: &syslogfmt.Message{}},
+		{Line: []byte("smtpd line"), Time: now, Program: "postfix/smtpd", Syslog: &syslogfmt.Message{}},
+		{Line: []byte("nginx line"), Time: now, Program: "nginx", Syslog: &syslogfmt.Message{}},
 	}
 	if err := s.Deliver(context.Background(), b); err != nil || pushes != 2 || len(got.Streams) != 2 {
 		t.Fatalf("syslog push: %v %d %+v", err, pushes, got.Streams)

@@ -72,11 +72,7 @@ func TestSyslogDevices(t *testing.T) {
 		lp.mu.Lock()
 		defer lp.mu.Unlock()
 		for i, e := range lp.got {
-			prog := e.Log.Program
-			if e.Log.ProgramOverride != "" {
-				prog += "(" + e.Log.ProgramOverride + ")"
-			}
-			if lp.meta[i]["node_id"] == node && prog+": "+e.Log.Message == line {
+			if lp.meta[i]["node_id"] == node && e.Log.Program+": "+e.Log.Message == line {
 				return true
 			}
 		}
@@ -100,8 +96,11 @@ func TestSyslogDevices(t *testing.T) {
 	asa := "<164>Oct 23 10:00:01 fw %ASA-4-106023: Deny tcp src outside:198.51.100.7/4444 dst inside:10.0.0.5/22"
 	ssh := "<38>Oct 23 10:00:02 fw sshd[42]: Failed password for root from 198.51.100.66 port 4000 ssh2"
 	send("tcp", "127.0.0.2", asa+"\n"+ssh+"\n")
-	// Whole, for openpicket/syslog-logs; the renamed tag with its program.
-	until("fw-01 lines", func() bool { return has("fw-01", "syslog(cisco-asa): "+asa) && has("fw-01", "syslog: "+ssh) }, nil)
+	// Split by the header; the renamed tag under the device's program.
+	until("fw-01 lines", func() bool {
+		return has("fw-01", "cisco-asa: Deny tcp src outside:198.51.100.7/4444 dst inside:10.0.0.5/22") &&
+			has("fw-01", "sshd: Failed password for root from 198.51.100.66 port 4000 ssh2")
+	}, nil)
 	lp.mu.Lock()
 	if lp.meta[0]["site"] != "busan" {
 		t.Errorf("meta %v", lp.meta[0])
@@ -111,13 +110,13 @@ func TestSyslogDevices(t *testing.T) {
 	// Unregistered: dropped until the setting accepts it.
 	send("udp", "127.0.0.5", "<13>Oct 23 10:00:03 nas app: unregistered")
 	time.Sleep(1500 * time.Millisecond)
-	if has("127.0.0.5", "syslog: <13>Oct 23 10:00:03 nas app: unregistered") {
+	if has("127.0.0.5", "app: unregistered") {
 		t.Fatal("unregistered sender accepted")
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO openpicket.settings (key, value) VALUES ('syslog.unregistered', '"accept"')`); err != nil {
 		t.Fatal(err)
 	}
-	until("accepted sender", func() bool { return has("127.0.0.5", "syslog: <13>Oct 23 10:00:03 nas app: unregistered") },
+	until("accepted sender", func() bool { return has("127.0.0.5", "app: unregistered") },
 		func() { send("udp", "127.0.0.5", "<13>Oct 23 10:00:03 nas app: unregistered") })
 
 	// A device registered while running applies at once.

@@ -1,64 +1,46 @@
-# Generic log lines in syslog format from openpicket-manager (program
-# "syslog": auth.log, the journal, received syslog messages), whole:
-#   {"openpicket_log":{"program":"syslog","message":"<line>"},"openpicket_meta":{...}}
-# Split as crowdsecurity/syslog-logs splits the lines of a syslog
-# datasource, with its fields and statics (program, pid, message,
-# logsource, the machine and the time from the header), so the s01
-# parsers (sshd-logs...) apply unchanged. openpicket/logs takes the other
+# Generic log lines in syslog format from openpicket-manager (auth.log,
+# the journal, syslog-ng files, received syslog messages), split by the
+# manager (pkg/syslogfmt) with the fields crowdsecurity/syslog-logs names:
+#   {"openpicket_log":{"format":"syslog","program":"sshd","message":"...",
+#    "logsource":"web-01","pid":"812","timestamp":"Oct 23 10:00:01"},
+#    "openpicket_meta":{...}}
+# Set as crowdsecurity/syslog-logs sets them (program, pid, message,
+# logsource=syslog, the machine and the time from the header), so the s01
+# parsers (sshd-logs, postfix-logs...) apply unchanged. The formats are the
+# manager's: this parser only unwraps. openpicket/logs takes the other
 # lines; the two filters exclude each other, so their order does not
-# matter. A line no node splits is dropped, as by crowdsecurity/syslog-logs.
-#
-# CrowdSec's syslog datasource rebuilds network messages into
-# "Jan 2 15:04:05 host tag[pid]: msg" before its parser; here they come as
-# sent, so the nodes also take a priority, RFC 5424, senders that leave
-# out the host (OpenWrt's logd) and syslog-ng files with the level after
-# the time (Alpine's "${YEAR}-${MONTH}-${DAY} ${HOUR}:${MIN}:${SEC} ${LEVEL}
-# ${MSGHDR}${MSG}").
-filter: 'JsonExtract(evt.Line.Raw, "openpicket_log.program") == "syslog"'
+# matter. Strings are read with JsonExtractObject (see openpicket/logs).
+filter: 'JsonExtract(evt.Line.Raw, "openpicket_log.format") == "syslog"'
 onsuccess: next_stage
 name: openpicket/syslog-logs
-description: "Split syslog lines shipped by OpenPicket, as crowdsecurity/syslog-logs does"
-# Grok pattern names are global: prefixed, not to clash with the hub's.
-pattern_syntax:
-  OPENPICKET_SYSLOG_PRI: '<%{NONNEGINT:syslog_priority}>'
-  # RFC 5424 structured data: "-" or [id param="value"...]..., quoted
-  # values with \" \\ \] escapes.
-  OPENPICKET_SYSLOG_SD: '(?:-|(?:\[(?:[^\]"\\]|"(?:[^"\\]|\\.)*")*\])+)'
-  OPENPICKET_SYSLOG_5424: '%{OPENPICKET_SYSLOG_PRI}%{NONNEGINT:syslog_version} (?:-|%{TIMESTAMP_ISO8601:timestamp8601}) (?:-|%{SYSLOGHOST:logsource}) (?:-|%{NOTSPACE:program}) (?:-|%{NOTSPACE:pid}) %{NOTSPACE:msgid} %{OPENPICKET_SYSLOG_SD}(?: \x{FEFF}?%{GREEDYDATA:message})?'
-  OPENPICKET_SYSLOG_LEVEL: '(?:emerg|panic|alert|crit|error|err|warning|warn|notice|info|debug)'
-  OPENPICKET_SYSLOG_LEVELED: '(?:%{SYSLOGTIMESTAMP:timestamp}|%{TIMESTAMP_ISO8601:timestamp8601}) %{OPENPICKET_SYSLOG_LEVEL} (?:%{SYSLOGHOST:logsource} )?%{SYSLOGPROG}: %{GREEDYDATA:message}'
-  OPENPICKET_SYSLOG_NOHOST: '(?:%{SYSLOGTIMESTAMP:timestamp}|%{TIMESTAMP_ISO8601:timestamp8601}) %{SYSLOGPROG}: %{GREEDYDATA:message}'
-nodes:
-  # syslog-ng with the level (the host is optional): first, or SYSLOGLINE
-  # would take the level for the host.
-  - grok:
-      pattern: '^(?:%{OPENPICKET_SYSLOG_PRI})?%{OPENPICKET_SYSLOG_LEVELED}'
-      expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["message"]'
-  # Files (auth.log), the journal, RFC 3164: crowdsecurity/syslog-logs's
-  # pattern, after an optional priority.
-  - grok:
-      pattern: '^(?:%{OPENPICKET_SYSLOG_PRI})?%{SYSLOGLINE}'
-      expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["message"]'
-  - grok:
-      pattern: '^%{OPENPICKET_SYSLOG_5424}'
-      expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["message"]'
-  - grok:
-      pattern: '^(?:%{OPENPICKET_SYSLOG_PRI})?%{OPENPICKET_SYSLOG_NOHOST}'
-      expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["message"]'
+description: "Unwrap syslog lines split by OpenPicket, as crowdsecurity/syslog-logs splits them"
 statics:
-  # crowdsecurity/syslog-logs's; a message without a host names the
-  # machine as CrowdSec's syslog datasource does.
+  - parsed: program
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["program"]'
+  - parsed: message
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["message"]'
+  - parsed: pid
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["pid"]'
+  - parsed: syslog_priority
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["syslog_priority"]'
+  - parsed: timestamp
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["timestamp"]'
+  - parsed: timestamp8601
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["timestamp8601"]'
+  # A header without a host names the machine as CrowdSec's syslog
+  # datasource does.
   - meta: machine
-    expression: 'evt.Parsed.logsource != "" ? evt.Parsed.logsource : "unknownhost"'
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["logsource"] ?? "unknownhost"'
   - parsed: logsource
     value: syslog
+  # The header's time (empty values are skipped); without one, when the
+  # line was read.
+  - target: evt.StrTime
+    expression: 'JsonExtract(evt.Line.Raw, "openpicket_meta.ts")'
   - target: evt.StrTime
     expression: evt.Parsed.timestamp
   - target: evt.StrTime
     expression: evt.Parsed.timestamp8601
-  # A syslog device that renames this tag (its programs).
-  - parsed: program
-    expression: 'JsonExtract(evt.Line.Raw, "openpicket_log.program_override") != "" ? JsonExtract(evt.Line.Raw, "openpicket_log.program_override") : evt.Parsed.program'
   - meta: node_id
     expression: 'JsonExtract(evt.Line.Raw, "openpicket_meta.node_id")'
   - meta: node_site

@@ -356,15 +356,13 @@ func (s *Server) receive(from netip.Addr, msg []byte) {
 	// otherwise send lines Loki rejects.
 	rec := &pipeline.Record{Line: []byte(line), RID: record.MemoryRID(s.boot, s.seq.Add(1)), Time: now}
 	tag := ""
-	if m, ok := syslogfmt.Parse(line, now); ok {
+	if m, ok := syslogfmt.Parse(line, now); ok && m.Program != "" {
 		tag = m.Program
+		rec.Syslog, rec.ProgramOverride = &m, dev.Programs[tag]
 	}
 	// A line without a tag goes to CrowdSec as a plain line of the
 	// device's default program.
 	rec.Program = dev.Program(tag)
-	if tag != "" {
-		rec.Syslog, rec.ProgramOverride = true, dev.Programs[tag]
-	}
 
 	s.mu.Lock()
 	b := s.pending[dev.ID]

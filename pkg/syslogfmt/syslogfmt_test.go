@@ -54,3 +54,21 @@ func TestParse(t *testing.T) {
 		}
 	}
 }
+
+// The timestamp as written, for CrowdSec's date parsing.
+func TestTimestamp(t *testing.T) {
+	now := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+	for line, want := range map[string]string{
+		"Oct  3 09:08:07 nas01 dropbear[33]: x":                 "Oct  3 09:08:07",
+		"<38>Oct 23 10:00:01 sshd[1]: x":                        "Oct 23 10:00:01",
+		"2026-10-23T10:00:01.123456+09:00 db-01 postgres[9]: x": "2026-10-23T10:00:01.123456+09:00",
+		"2026-10-26 19:27:55 info dovecot[49]: x":               "2026-10-26 19:27:55",
+		"<34>1 2026-10-23T10:00:01Z - app - - - x":              "2026-10-23T10:00:01Z",
+		"<34>1 - - app - - - x":                                 "",
+	} {
+		m, ok := Parse(line, now)
+		if !ok || m.Timestamp != want || m.BSDTime != (want != "" && want[0] == 'O') {
+			t.Errorf("%q: %q %v %v", line, m.Timestamp, m.BSDTime, ok)
+		}
+	}
+}

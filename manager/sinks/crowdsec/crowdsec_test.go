@@ -16,6 +16,7 @@ import (
 	"github.com/openpicket/openpicket/manager/pipeline"
 	"github.com/openpicket/openpicket/manager/registry"
 	"github.com/openpicket/openpicket/pkg/record"
+	"github.com/openpicket/openpicket/pkg/syslogfmt"
 )
 
 type lp struct {
@@ -173,16 +174,27 @@ func TestGenericLogs(t *testing.T) {
 	}
 }
 
-// Syslog lines go whole, under program "syslog", with the device's
-// program for their tag.
+// Syslog lines go split, with the fields crowdsecurity/syslog-logs names
+// (the tag as written, the device's program for a renamed one).
 func TestSyslogEnvelope(t *testing.T) {
 	now := time.Date(2026, 10, 27, 1, 0, 0, 0, time.UTC)
-	line := "<38>Oct 27 10:00:00 fw sshd[42]: Failed password for root from 198.51.100.66 port 4000 ssh2"
 	b := &pipeline.Batch{NodeID: "fw-01", Type: record.TypeLog, Program: pipeline.ProgramSyslog, Received: now}
+	rec := func(line, override string) *pipeline.Record {
+		r := &pipeline.Record{Line: []byte(line), Time: now, ProgramOverride: override}
+		if m, ok := syslogfmt.Parse(line, now); ok {
+			r.Syslog = &m
+		}
+		return r
+	}
+	pw := "Failed password for root from 198.51.100.66 port 4000 ssh2"
 	for r, want := range map[*pipeline.Record]LogLine{
-		{Line: []byte(line), Time: now, Program: "sshd", Syslog: true}:                        {Program: "syslog", Message: line},
-		{Line: []byte(line), Time: now, Program: "ssh", Syslog: true, ProgramOverride: "ssh"}: {Program: "syslog", Message: line, ProgramOverride: "ssh"},
-		{Line: []byte("no header"), Time: now, Program: "unknown"}:                            {Program: "unknown", Message: "no header"},
+		rec("<38>Oct 27 10:00:00 fw sshd[42]: "+pw, ""): {Program: "sshd", Message: pw, Format: "syslog", Host: "fw", PID: "42",
+			Timestamp: "Oct 27 10:00:00", SyslogPriority: "38"},
+		rec("<38>Oct 27 10:00:00 fw auth[42]: "+pw, "sshd"): {Program: "sshd", Message: pw, Format: "syslog", Host: "fw", PID: "42",
+			Timestamp: "Oct 27 10:00:00", SyslogPriority: "38"},
+		rec("2026-10-26 19:27:55 info postfix/smtpd[56825]: connect from unknown[178.16.53.230]", ""): {Program: "postfix/smtpd",
+			Message: "connect from unknown[178.16.53.230]", Format: "syslog", PID: "56825", Timestamp8601: "2026-10-26 19:27:55"},
+		{Line: []byte("no header"), Time: now, Program: "unknown"}: {Program: "unknown", Message: "no header"},
 	} {
 		var got LogEnvelope
 		if err := json.Unmarshal(Line(b, r), &got); err != nil || got.Log != want || got.Meta.NodeID != "fw-01" {

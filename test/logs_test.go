@@ -184,7 +184,7 @@ openpicket:
 	waitFor("both lines at CrowdSec", func() bool { return len(lp.lines()) >= 2 })
 	// A datagram to the local listener (OpenWrt's logd), sent again until
 	// the listener is up.
-	dropbear := "syslog: <38>Oct 23 12:00:02 dropbear[1234]: Bad password attempt for 'root' from 198.51.100.7:4000"
+	dropbear := "dropbear: Bad password attempt for 'root' from 198.51.100.7:4000"
 	waitFor("listener line at CrowdSec", func() bool {
 		if c, err := net.Dial("udp", listen); err == nil {
 			_, _ = c.Write([]byte("<38>Oct 23 12:00:02 dropbear[1234]: Bad password attempt for 'root' from 198.51.100.7:4000"))
@@ -199,7 +199,7 @@ openpicket:
 	})
 	got := lp.lines()
 	want := []string{`nginx: 198.51.100.67 - - [23/Oct/2026:12:00:00 +0000] "GET /x HTTP/1.1" 404 0 "-" "curl"`,
-		"syslog: Oct 23 12:00:01 web-01 sshd[812]: Failed password for root from 198.51.100.66 port 4000 ssh2"}
+		"sshd: Failed password for root from 198.51.100.66 port 4000 ssh2"}
 	for _, w := range want {
 		found := false
 		for _, g := range got {

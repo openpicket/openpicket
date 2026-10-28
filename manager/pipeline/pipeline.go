@@ -60,10 +60,10 @@ type Record struct {
 	// lines (program "syslog": auth.log, received messages) the one in
 	// the line's header, as the log programs count it.
 	Program string
-	// Syslog marks a line with a syslog header: CrowdSec gets it whole
-	// under program "syslog" and splits it itself (openpicket/syslog-logs).
+	// Syslog is the header of a line in syslog format (nil otherwise):
+	// CrowdSec gets its fields (openpicket/syslog-logs).
 	// ProgramOverride is the program a syslog device gives its tag.
-	Syslog          bool
+	Syslog          *syslogfmt.Message
 	ProgramOverride string
 }
 
@@ -297,7 +297,7 @@ func (p *Pipeline) decode(node *registry.Node, lb *dataplanev1.LogBatch) (*Batch
 			rec.Program = b.Program
 			if b.Program == ProgramSyslog {
 				if m, ok := syslogfmt.Parse(string(r.Line), rec.Time); ok && m.Program != "" {
-					rec.Syslog = true
+					rec.Syslog = &m
 					if prog := record.NormalizeProgram(m.Program); prog != "" {
 						rec.Program = prog
 					}

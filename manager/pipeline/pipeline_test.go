@@ -268,14 +268,14 @@ func TestDecodeGenericLog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if b.Program != "nginx" || b.Records[0].Program != "nginx" || b.Records[0].Syslog {
+	if b.Program != "nginx" || b.Records[0].Program != "nginx" || b.Records[0].Syslog != nil {
 		t.Fatalf("nginx: %s %+v", b.Program, b.Records[0])
 	}
 	b, err = p.decode(node, mk("syslog", "Oct 23 11:59:59 web-01 sshd[812]: Failed password for root from 198.51.100.66 port 4000 ssh2", "not a syslog line"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if b.Program != "syslog" || b.Records[0].Program != "sshd" || !b.Records[0].Syslog || b.Records[1].Program != "syslog" || b.Records[1].Syslog {
+	if b.Program != "syslog" || b.Records[0].Program != "sshd" || b.Records[0].Syslog == nil || b.Records[1].Program != "syslog" || b.Records[1].Syslog != nil {
 		t.Fatalf("syslog: %+v %+v", b.Records[0], b.Records[1])
 	}
 	if counts["web-01/nginx"] != 1 || counts["web-01/sshd"] != 1 || counts["web-01/syslog"] != 1 {

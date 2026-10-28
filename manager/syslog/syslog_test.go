@@ -136,7 +136,7 @@ func TestServerReceives(t *testing.T) {
 				got = map[string][]string{}
 				for _, b := range batches {
 					for _, r := range b.Records {
-						got[b.NodeID] = append(got[b.NodeID], fmt.Sprintf("%s %v %q", r.Program, r.Syslog, r.ProgramOverride))
+						got[b.NodeID] = append(got[b.NodeID], fmt.Sprintf("%s %v %q", r.Program, r.Syslog != nil, r.ProgramOverride))
 					}
 				}
 				mu.Unlock()
