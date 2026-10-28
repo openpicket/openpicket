@@ -1,0 +1,26 @@
+# openpicket-agent on a server without Suricata (docs/server.md): ships the
+# logs listed in /etc/openpicket-agent/agent.yaml to openpicket-manager.
+[Unit]
+Description=OpenPicket agent
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Environment=OPENPICKET_AGENT_CONFIG=/etc/openpicket-agent/agent.yaml
+ExecStart=/usr/local/bin/openpicket-agent run
+Restart=always
+RestartSec=5
+# Reads the logs; with openpicket.wan_interfaces set it also manages its
+# nftables tables (bans, port policies).
+User=root
+StateDirectory=openpicket-agent
+ConfigurationDirectory=openpicket-agent
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/openpicket-agent /etc/openpicket-agent
+ReadOnlyPaths=/var/log
+
+[Install]
+WantedBy=multi-user.target

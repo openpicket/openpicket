@@ -7,22 +7,23 @@ package agent
 import (
 	"context"
 	"crypto/rand"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/netip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	suriagent "github.com/jc-lab/suricontroller/agent"
-	suricfg "github.com/jc-lab/suricontroller/agent/config"
+	"github.com/jc-lab/suricontroller/agent/collector"
 	"github.com/jc-lab/suricontroller/agent/platform"
 	agentv1 "github.com/jc-lab/suricontroller/gen/suricontroller/agent/v1"
 	"github.com/jc-lab/suricontroller/pkg/sshkey"
@@ -31,6 +32,7 @@ import (
 	"github.com/openpicket/openpicket/agent/dataplane"
 	"github.com/openpicket/openpicket/agent/enforcer"
 	"github.com/openpicket/openpicket/agent/localnets"
+	"github.com/openpicket/openpicket/agent/logsrc"
 	"github.com/openpicket/openpicket/agent/natmap"
 	"github.com/openpicket/openpicket/agent/nflog"
 	"github.com/openpicket/openpicket/agent/nft"
@@ -85,6 +87,11 @@ type Agent struct {
 	nat       *natmap.Tracker
 	natHits   atomic.Uint64
 	natMisses atomic.Uint64
+
+	// logs tails openpicket.log_sources (nil without any).
+	logs *logsrc.Collector
+	// pub is the agent's public key line.
+	pub string
 }
 
 // New prepares the agent.
@@ -99,29 +106,36 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 	a.nets.Store(&direction.Nets{})
 	a.localNets.Store(&dataplanev1.LocalNets{})
 	sc := dataplane.ShipperConfig{
-		NodeID: cfg.Suri.NodeID, BootID: a.bootID, MaxInflightBytes: int64(cfg.OpenPicket.Logs.InflightMaxBytes),
+		NodeID: cfg.Node.NodeID, BootID: a.bootID, MaxInflightBytes: int64(cfg.OpenPicket.Logs.InflightMaxBytes),
 		Nets: func() *direction.Nets { return a.nets.Load() }, Logger: log,
 	}
-	if nl := cfg.OpenPicket.NATLookup; nl.Enabled {
+	// The NAT lookup names the inside host of Suricata alerts.
+	if nl := cfg.OpenPicket.NATLookup; nl.Enabled && cfg.Suri != nil {
 		a.nat = &natmap.Tracker{Table: natmap.NewTable(nl.Retention, nl.MaxEntries), Logger: log.With("component", "natmap")}
 		sc.NAT = a.lookupNAT
 	}
 	a.shipper = dataplane.NewShipper(sc)
-	so := opts.SuriOptions
-	so.Logger, so.LogTee, so.LogOutput = log, opts.LogTee, a.shipper
 	var err error
-	if cfg.ControllerFromManager() {
-		if a.ctl, err = newControllerSource(cfg.OpenPicket.URL, filepath.Join(cfg.Suri.StateDir, "openpicket", "controller.json"), log); err != nil {
+	if cfg.Suri != nil {
+		so := opts.SuriOptions
+		so.Logger, so.LogTee, so.LogOutput = log, opts.LogTee, a.shipper
+		if cfg.ControllerFromManager() {
+			if a.ctl, err = newControllerSource(cfg.OpenPicket.URL, a.statePath("controller.json"), log); err != nil {
+				return nil, err
+			}
+			so.Controller = a.ctl
+		}
+		if a.suri, err = suriagent.New(ctx, cfg.Suri, so); err != nil {
 			return nil, err
 		}
-		so.Controller = a.ctl
 	}
-	if a.suri, err = suriagent.New(ctx, cfg.Suri, so); err != nil {
-		return nil, err
-	}
-	key, _, err := suriagent.LoadKey(cfg.Suri)
+	key, created, err := sshkey.LoadOrGenerate(cfg.Node.KeyFile, cfg.Node.NodeID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("agent key: %w", err)
+	}
+	a.pub = key.Public(cfg.Node.NodeID).String()
+	if created {
+		log.Info("generated agent key; register this public key in OpenPicket", "public_key", a.pub)
 	}
 	hostKey, err := sshkey.ParsePublicKey(cfg.OpenPicket.HostKey)
 	if err != nil {
@@ -138,7 +152,7 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 	a.host = opts.Host
 	fw4 := false
 	if a.host == nil {
-		a.host = hostAccess(cfg.Suri)
+		a.host = hostAccess(cfg.Node)
 		fw4 = platform.Probe(ctx, a.host.FS, a.host.Exec).Fw4
 	}
 	if opts.Fw4 != nil {
@@ -151,7 +165,33 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 		a.wan.Set(append(slices.Clone(cfg.OpenPicket.WANInterfaces), a.zoneDevs...))
 		a.refreshWAN(ctx)
 	} else if len(cfg.OpenPicket.WANInterfaces) == 0 {
-		return nil, errors.New("openpicket.wan_interfaces: required without OpenWrt fw4 (fw4_zones applies to fw4 only)")
+		if cfg.Suri != nil {
+			return nil, errors.New("openpicket.wan_interfaces: required without OpenWrt fw4 (fw4_zones applies to fw4 only)")
+		}
+		// Without Suricata and without a WAN (a server shipping its logs):
+		// nothing to filter.
+		log.Info("no WAN interface: NFLOG, bans and port policies are off (set openpicket.wan_interfaces to use them)")
+		cfg.OpenPicket.Nflog.Enabled, cfg.OpenPicket.Enforcer.Enabled, cfg.OpenPicket.Policy.Enabled = false, false, false
+	}
+	if len(cfg.OpenPicket.LogSources) > 0 {
+		var srcs []logsrc.Source
+		for _, s := range cfg.OpenPicket.LogSources {
+			src := logsrc.Source{Program: s.Program, Path: s.Path, Listen: s.Listen}
+			if s.Journal != nil {
+				src.Journal, src.Matches = true, s.Journal.Matches
+			}
+			if src.Path == "" && src.Program == "" {
+				src.Program = "syslog"
+			}
+			srcs = append(srcs, src)
+		}
+		root := ""
+		if cfg.Node.Docker() {
+			root = cfg.Node.Platform.HostRoot
+		}
+		if a.logs, err = logsrc.New(logsrc.Config{Sources: srcs, Root: root, StateFile: a.statePath("log-positions.json"), Logger: log}); err != nil {
+			return nil, err
+		}
 	}
 	if n := cfg.OpenPicket.Nflog; n.Enabled {
 		groups := []uint16{nflog.GroupWANReject}
@@ -175,7 +215,11 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 				Group: nflog.GroupWANReject, IgnorePorts: n.IgnorePorts, WithoutSocketCheck: n.WithoutSocketCheck}
 		}
 	}
-	a.allow = newAllowlist(cfg.OpenPicket.Allowlist, []string{cfg.Suri.Controller.URL, cfg.OpenPicket.URL}, log)
+	hosts := []string{cfg.OpenPicket.URL}
+	if cfg.Suri != nil {
+		hosts = append(hosts, cfg.Suri.Controller.URL)
+	}
+	a.allow = newAllowlist(cfg.OpenPicket.Allowlist, hosts, log)
 	if a.ctl != nil {
 		a.allow.learn(a.ctl.URL())
 		a.ctl.onChange = func(u string) {
@@ -189,13 +233,13 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 		a.enf = enforcer.New(enforcer.Config{
 			Host: a.host, Table: nft.BanConfig{WAN: a.wan, Egress: e.EgressBlock},
 			Allow: a.allow.Prefixes, Nets: func() *direction.Nets { return a.nets.Load() },
-			MaxElements: e.MaxElements, StateFile: filepath.Join(cfg.Suri.StateDir, "openpicket", "decisions.json"), Logger: log,
+			MaxElements: e.MaxElements, StateFile: a.statePath("decisions.json"), Logger: log,
 		})
 	}
 	if p := cfg.OpenPicket.Policy; p.Enabled {
 		a.pol = policy.New(policy.Config{
 			Host: a.host, Table: nft.PolicyConfig{WAN: a.wan}, Allow: a.allow.Prefixes,
-			MaxElements: p.MaxElements, StateFile: filepath.Join(cfg.Suri.StateDir, "openpicket", "policy.pb"), Logger: log,
+			MaxElements: p.MaxElements, StateFile: a.statePath("policy.pb"), Logger: log,
 		})
 	}
 	handlers := dataplane.Handlers{Hello: a.hello, Status: a.status, LogPolicy: a.shipper.SetPolicy, Shipper: a.shipper}
@@ -210,7 +254,7 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 	}
 	a.client = dataplane.NewClient(dataplane.DialConfig{
 		URL: cfg.OpenPicket.URL, Headers: headers, HTTPClient: client, Key: key, ServerKey: hostKey,
-		NodeID: cfg.Suri.NodeID, Version: version.Version,
+		NodeID: cfg.Node.NodeID, Version: version.Version,
 	}, handlers, log)
 	a.refreshNets()
 	return a, nil
@@ -218,38 +262,36 @@ func New(ctx context.Context, cfg *config.Config, opts Options) (*Agent, error) 
 
 // hostAccess reaches the host like the suricontroller agent does: through
 // chroot and the /host mount in the docker profile.
-func hostAccess(c *suricfg.Config) *nft.Host {
-	if c.Platform.Profile == suricfg.ProfileDocker {
-		return &nft.Host{Exec: platform.ChrootExec{Root: c.Platform.HostRoot, Fallback: platform.LocalExec{}}, FS: platform.HostFS{Root: c.Platform.HostRoot}}
+func hostAccess(n config.Node) *nft.Host {
+	if n.Docker() {
+		return &nft.Host{Exec: platform.ChrootExec{Root: n.Platform.HostRoot, Fallback: platform.LocalExec{}}, FS: platform.HostFS{Root: n.Platform.HostRoot}}
 	}
 	return &nft.Host{Exec: platform.LocalExec{}, FS: platform.HostFS{Root: "/"}}
 }
 
+// statePath is a file of the agent's own state.
+func (a *Agent) statePath(name string) string {
+	return filepath.Join(a.cfg.Node.StateDir, "openpicket", name)
+}
+
 func httpClient(o config.OpenPicket) (*http.Client, error) {
-	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: o.TLSInsecureSkipVerify}
-	if o.CAFile != "" {
-		pem, err := os.ReadFile(o.CAFile)
-		if err != nil {
-			return nil, err
-		}
-		pool, err := x509.SystemCertPool()
-		if err != nil {
-			pool = x509.NewCertPool()
-		}
-		if !pool.AppendCertsFromPEM(pem) {
-			return nil, errors.New("openpicket.ca_file: no certificates found")
-		}
-		tlsCfg.RootCAs = pool
+	c, err := dataplane.NewHTTPClient(o.CAFile, o.TLSInsecureSkipVerify)
+	if err != nil {
+		return nil, fmt.Errorf("openpicket.ca_file: %w", err)
 	}
-	return &http.Client{Transport: &http.Transport{Proxy: http.ProxyFromEnvironment, TLSClientConfig: tlsCfg}}, nil
+	return c, nil
 }
 
 // PublicKey returns the agent public key line (same key on both channels).
-func (a *Agent) PublicKey() string { return a.suri.PublicKey() }
+func (a *Agent) PublicKey() string { return a.pub }
 
 // refreshNets recomputes the local networks; it reports a change.
 func (a *Agent) refreshNets() bool {
-	ln := localnets.Collect(a.suri.Instances(), a.wan.Get(), a.cfg.OpenPicket.LocalNets)
+	var instances []collector.Instance
+	if a.suri != nil {
+		instances = a.suri.Instances()
+	}
+	ln := localnets.Collect(instances, a.wan.Get(), a.cfg.OpenPicket.LocalNets)
 	old := a.localNets.Load()
 	if slices.Equal(old.HomeNet, ln.HomeNet) && slices.Equal(old.InterfaceAddrs, ln.InterfaceAddrs) && slices.Equal(old.Extra, ln.Extra) {
 		return false
@@ -261,7 +303,7 @@ func (a *Agent) refreshNets() bool {
 
 // Run runs both channels until ctx is cancelled.
 func (a *Agent) Run(ctx context.Context) error {
-	a.log.Info("openpicket-agent starting", "version", version.Version, "node", a.cfg.Suri.NodeID, "boot_id", a.bootID)
+	a.log.Info("openpicket-agent starting", "version", version.Version, "node", a.cfg.Node.NodeID, "boot_id", a.bootID, "suricata", a.suri != nil)
 	if a.enf != nil {
 		// Blocks are back in place before any connection (§1.1 principle 5).
 		if err := a.enf.Restore(ctx); err != nil {
@@ -275,9 +317,19 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 	var wg sync.WaitGroup
 	workers := []func(context.Context){
-		func(ctx context.Context) { _ = a.suri.Run(ctx) },
 		a.client.Run,
 		a.watchNets,
+	}
+	if a.suri != nil {
+		workers = append(workers, func(ctx context.Context) { _ = a.suri.Run(ctx) })
+	}
+	if a.logs != nil {
+		workers = append(workers, func(ctx context.Context) {
+			defer a.logs.Close()
+			if err := a.shipper.ShipSources(ctx, a.logs); err != nil {
+				a.log.Error("log sources stopped", "err", err)
+			}
+		})
 	}
 	if a.nflog != nil {
 		workers = append(workers, a.nflog.Run)
@@ -367,12 +419,15 @@ func (a *Agent) watchNets(ctx context.Context) {
 }
 
 func (a *Agent) hello() *dataplanev1.Hello {
-	sh := a.suri.Hello()
 	h := &dataplanev1.Hello{
-		NodeId: a.cfg.Suri.NodeID, AgentVersion: version.Version, BootId: a.bootID,
-		LocalNets: a.localNets.Load(), Platform: sh.GetPlatform(), Engine: sh.GetEngine(),
-		WanInterfaces: a.wan.Get(), LogSources: a.suri.LogSources(), Warnings: sh.GetWarnings(),
-		Capabilities: a.capabilities(),
+		NodeId: a.cfg.Node.NodeID, AgentVersion: version.Version, BootId: a.bootID,
+		LocalNets: a.localNets.Load(), WanInterfaces: a.wan.Get(), Capabilities: a.capabilities(),
+	}
+	if a.suri != nil {
+		sh := a.suri.Hello()
+		h.Platform, h.Engine, h.LogSources, h.Warnings = sh.GetPlatform(), sh.GetEngine(), a.suri.LogSources(), sh.GetWarnings()
+	} else {
+		h.Platform = platformInfo(a.cfg.Node)
 	}
 	for _, p := range localnets.UncoveredIPv6(a.nets.Load(), a.wan.Get()) {
 		h.Warnings = append(h.Warnings, warning("ipv6_not_local", "IPv6 prefix "+p+" is not in HOME_NET or openpicket.local_nets: its hosts look external"))
@@ -382,6 +437,12 @@ func (a *Agent) hello() *dataplanev1.Hello {
 
 func (a *Agent) capabilities() []string {
 	caps := []string{"logs"}
+	if a.suri != nil {
+		caps = append(caps, "suricata")
+	}
+	if a.logs != nil {
+		caps = append(caps, "log_sources")
+	}
 	if a.nflog != nil {
 		caps = append(caps, "nflog")
 	}
@@ -397,10 +458,18 @@ func (a *Agent) capabilities() []string {
 func (a *Agent) status(ctx context.Context) *dataplanev1.Status {
 	st := &dataplanev1.Status{
 		TimeUnixMs:    time.Now().UnixMilli(),
-		Suricata:      a.suri.Status(ctx),
 		LocalNets:     a.localNets.Load(),
 		Logs:          a.shipper.Stats(),
 		WanInterfaces: a.wan.Get(),
+	}
+	if a.suri != nil {
+		st.Suricata = a.suri.Status(ctx)
+	}
+	if a.logs != nil {
+		for _, s := range a.logs.Status() {
+			st.LogSources = append(st.LogSources, &dataplanev1.LogSourceStatus{Program: s.Program, Path: s.Path, Files: uint32(s.Files),
+				Lines: s.Lines, Truncated: s.Truncated, Dropped: s.Dropped, LastError: s.LastError})
+		}
 	}
 	if a.nflog != nil {
 		st.Nflog = a.nflog.Status()
@@ -426,4 +495,38 @@ func warning(code, msg string) *agentv1.Warning { return &agentv1.Warning{Code: 
 
 // ReopenLogs asks Suricata to reopen its log files (SIGHUP after an
 // external logrotate).
-func (a *Agent) ReopenLogs() { a.suri.ReopenLogs() }
+func (a *Agent) ReopenLogs() {
+	if a.suri != nil {
+		a.suri.ReopenLogs()
+	}
+}
+
+// platformInfo describes the host when the suricontroller agent (which
+// reports it with Suricata) does not run.
+func platformInfo(n config.Node) *agentv1.PlatformInfo {
+	p := &agentv1.PlatformInfo{Profile: n.Platform.Profile, Arch: runtime.GOARCH, FirewallBackend: n.Platform.Firewall}
+	p.Hostname, _ = os.Hostname()
+	root := "/"
+	if n.Docker() {
+		root = n.Platform.HostRoot
+	}
+	if b, err := os.ReadFile(filepath.Join(root, "etc/os-release")); err == nil {
+		for _, line := range strings.Split(string(b), "\n") {
+			k, v, ok := strings.Cut(line, "=")
+			if !ok {
+				continue
+			}
+			v = strings.Trim(v, `"`)
+			switch k {
+			case "NAME":
+				p.OsName = v
+			case "VERSION_ID":
+				p.OsVersion = v
+			}
+		}
+	}
+	if b, err := os.ReadFile("/proc/sys/kernel/osrelease"); err == nil {
+		p.Kernel = strings.TrimSpace(string(b))
+	}
+	return p
+}

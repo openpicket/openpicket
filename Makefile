@@ -2,17 +2,20 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X github.com/openpicket/openpicket/pkg/version.Version=$(VERSION)
 GO      ?= go
 
-.PHONY: images image-manager image-suricontroller image-agent all build manager agent suricontroller proto test test-pg test-netns test-crowdsec test-lapi image-crowdsec lint web suricata-web clean
+.PHONY: images image-manager image-suricontroller image-agent image-k8s-collector all build manager agent k8s-collector suricontroller proto test test-pg test-netns test-crowdsec test-lapi image-crowdsec lint web suricata-web clean
 
 all: build
 
-build: manager agent suricontroller
+build: manager agent k8s-collector suricontroller
 
 manager:
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/openpicket-manager ./cmd/openpicket-manager
 
 agent:
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/openpicket-agent ./cmd/openpicket-agent
+
+k8s-collector:
+	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/openpicket-agent-k8s-collector ./cmd/openpicket-agent-k8s-collector
 
 suricontroller:
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/openpicket-suricontroller ./cmd/openpicket-suricontroller
@@ -62,7 +65,7 @@ clean:
 VERSION ?= dev
 # e.g. --network host where the build network has no DNS
 DOCKER_BUILD_FLAGS ?=
-images: image-manager image-suricontroller image-agent image-crowdsec
+images: image-manager image-suricontroller image-agent image-k8s-collector image-crowdsec
 
 image-manager:
 	docker build $(DOCKER_BUILD_FLAGS) -f deploy/images/manager/Dockerfile --build-arg VERSION=$(VERSION) -t openpicket-manager:$(VERSION) .
@@ -72,6 +75,9 @@ image-suricontroller:
 
 image-agent:
 	docker build $(DOCKER_BUILD_FLAGS) -f deploy/images/agent/Dockerfile --build-arg VERSION=$(VERSION) -t openpicket-agent:$(VERSION) .
+
+image-k8s-collector:
+	docker build $(DOCKER_BUILD_FLAGS) -f deploy/images/k8s-collector/Dockerfile --build-arg VERSION=$(VERSION) -t openpicket-agent-k8s-collector:$(VERSION) .
 
 # OpenSearch sink against a real OpenSearch.
 test-opensearch:
@@ -86,6 +92,9 @@ helm-lint:
 	helm template t deploy/helm/openpicket --set ingress.enabled=true --set networkPolicy.enabled=true \
 	  --set monitoring.serviceMonitor.enabled=true --set monitoring.prometheusRule.enabled=true \
 	  --set monitoring.grafanaDashboards.enabled=true --set misp.enabled=true >/dev/null
+	helm lint deploy/helm/openpicket-k8s-collector -f deploy/helm/openpicket-k8s-collector/ci/test-values.yaml
+	helm template t deploy/helm/openpicket-k8s-collector -f deploy/helm/openpicket-k8s-collector/ci/test-values.yaml \
+	  --set rbac.clusterWide=true --set key.existingSecret=k >/dev/null
 
 airgap:
 	./scripts/airgap-bundle.sh $(VERSION)

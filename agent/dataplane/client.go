@@ -5,11 +5,14 @@ package dataplane
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -25,6 +28,27 @@ import (
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/pkg/dpwire"
 )
+
+// NewHTTPClient returns the client dialing the manager: the system CAs
+// plus caFile, or no verification (Noise still authenticates the manager).
+func NewHTTPClient(caFile string, insecure bool) (*http.Client, error) {
+	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: insecure}
+	if caFile != "" {
+		pem, err := os.ReadFile(caFile)
+		if err != nil {
+			return nil, err
+		}
+		pool, err := x509.SystemCertPool()
+		if err != nil {
+			pool = x509.NewCertPool()
+		}
+		if !pool.AppendCertsFromPEM(pem) {
+			return nil, errors.New("no certificates found")
+		}
+		tlsCfg.RootCAs = pool
+	}
+	return &http.Client{Transport: &http.Transport{Proxy: http.ProxyFromEnvironment, TLSClientConfig: tlsCfg}}, nil
+}
 
 // RejectedError reports that the manager refused the agent. It arrives in
 // Noise message 2, so ServerTime can be trusted to correct the clock.

@@ -32,6 +32,8 @@ type Config struct {
 	// URL is the push endpoint, e.g. http://loki-gateway/loki/api/v1/push.
 	// A URL without a path gets /loki/api/v1/push.
 	URL string
+	// Skip reports generic log programs not stored (settings).
+	Skip func(program string) bool
 	// TenantID is sent as X-Scope-OrgID (default "openpicket").
 	TenantID string
 	Username string
@@ -114,7 +116,20 @@ func Labels(b *pipeline.Batch, r *pipeline.Record) map[string]string {
 	if b.Type == record.TypeEve && r.EventType != "" {
 		l["event_type"] = r.EventType
 	}
+	if b.Type == record.TypeLog {
+		l["program"] = Program(b, r)
+	}
 	return l
+}
+
+// Program is the program of a generic log line: the one its syslog header
+// names (dovecot, postfix/smtpd), as the log programs count it, else its
+// source's.
+func Program(b *pipeline.Batch, r *pipeline.Record) string {
+	if r.Program != "" {
+		return r.Program
+	}
+	return b.Program
 }
 
 // Metadata returns the structured metadata of a record.
@@ -126,6 +141,10 @@ func Metadata(b *pipeline.Batch, r *pipeline.Record) map[string]string {
 		}
 	}
 	set("rid", r.RID)
+	if b.Type == record.TypeLog && Program(b, r) != b.Program {
+		// The source, e.g. "syslog" for a syslog file.
+		set("source_program", b.Program)
+	}
 	if b.Node != nil {
 		set("site", b.Node.Site())
 	}
@@ -163,7 +182,7 @@ func Metadata(b *pipeline.Batch, r *pipeline.Record) map[string]string {
 }
 
 func labelKey(l map[string]string) string {
-	return l["node"] + "\x00" + l["type"] + "\x00" + l["instance"] + "\x00" + l["event_type"]
+	return l["node"] + "\x00" + l["type"] + "\x00" + l["instance"] + "\x00" + l["event_type"] + "\x00" + l["program"]
 }
 
 // Deliver implements pipeline.Sink.
@@ -174,6 +193,10 @@ func (s *Sink) Deliver(ctx context.Context, b *pipeline.Batch) error {
 	var order []string
 	for _, r := range b.Records {
 		switch {
+		case b.Type == record.TypeLog && s.cfg.Skip != nil && s.cfg.Skip(Program(b, r)):
+			// Kept out of Loki by the settings (high volume); CrowdSec
+			// still gets the lines.
+			continue
 		case r.Time.Before(oldest):
 			s.rejected.WithLabelValues(b.NodeID, "too_old").Inc()
 			continue

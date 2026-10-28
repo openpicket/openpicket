@@ -1,0 +1,47 @@
+# Generic log lines in syslog format from openpicket-manager (auth.log,
+# the journal, syslog-ng files, received syslog messages), split by the
+# manager (pkg/syslogfmt) with the fields crowdsecurity/syslog-logs names:
+#   {"openpicket_log":{"format":"syslog","program":"sshd","message":"...",
+#    "logsource":"web-01","pid":"812","timestamp":"Oct 23 10:00:01"},
+#    "openpicket_meta":{...}}
+# Set as crowdsecurity/syslog-logs sets them (program, pid, message,
+# logsource=syslog, the machine and the time from the header), so the s01
+# parsers (sshd-logs, postfix-logs...) apply unchanged. The formats are the
+# manager's: this parser only unwraps. openpicket/logs takes the other
+# lines; the two filters exclude each other, so their order does not
+# matter. Strings are read with JsonExtractObject (see openpicket/logs).
+filter: 'JsonExtract(evt.Line.Raw, "openpicket_log.format") == "syslog"'
+onsuccess: next_stage
+name: openpicket/syslog-logs
+description: "Unwrap syslog lines split by OpenPicket, as crowdsecurity/syslog-logs splits them"
+statics:
+  - parsed: program
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["program"]'
+  - parsed: message
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["message"]'
+  - parsed: pid
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["pid"]'
+  - parsed: syslog_priority
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["syslog_priority"]'
+  - parsed: timestamp
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["timestamp"]'
+  - parsed: timestamp8601
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["timestamp8601"]'
+  # A header without a host names the machine as CrowdSec's syslog
+  # datasource does.
+  - meta: machine
+    expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["logsource"] ?? "unknownhost"'
+  - parsed: logsource
+    value: syslog
+  # The header's time (empty values are skipped); without one, when the
+  # line was read.
+  - target: evt.StrTime
+    expression: 'JsonExtract(evt.Line.Raw, "openpicket_meta.ts")'
+  - target: evt.StrTime
+    expression: evt.Parsed.timestamp
+  - target: evt.StrTime
+    expression: evt.Parsed.timestamp8601
+  - meta: node_id
+    expression: 'JsonExtract(evt.Line.Raw, "openpicket_meta.node_id")'
+  - meta: node_site
+    expression: 'JsonExtract(evt.Line.Raw, "openpicket_meta.site")'

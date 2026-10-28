@@ -13,6 +13,7 @@ import (
 	"github.com/openpicket/openpicket/manager/pipeline"
 	"github.com/openpicket/openpicket/manager/registry"
 	"github.com/openpicket/openpicket/pkg/record"
+	"github.com/openpicket/openpicket/pkg/syslogfmt"
 )
 
 type push struct {
@@ -76,5 +77,55 @@ func TestDeliver(t *testing.T) {
 	status = http.StatusServiceUnavailable
 	if err := s.Deliver(context.Background(), b); err == nil || errors.Is(err, pipeline.ErrPermanent) {
 		t.Fatalf("503 must be retryable: %v", err)
+	}
+}
+
+// TestGenericLogLabelsAndSkip: generic logs are labelled by program; a
+// program kept out of Loki is acknowledged without a push.
+func TestGenericLogLabelsAndSkip(t *testing.T) {
+	now := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+	var got push
+	pushes := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pushes++
+		zr, _ := gzip.NewReader(r.Body)
+		got = push{}
+		_ = json.NewDecoder(zr).Decode(&got)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	s, err := New(Config{URL: srv.URL, Now: func() time.Time { return now }, Skip: func(p string) bool { return p == "nginx" }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mk := func(program string) *pipeline.Batch {
+		return &pipeline.Batch{NodeID: "web-01", Type: record.TypeLog, Program: program, Received: now, Node: &registry.Node{ID: "web-01"},
+			Records: []*pipeline.Record{{Line: []byte("a line"), Time: now, Program: program}}}
+	}
+	if err := s.Deliver(context.Background(), mk("nginx")); err != nil || pushes != 0 {
+		t.Fatalf("skipped program pushed: %v %d", err, pushes)
+	}
+	if err := s.Deliver(context.Background(), mk("postgres")); err != nil || pushes != 1 {
+		t.Fatalf("push: %v %d", err, pushes)
+	}
+	if l := got.Streams[0].Stream; l["type"] != "log" || l["program"] != "postgres" || l["node"] != "web-01" {
+		t.Fatalf("labels = %v", l)
+	}
+	// Syslog lines: each under the program of its header, the source in
+	// the metadata; a skipped one is left out.
+	b := mk("syslog")
+	b.Records = []*pipeline.Record{
+		{Line: []byte("dovecot line"), Time: now, Program: "dovecot", Syslog: &syslogfmt.Message{}},
+		{Line: []byte("smtpd line"), Time: now, Program: "postfix/smtpd", Syslog: &syslogfmt.Message{}},
+		{Line: []byte("nginx line"), Time: now, Program: "nginx", Syslog: &syslogfmt.Message{}},
+	}
+	if err := s.Deliver(context.Background(), b); err != nil || pushes != 2 || len(got.Streams) != 2 {
+		t.Fatalf("syslog push: %v %d %+v", err, pushes, got.Streams)
+	}
+	for i, want := range []string{"dovecot", "postfix/smtpd"} {
+		st := got.Streams[i]
+		if st.Stream["program"] != want || st.Values[0][2].(map[string]any)["source_program"] != "syslog" {
+			t.Fatalf("stream %d: %+v", i, st)
+		}
 	}
 }

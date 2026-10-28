@@ -30,7 +30,7 @@ func fw4Input(rules ...string) string {
 
 func TestRefreshWAN(t *testing.T) {
 	ex := &fw4Exec{input: fw4Input(`iifname "br-lan" jump input_lan`, `iifname { "eth1", "pppoe-wan" } jump input_wan`, `iifname "wwan0" jump input_lte`)}
-	cfg := &config.Config{Suri: &suricfg.Config{StateDir: t.TempDir()}}
+	cfg := &config.Config{Suri: &suricfg.Config{}, Node: config.Node{StateDir: t.TempDir()}}
 	cfg.OpenPicket.WANInterfaces = []string{"wg0"}
 	cfg.OpenPicket.Fw4Zones = []string{"wan", "lte"}
 	exists := map[string]bool{"eth1": true, "pppoe-wan": true, "wwan0": true, "wg0": true}

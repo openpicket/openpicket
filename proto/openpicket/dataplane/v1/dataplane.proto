@@ -191,6 +191,23 @@ message Status {
   // may differ from the hello.
   repeated string wan_interfaces = 8;
   NatStatus nat = 9;
+  // Generic log sources (openpicket.log_sources).
+  repeated LogSourceStatus log_sources = 10;
+}
+
+message LogSourceStatus {
+  string program = 1;
+  // The configured path (a glob takes several files), "journal [matches]"
+  // or "udp://host:port" (listener).
+  string path = 2;
+  // Files open; 1 for a running journal or a bound listener.
+  uint32 files = 3;
+  uint64 lines = 4;
+  // Lines cut at 64 KiB.
+  uint64 truncated = 5;
+  string last_error = 6;
+  // Datagrams dropped by a listener (queue full).
+  uint64 dropped = 7;
 }
 
 // NAT lookup for Suricata alerts (conntrack events).
@@ -241,7 +258,7 @@ message LogBatch {
   string boot_id = 1;
   // Strictly increasing within boot_id.
   uint64 seq = 2;
-  // eve | suricata | fast | stats | agent | nflog
+  // eve | suricata | fast | stats | agent | nflog | log
   string type = 3;
   // ids | ips | ""
   string instance = 4;
@@ -249,6 +266,9 @@ message LogBatch {
   bytes zstd_records = 5;
   uint32 record_count = 6;
   uint64 dropped_since_last = 7;
+  // type "log": the program that wrote the lines (nginx, postgres, sshd),
+  // which the CrowdSec parsers select on.
+  string program = 8;
 }
 
 message LogAck {

@@ -22,7 +22,7 @@ import (
 // to parsers/, scenarios/ or vendor/ (TestBuiltinSum checks): a manager
 // never replaces content of a higher revision, so an older replica during
 // a rolling upgrade cannot roll it back.
-const BuiltinRevision = 1
+const BuiltinRevision = 4
 
 //go:embed parsers scenarios vendor
 var content embed.FS

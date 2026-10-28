@@ -31,21 +31,32 @@ import (
 	"github.com/openpicket/openpicket/manager/api"
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/csmetrics"
+	"github.com/openpicket/openpicket/manager/dbroles"
 	"github.com/openpicket/openpicket/manager/hub"
 	"github.com/openpicket/openpicket/manager/lapi"
 	"github.com/openpicket/openpicket/manager/relay"
 	"github.com/openpicket/openpicket/manager/sinks/crowdsec"
 	"github.com/openpicket/openpicket/manager/sinks/loki"
 	"github.com/openpicket/openpicket/manager/sinks/opensearch"
+	"github.com/openpicket/openpicket/manager/syslog"
 	"github.com/openpicket/openpicket/pkg/version"
 	"github.com/openpicket/openpicket/web"
 )
 
 type config struct {
-	Listen            string
-	MetricsListen     string
-	DatabaseURL       string
-	HostKey           string
+	Listen        string
+	MetricsListen string
+	DatabaseURL   string
+	HostKey       string
+	// Role: all | gateway | api (docs/ARCHITECTURE.md §5.10).
+	Role string
+	// KeySecret derives the UI/API keys; without it they come from the
+	// host key (single deployment).
+	KeySecret string
+	// GatewayDBRole is the gateway's database role the API replicas
+	// create (with GatewayDBPassword) and grant.
+	GatewayDBRole     string
+	GatewayDBPassword string
 	ReplicaID         string
 	TrustProxyHeaders bool
 	LogLevel          string
@@ -63,6 +74,9 @@ type config struct {
 	LAPIExtra         string
 	AlertRetention    time.Duration
 	Rules             relay.Rules
+	// Syslog receiver (gateway) and the TLS listener's files.
+	Syslog                                      manager.SyslogOptions
+	SyslogCertFile, SyslogKeyFile, SyslogCAFile string
 
 	// UI and API
 	AuthConfig        string
@@ -78,13 +92,24 @@ type config struct {
 }
 
 func loadConfig() (*config, error) {
-	c := &config{Listen: ":8080", MetricsListen: ":9090", LogLevel: "info", Rules: relay.DefaultRules()}
+	c := &config{Listen: ":8080", MetricsListen: ":9090", LogLevel: "info", Rules: relay.DefaultRules(), Role: string(manager.RoleAll)}
 	e := envconf.New("OPENPICKET_")
 	e.String("LISTEN", &c.Listen)
 	e.String("METRICS_LISTEN", &c.MetricsListen)
 	e.Secret("DATABASE_URL", &c.DatabaseURL)
 	e.Secret("HOST_KEY", &c.HostKey)
+	e.String("ROLE", &c.Role)
+	e.Secret("KEY_SECRET", &c.KeySecret)
+	e.String("DB_GATEWAY_ROLE", &c.GatewayDBRole)
+	e.Secret("DB_GATEWAY_PASSWORD", &c.GatewayDBPassword)
 	e.String("REPLICA_ID", &c.ReplicaID)
+	e.String("SYSLOG_UDP_LISTEN", &c.Syslog.UDP)
+	e.String("SYSLOG_TCP_LISTEN", &c.Syslog.TCP)
+	e.String("SYSLOG_TLS_LISTEN", &c.Syslog.TLS)
+	e.String("SYSLOG_TLS_CERT_FILE", &c.SyslogCertFile)
+	e.String("SYSLOG_TLS_KEY_FILE", &c.SyslogKeyFile)
+	e.String("SYSLOG_TLS_CLIENT_CA_FILE", &c.SyslogCAFile)
+	e.String("SYSLOG_UNREGISTERED", &c.Syslog.Unregistered)
 	e.Bool("TRUST_PROXY_HEADERS", &c.TrustProxyHeaders)
 	e.String("LOG_LEVEL", &c.LogLevel)
 	e.String("LOKI_URL", &c.Loki.URL)
@@ -154,13 +179,35 @@ func loadConfig() (*config, error) {
 	if c.DatabaseURL == "" {
 		errs = append(errs, errors.New("OPENPICKET_DATABASE_URL is required"))
 	}
-	if c.HostKey == "" {
+	role := manager.Role(c.Role)
+	switch role {
+	case manager.RoleAll, manager.RoleGateway, manager.RoleAPI:
+	default:
+		errs = append(errs, fmt.Errorf("OPENPICKET_ROLE: %q is not all, gateway or api", c.Role))
+	}
+	if c.HostKey == "" && role != manager.RoleAPI {
 		errs = append(errs, errors.New("OPENPICKET_HOST_KEY(_FILE) is required (create one with `openpicket-manager keygen`)"))
+	}
+	if role == manager.RoleAPI && c.KeySecret == "" {
+		errs = append(errs, errors.New("OPENPICKET_KEY_SECRET(_FILE) is required for role api"))
+	}
+	if c.KeySecret != "" && len(c.KeySecret) < 32 {
+		errs = append(errs, errors.New("OPENPICKET_KEY_SECRET: at least 32 characters"))
 	}
 	if c.Loki.URL == "" {
 		errs = append(errs, errors.New("OPENPICKET_LOKI_URL is required"))
 	}
-	if c.AuthConfig == "" && c.AdminUsername == "" {
+	if c.Syslog.Unregistered != "" && !syslog.ValidMode(c.Syslog.Unregistered) {
+		errs = append(errs, fmt.Errorf("OPENPICKET_SYSLOG_UNREGISTERED: %q is not drop or accept", c.Syslog.Unregistered))
+	}
+	if c.Syslog.TLS != "" {
+		tc, err := syslog.TLSFiles(c.SyslogCertFile, c.SyslogKeyFile, c.SyslogCAFile)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("OPENPICKET_SYSLOG_TLS_*: %w", err))
+		}
+		c.Syslog.TLSConfig = tc
+	}
+	if c.AuthConfig == "" && c.AdminUsername == "" && role != manager.RoleGateway {
 		errs = append(errs, errors.New("OPENPICKET_AUTH_CONFIG(_FILE) or OPENPICKET_ADMIN_USERNAME is required"))
 	}
 	if len(c.CrowdSec.Endpoints) == 0 && c.CrowdSec.DiscoveryHost == "" {
@@ -257,11 +304,20 @@ func hashPassword() error {
 }
 
 func pubkey(principal bool) error {
-	var raw string
+	var raw, secret string
 	e := envconf.New("OPENPICKET_")
 	e.Secret("HOST_KEY", &raw)
+	e.Secret("KEY_SECRET", &secret)
 	if err := e.Err(); err != nil {
 		return err
+	}
+	if principal && secret != "" {
+		keys, err := manager.DeriveKeysFrom([]byte(secret))
+		if err != nil {
+			return err
+		}
+		fmt.Println(keys.Principal.Public(manager.PrincipalKeyComment).String())
+		return nil
 	}
 	k, err := sshkey.ParsePrivateKey([]byte(raw))
 	if err != nil {
@@ -338,9 +394,23 @@ func serve() error {
 	}
 	log := newLogger(cfg.LogLevel)
 	slog.SetDefault(log)
-	hostKey, err := sshkey.ParsePrivateKey([]byte(cfg.HostKey))
+	role := manager.Role(cfg.Role)
+	var hostKey *sshkey.PrivateKey
+	if cfg.HostKey != "" {
+		if hostKey, err = sshkey.ParsePrivateKey([]byte(cfg.HostKey)); err != nil {
+			return fmt.Errorf("host key: %w", err)
+		}
+	}
+	var keys *manager.Keys
+	switch {
+	case cfg.KeySecret != "":
+		keys, err = manager.DeriveKeysFrom([]byte(cfg.KeySecret))
+	case role.API():
+		// Single deployment without OPENPICKET_KEY_SECRET: as before.
+		keys, err = manager.DeriveKeys(hostKey)
+	}
 	if err != nil {
-		return fmt.Errorf("host key: %w", err)
+		return err
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -349,7 +419,18 @@ func serve() error {
 		return err
 	}
 	defer pool.Close()
-	if err := schema.Migrate(ctx, pool); err != nil {
+	if role.API() {
+		if err := schema.Migrate(ctx, pool); err != nil {
+			return err
+		}
+		if cfg.GatewayDBRole != "" {
+			if err := dbroles.EnsureGateway(ctx, pool, cfg.GatewayDBRole, cfg.GatewayDBPassword, log); err != nil {
+				log.Warn("gateway database role not set up: gateways keep the account they are given", "role", cfg.GatewayDBRole, "err", err)
+			}
+		}
+	} else if err := schema.Wait(ctx, pool, log); err != nil {
+		// A gateway's account cannot change the schema: the API replicas
+		// migrate it.
 		return err
 	}
 	extra, err := parseExtraLAPIs(cfg.LAPIExtra)
@@ -366,28 +447,27 @@ func serve() error {
 		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, CrowdSecSync: cfg.CrowdSecSync, Hub: cfg.Hub, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
 		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, OpenSearch: &cfg.OpenSearch, MISP: &cfg.MISP, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
 		Suricontroller: suri, AgentControllerURL: cfg.AgentControllerURL, TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
+		Role: role, Keys: keys, Syslog: cfg.Syslog,
 	})
-	if err != nil {
-		return err
-	}
-	keys, err := manager.DeriveKeys(hostKey)
-	if err != nil {
-		return err
-	}
-	chain, err := buildAuth(cfg, keys.Session)
-	if err != nil {
-		return err
-	}
-	apiCfg := api.Config{Auth: chain, ReadOnly: cfg.ReadOnly, AllowedOrigins: cfg.AllowedOrigins, TrustProxyHeaders: cfg.TrustProxyHeaders,
-		PrincipalKey: keys.Principal.Key, Suricontroller: suri}
-	apiSrv, err := m.API(apiCfg)
 	if err != nil {
 		return err
 	}
 	mux := http.NewServeMux()
 	m.Mount(mux)
-	apiSrv.Mount(mux)
-	mux.Handle("/", web.Handler())
+	if role.API() {
+		chain, err := buildAuth(cfg, keys.Session)
+		if err != nil {
+			return err
+		}
+		apiCfg := api.Config{Auth: chain, ReadOnly: cfg.ReadOnly, AllowedOrigins: cfg.AllowedOrigins, TrustProxyHeaders: cfg.TrustProxyHeaders,
+			PrincipalKey: keys.Principal.Key, Suricontroller: suri}
+		apiSrv, err := m.API(apiCfg)
+		if err != nil {
+			return err
+		}
+		apiSrv.Mount(mux)
+		mux.Handle("/", web.Handler())
+	}
 	srv := &http.Server{Addr: cfg.Listen, Handler: mux, ReadHeaderTimeout: 15 * time.Second, IdleTimeout: 2 * time.Minute, MaxHeaderBytes: 64 << 10}
 	metrics := &http.Server{Addr: cfg.MetricsListen, Handler: m.MetricsHandler(), ReadHeaderTimeout: 15 * time.Second}
 	runDone := make(chan struct{})
@@ -397,7 +477,7 @@ func serve() error {
 	}()
 	errc := make(chan error, 2)
 	go func() {
-		log.Info("openpicket-manager listening", "addr", cfg.Listen, "version", version.Version, "host_key", m.HostPublicKey())
+		log.Info("openpicket-manager listening", "addr", cfg.Listen, "role", role, "version", version.Version, "host_key", m.HostPublicKey())
 		errc <- srv.ListenAndServe()
 	}()
 	go func() { errc <- metrics.ListenAndServe() }()

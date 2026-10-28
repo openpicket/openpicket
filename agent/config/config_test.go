@@ -118,3 +118,53 @@ func TestControllerFromManager(t *testing.T) {
 		t.Fatalf("half controller section: %v", err)
 	}
 }
+
+func withoutSuricata(top, extra string) string {
+	m, _ := sshkey.Generate()
+	return fmt.Sprintf(`%s
+openpicket:
+  url: wss://picket.example.com/agent/data/v1/connect
+  host_key: %q
+  suricata: { enabled: false }
+%s
+`, top, m.Public("openpicket-manager").String(), extra)
+}
+
+func TestWithoutSuricata(t *testing.T) {
+	c, err := Parse([]byte(withoutSuricata("node_id: web-01", "  log_sources:\n    - { program: nginx, path: \"/var/log/nginx/*access.log\" }\n    - { program: syslog, path: /var/log/auth.log }")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Suri != nil || c.Node.NodeID != "web-01" || c.Node.KeyFile != DefaultKeyFile || c.Node.StateDir != DefaultStateDir ||
+		c.Node.Docker() || len(c.OpenPicket.LogSources) != 2 || c.ControllerFromManager() {
+		t.Fatalf("config = %+v %+v", c.Node, c.OpenPicket.LogSources)
+	}
+	for name, cfg := range map[string]string{
+		"suricontroller section": withoutSuricata("node_id: web-01\ninterfaces: [{name: eth0}]", ""),
+		"no node id":             withoutSuricata("key_file: /k", ""),
+		"relative path":          withoutSuricata("node_id: web-01", "  log_sources: [{program: nginx, path: access.log}]"),
+		"bad program":            withoutSuricata("node_id: web-01", "  log_sources: [{program: \"Nginx Logs\", path: /a.log}]"),
+		"same path twice":        withoutSuricata("node_id: web-01", "  log_sources: [{program: a, path: /a.log}, {program: b, path: /a.log}]"),
+		"bad glob":               withoutSuricata("node_id: web-01", "  log_sources: [{program: a, path: \"/a/[x\"}]"),
+		"iptables":               withoutSuricata("node_id: web-01\nplatform: {firewall: iptables}", ""),
+		"path and journal":       withoutSuricata("node_id: web-01", "  log_sources: [{program: a, path: /a.log, journal: {}}]"),
+		"journal program":        withoutSuricata("node_id: web-01", "  log_sources: [{program: nginx, journal: {}}]"),
+		"journal option":         withoutSuricata("node_id: web-01", "  log_sources: [{journal: {matches: [\"--file=/x\"]}}]"),
+		"bad listen":             withoutSuricata("node_id: web-01", "  log_sources: [{listen: \"5140\"}]"),
+		"nothing":                withoutSuricata("node_id: web-01", "  log_sources: [{program: a}]"),
+	} {
+		if _, err := Parse([]byte(cfg)); err == nil {
+			t.Errorf("%s accepted", name)
+		}
+	}
+	// The journal and a local syslog listener (program syslog).
+	c, err = Parse([]byte(withoutSuricata("node_id: web-01", "  log_sources:\n    - { journal: { matches: [_SYSTEMD_UNIT=sshd.service, +, SYSLOG_IDENTIFIER=sudo] } }\n    - { program: syslog, listen: \"127.0.0.1:5140\" }")))
+	if err != nil || len(c.OpenPicket.LogSources) != 2 || len(c.OpenPicket.LogSources[0].Journal.Matches) != 3 || c.OpenPicket.LogSources[1].Listen != "127.0.0.1:5140" {
+		t.Fatalf("journal and listener: %v %+v", err, c.OpenPicket.LogSources)
+	}
+	// With Suricata, log sources work too and Node mirrors the top level.
+	c, err = Parse([]byte(sample("", "  log_sources: [{program: uhttpd, path: /var/log/uhttpd.log}]")))
+	if err != nil || c.Suri == nil || c.Node.NodeID != "router-01" || len(c.OpenPicket.LogSources) != 1 {
+		t.Fatalf("with Suricata: %v %+v", err, c.Node)
+	}
+}

@@ -26,6 +26,7 @@ import (
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/manager/registry"
 	"github.com/openpicket/openpicket/pkg/record"
+	"github.com/openpicket/openpicket/pkg/syslogfmt"
 )
 
 // ErrPermanent marks a delivery error that retrying cannot fix (the sink
@@ -55,17 +56,34 @@ type Record struct {
 	// EventType is the eve event_type (or "nflog").
 	EventType       string
 	SrcGeo, DestGeo *Geo
+	// Program of a generic log line: the batch's program, or for syslog
+	// lines (program "syslog": auth.log, received messages) the one in
+	// the line's header, as the log programs count it.
+	Program string
+	// Syslog is the header of a line in syslog format (nil otherwise):
+	// CrowdSec gets its fields (openpicket/syslog-logs).
+	// ProgramOverride is the program a syslog device gives its tag.
+	Syslog          *syslogfmt.Message
+	ProgramOverride string
 }
+
+// ProgramSyslog marks generic log lines in syslog format.
+const ProgramSyslog = "syslog"
 
 // Batch is a decoded LogBatch with its manager-side enrichment.
 type Batch struct {
 	NodeID, BootID string
 	Seq            uint64
 	Type, Instance string
-	Node           *registry.Node
-	Received       time.Time
-	Records        []*Record
-	Dropped        uint64
+	// Program wrote the lines of a generic log (type "log"), normalized.
+	Program  string
+	Node     *registry.Node
+	Received time.Time
+	Records  []*Record
+	Dropped  uint64
+	// NoWatermarks marks a batch without an agent behind it (syslog): it
+	// is delivered at most once, nothing records its sequence.
+	NoWatermarks bool
 
 	state sync.Map
 }
@@ -75,6 +93,11 @@ type Batch struct {
 func (b *Batch) State(sink string, init func() any) any {
 	v, _ := b.state.LoadOrStore(sink, init())
 	return v
+}
+
+// ProgramCounter records the programs of generic logs.
+type ProgramCounter interface {
+	Seen(nodeID, program string, lines int)
 }
 
 // Sink delivers batches.
@@ -95,6 +118,8 @@ type Config struct {
 	AsyncQueue int
 	Watermarks *Watermarks
 	Geo        GeoLookup
+	// Programs counts the generic log lines per node and program.
+	Programs   ProgramCounter
 	Logger     *slog.Logger
 	Registerer prometheus.Registerer
 	// OpenAfter opens a sink's circuit after this much continuous failure
@@ -248,6 +273,11 @@ func (p *Pipeline) decode(node *registry.Node, lb *dataplanev1.LogBatch) (*Batch
 		NodeID: node.ID, BootID: lb.BootId, Seq: lb.Seq, Type: lb.Type, Instance: lb.Instance,
 		Node: node, Received: p.cfg.Now(), Dropped: lb.DroppedSinceLast,
 	}
+	if lb.Type == record.TypeLog {
+		if b.Program = record.NormalizeProgram(lb.Program); b.Program == "" {
+			b.Program = "unknown"
+		}
+	}
 	jsonType := record.IsJSON(lb.Type)
 	for _, r := range list.Records {
 		rec := &Record{Line: r.Line, RID: r.Rid, Time: time.Unix(0, r.TimeUnixNano)}
@@ -263,13 +293,62 @@ func (p *Pipeline) decode(node *registry.Node, lb *dataplanev1.LogBatch) (*Batch
 				}
 			}
 		}
+		if b.Program != "" {
+			rec.Program = b.Program
+			if b.Program == ProgramSyslog {
+				if m, ok := syslogfmt.Parse(string(r.Line), rec.Time); ok && m.Program != "" {
+					rec.Syslog = &m
+					if prog := record.NormalizeProgram(m.Program); prog != "" {
+						rec.Program = prog
+					}
+				}
+			}
+		}
 		b.Records = append(b.Records, rec)
 	}
-	p.m.ingested.WithLabelValues(lb.Type).Add(float64(len(b.Records)))
+	p.ingested(b)
 	if lb.DroppedSinceLast > 0 {
 		p.m.agentDropped.WithLabelValues(node.ID).Add(float64(lb.DroppedSinceLast))
 	}
 	return b, nil
+}
+
+// ingested counts a decoded batch and its programs.
+func (p *Pipeline) ingested(b *Batch) {
+	if b.Program != "" && p.cfg.Programs != nil {
+		counts := map[string]int{}
+		for _, r := range b.Records {
+			counts[r.Program]++
+		}
+		for prog, n := range counts {
+			p.cfg.Programs.Seen(b.NodeID, prog, n)
+		}
+	}
+	p.m.ingested.WithLabelValues(b.Type).Add(float64(len(b.Records)))
+}
+
+// Ingest processes a batch received without an agent behind it (syslog):
+// it is delivered at most once, without watermarks. Generic log records
+// carry their Program and Message. It reports false while draining.
+func (p *Pipeline) Ingest(ctx context.Context, b *Batch) (bool, error) {
+	p.active.Add(1)
+	defer p.active.Done()
+	if p.drainCtx.Err() != nil {
+		return false, nil
+	}
+	b.NoWatermarks = true
+	p.ingested(b)
+	pctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stop := context.AfterFunc(p.drainCtx, cancel)
+	defer stop()
+	if err := p.Process(pctx, b); err != nil {
+		if ctx.Err() == nil && p.drainCtx.Err() != nil {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // Process delivers a batch to every acknowledgement sink (in parallel), then
@@ -306,7 +385,8 @@ func (p *Pipeline) Process(ctx context.Context, b *Batch) error {
 // ctx ends.
 func (p *Pipeline) deliver(ctx context.Context, s Sink, b *Batch) error {
 	name := s.Name()
-	if p.cfg.Watermarks != nil && b.Seq <= p.cfg.Watermarks.Get(ctx, b.NodeID, b.BootID, name) {
+	watermarks := p.cfg.Watermarks != nil && !b.NoWatermarks
+	if watermarks && b.Seq <= p.cfg.Watermarks.Get(ctx, b.NodeID, b.BootID, name) {
 		// Delivered by a previous session (possibly on another replica).
 		p.m.skipped.WithLabelValues(name).Add(float64(len(b.Records)))
 		return nil
@@ -328,7 +408,7 @@ func (p *Pipeline) deliver(ctx context.Context, s Sink, b *Batch) error {
 				p.log.Warn("sink rejected batch", "sink", name, "node", b.NodeID, "seq", b.Seq, "err", err)
 				p.m.rejected.WithLabelValues(name).Add(float64(len(b.Records)))
 			}
-			if p.cfg.Watermarks != nil {
+			if watermarks {
 				p.cfg.Watermarks.Set(b.NodeID, b.BootID, name, b.Seq)
 			}
 			return nil

@@ -37,6 +37,9 @@ type Service struct {
 	db  *pgxpool.Pool
 	geo *geo.Store
 	log *slog.Logger
+	// ReadOnly: compile without recording the results (last good versions,
+	// errors), which the API replicas write (a gateway's account cannot).
+	ReadOnly bool
 
 	mu      sync.Mutex
 	changed chan struct{}
@@ -448,4 +451,21 @@ func bundleKey(b *dataplanev1.PolicyBundle) string {
 	raw, _ := proto.MarshalOptions{Deterministic: true}.Marshal(b)
 	sum := sha256.Sum256(raw)
 	return string(sum[:])
+}
+
+// RunCompiler compiles every change until ctx ends, so the results (last
+// good versions, errors) are recorded even where no node stream asks for
+// a bundle (an API replica, whose gateways compile read-only).
+func (s *Service) RunCompiler(ctx context.Context) {
+	for {
+		ch := s.wait()
+		if _, err := s.load(ctx); err != nil && ctx.Err() == nil {
+			s.log.Warn("compile port policies", "err", err)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ch:
+		}
+	}
 }

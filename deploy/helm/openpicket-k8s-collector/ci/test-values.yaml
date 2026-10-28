@@ -1,0 +1,16 @@
+# helm lint / template values (make helm-lint).
+openpicket:
+  url: wss://openpicket.example.com/agent/data/v1/connect
+  hostKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEbJ7Ld3PTb0mAbmKprCDwG2FpgnUevxH/w8x5hJYwEG openpicket-manager"
+  headers: { X-Access-Token: secret }
+  caCert: |
+    -----BEGIN CERTIFICATE-----
+    MIIB
+    -----END CERTIFICATE-----
+targets:
+  - { namespace: ingress-nginx, workload: deployment/ingress-nginx-controller, containers: [controller], program: nginx }
+  - { namespace: web, service_account: api }
+  - { namespace: web, selector: "app in (web,api)", program: nginx }
+state:
+  persistence:
+    enabled: true

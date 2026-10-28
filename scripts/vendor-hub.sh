@@ -4,6 +4,10 @@
 # OpenPicket parsers and scenarios, so CrowdSec runs offline.
 #
 #   scripts/vendor-hub.sh            refresh the listed items
+#   scripts/vendor-hub.sh test       refresh the test fixtures instead
+#                                    (scripts/testdata/hub: hub parsers and
+#                                    scenarios crowdsec-image-test.sh feeds
+#                                    generic logs to)
 #
 # Each file is checked against the index digest. After a change, bump
 # hub.BuiltinRevision and update hub/builtin.sum (go test ./hub/ says how).
@@ -17,6 +21,16 @@ ITEMS=(
   "parsers crowdsecurity/whitelists"
 )
 out=hub/vendor
+if [ "${1:-}" = test ]; then
+  ITEMS=(
+    "parsers crowdsecurity/sshd-logs"
+    "scenarios crowdsecurity/ssh-bf"
+    "parsers crowdsecurity/nginx-logs"
+    "parsers crowdsecurity/http-logs"
+    "scenarios crowdsecurity/http-probing"
+  )
+  out=scripts/testdata/hub
+fi
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 curl -fsS -o "$work/index.json" "$BASE/.index.json"

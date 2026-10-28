@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/openpicket/openpicket/manager/pipeline"
 	"github.com/openpicket/openpicket/manager/registry"
 	"github.com/openpicket/openpicket/pkg/record"
+	"github.com/openpicket/openpicket/pkg/syslogfmt"
 )
 
 type lp struct {
@@ -138,5 +140,65 @@ func TestNflogPrefixFilter(t *testing.T) {
 	}
 	if a.count("/openpicket") != 1 {
 		t.Fatalf("nflog = %d", a.count("/openpicket"))
+	}
+}
+
+// TestGenericLogs: generic log lines go out wrapped (program, message,
+// node) and all lines of a node to one log processor.
+func TestGenericLogs(t *testing.T) {
+	a, b := newLP(t), newLP(t)
+	now := time.Unix(1000, 0)
+	s, err := New(Config{Endpoints: []string{a.srv.URL, b.srv.URL}, AuthValue: "secret", Now: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, node := range []string{"web-01", "web-02", "web-03", "web-04"} {
+		var recs []*pipeline.Record
+		for i := 0; i < 10; i++ {
+			line := fmt.Sprintf(`198.51.100.%d - - [x] "GET / HTTP/1.1" 404 0`, i)
+			recs = append(recs, &pipeline.Record{Line: []byte(line), Time: now, Program: "nginx"})
+		}
+		batch := &pipeline.Batch{NodeID: node, Type: record.TypeLog, Program: "nginx", Received: now, Node: &registry.Node{ID: node}, Records: recs}
+		if err := s.Deliver(context.Background(), batch); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if a.count("/openpicket")+b.count("/openpicket") != 40 || a.count("/openpicket")%10 != 0 {
+		t.Fatalf("a=%d b=%d: a node's lines were split", a.count("/openpicket"), b.count("/openpicket"))
+	}
+	got := append(a.got["/openpicket"], b.got["/openpicket"]...)
+	l := got[0]["openpicket_log"].(map[string]any)
+	m := got[0]["openpicket_meta"].(map[string]any)
+	if l["program"] != "nginx" || !strings.HasPrefix(l["message"].(string), "198.51.100.") || !strings.HasPrefix(m["node_id"].(string), "web-0") {
+		t.Fatalf("envelope = %v", got[0])
+	}
+}
+
+// Syslog lines go split, with the fields crowdsecurity/syslog-logs names
+// (the tag as written, the device's program for a renamed one).
+func TestSyslogEnvelope(t *testing.T) {
+	now := time.Date(2026, 10, 27, 1, 0, 0, 0, time.UTC)
+	b := &pipeline.Batch{NodeID: "fw-01", Type: record.TypeLog, Program: pipeline.ProgramSyslog, Received: now}
+	rec := func(line, override string) *pipeline.Record {
+		r := &pipeline.Record{Line: []byte(line), Time: now, ProgramOverride: override}
+		if m, ok := syslogfmt.Parse(line, now); ok {
+			r.Syslog = &m
+		}
+		return r
+	}
+	pw := "Failed password for root from 198.51.100.66 port 4000 ssh2"
+	for r, want := range map[*pipeline.Record]LogLine{
+		rec("<38>Oct 27 10:00:00 fw sshd[42]: "+pw, ""): {Program: "sshd", Message: pw, Format: "syslog", Host: "fw", PID: "42",
+			Timestamp: "Oct 27 10:00:00", SyslogPriority: "38"},
+		rec("<38>Oct 27 10:00:00 fw auth[42]: "+pw, "sshd"): {Program: "sshd", Message: pw, Format: "syslog", Host: "fw", PID: "42",
+			Timestamp: "Oct 27 10:00:00", SyslogPriority: "38"},
+		rec("2026-10-26 19:27:55 info postfix/smtpd[56825]: connect from unknown[178.16.53.230]", ""): {Program: "postfix/smtpd",
+			Message: "connect from unknown[178.16.53.230]", Format: "syslog", PID: "56825", Timestamp8601: "2026-10-26 19:27:55"},
+		{Line: []byte("no header"), Time: now, Program: "unknown"}: {Program: "unknown", Message: "no header"},
+	} {
+		var got LogEnvelope
+		if err := json.Unmarshal(Line(b, r), &got); err != nil || got.Log != want || got.Meta.NodeID != "fw-01" {
+			t.Errorf("%s: %+v %v", r.Line, got, err)
+		}
 	}
 }

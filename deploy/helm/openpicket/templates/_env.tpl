@@ -16,3 +16,188 @@ with the pool size of one pod: include "openpicket.dbEnv" (list . 6)
 {{- define "openpicket.hostKeySecret" -}}
 {{- default (include "openpicket.secret" .) .Values.manager.existingHostKeySecret -}}
 {{- end -}}
+
+{{/*
+Database connection of the gateways: their own restricted role
+(gateway.database.user), or the manager's account when it is empty.
+*/}}
+{{- define "openpicket.gatewayDBEnv" -}}
+{{- $g := .Values.gateway.database -}}
+{{- if $g.user -}}
+- name: OPENPICKET_DATABASE_URL
+  value: {{ printf "postgres://%s@%s:%s/%s?sslmode=%s&pool_max_conns=%d" $g.user (include "openpicket.dbHost" .) (include "openpicket.dbPort" .) .Values.database.openpicketDatabase (include "openpicket.dbSSLMode" .) (int .Values.database.maxConnections.gateway) | quote }}
+- name: PGPASSWORD
+  valueFrom:
+    secretKeyRef:
+      {{- include "openpicket.gatewayDBPasswordRef" . | nindent 6 }}
+{{- else -}}
+{{ include "openpicket.dbEnv" (list . .Values.database.maxConnections.gateway) }}
+{{- end -}}
+{{- end -}}
+
+{{- define "openpicket.gatewayDBPasswordRef" -}}
+name: {{ default (include "openpicket.secret" .) .Values.gateway.database.existingSecret }}
+key: {{ ternary .Values.gateway.database.passwordKey "gateway-database-password" (not (empty .Values.gateway.database.existingSecret)) }}
+{{- end -}}
+
+{{/* Loki push (and the log explorer's reads). */}}
+{{- define "openpicket.lokiEnv" -}}
+- name: OPENPICKET_LOKI_URL
+  value: {{ include "openpicket.lokiURL" . | quote }}
+- name: OPENPICKET_LOKI_MAX_AGE
+  value: {{ .Values.loki.maxAge | quote }}
+{{- if not .Values.loki.builtin.enabled }}
+- name: OPENPICKET_LOKI_TENANT
+  value: {{ .Values.loki.external.tenant | quote }}
+{{- with .Values.loki.external.queryURL }}
+- name: OPENPICKET_LOKI_QUERY_URL
+  value: {{ . | quote }}
+{{- end }}
+{{- if .Values.loki.external.username }}
+- name: OPENPICKET_LOKI_USERNAME
+  value: {{ .Values.loki.external.username | quote }}
+- name: OPENPICKET_LOKI_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ default (include "openpicket.secret" .) .Values.loki.external.existingSecret }}
+      key: {{ ternary .Values.loki.external.passwordKey "loki-password" (not (empty .Values.loki.external.existingSecret)) }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/* CrowdSec log processors: records (8081) and content sync (8082). */}}
+{{- define "openpicket.crowdsecSinkEnv" -}}
+- name: OPENPICKET_CROWDSEC_DISCOVERY_HOST
+  value: {{ include "openpicket.fullname" . }}-crowdsec-agents
+- name: OPENPICKET_CROWDSEC_DISCOVERY_PORT
+  value: "8081"
+- name: OPENPICKET_CROWDSEC_AUTH_HEADER
+  value: X-OpenPicket-Token
+- name: OPENPICKET_CROWDSEC_AUTH_VALUE
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "openpicket.secret" . }}
+      key: acquis-token
+{{- end -}}
+
+{{/* OpenSearch: the record sink (gateway) and the alert index (manager). */}}
+{{- define "openpicket.opensearchEnv" -}}
+{{- if .Values.opensearch.enabled }}
+- name: OPENPICKET_OPENSEARCH_URL
+  value: {{ required "opensearch.url is required" .Values.opensearch.url | quote }}
+- name: OPENPICKET_OPENSEARCH_RETENTION
+  value: {{ .Values.opensearch.retention | quote }}
+- name: OPENPICKET_OPENSEARCH_REPLICAS
+  value: {{ .Values.opensearch.replicas | quote }}
+- name: OPENPICKET_OPENSEARCH_INSECURE_SKIP_VERIFY
+  value: {{ .Values.opensearch.insecureSkipVerify | quote }}
+{{- if .Values.opensearch.username }}
+- name: OPENPICKET_OPENSEARCH_USERNAME
+  value: {{ .Values.opensearch.username | quote }}
+- name: OPENPICKET_OPENSEARCH_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ default (include "openpicket.secret" .) .Values.opensearch.existingSecret }}
+      key: {{ ternary .Values.opensearch.passwordKey "opensearch-password" (not (empty .Values.opensearch.existingSecret)) }}
+{{- end }}
+{{- if .Values.opensearch.caSecret }}
+- name: OPENPICKET_OPENSEARCH_CA_FILE
+  value: /secrets/opensearch-ca/ca.crt
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/* The key secret the UI/API keys derive from (every role). */}}
+{{- define "openpicket.keySecretEnv" -}}
+- name: OPENPICKET_KEY_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "openpicket.secret" . }}
+      key: key-secret
+{{- end -}}
+
+{{/*
+Syslog receiver of the pods facing the agents (gateway, or the manager
+without gateways): listen addresses, TLS files, ports and volumes.
+*/}}
+{{- define "openpicket.syslogEnv" -}}
+{{- $s := .Values.syslog -}}
+{{- if $s.enabled }}
+{{- if $s.udp.enabled }}
+- name: OPENPICKET_SYSLOG_UDP_LISTEN
+  value: ":5514"
+{{- end }}
+{{- if $s.tcp.enabled }}
+- name: OPENPICKET_SYSLOG_TCP_LISTEN
+  value: ":5514"
+{{- end }}
+{{- if $s.tls.enabled }}
+- name: OPENPICKET_SYSLOG_TLS_LISTEN
+  value: ":6514"
+- name: OPENPICKET_SYSLOG_TLS_CERT_FILE
+  value: /secrets/syslog-tls/tls.crt
+- name: OPENPICKET_SYSLOG_TLS_KEY_FILE
+  value: /secrets/syslog-tls/tls.key
+{{- if $s.tls.clientCASecret }}
+- name: OPENPICKET_SYSLOG_TLS_CLIENT_CA_FILE
+  value: /secrets/syslog-ca/ca.crt
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/* The default for unregistered syslog senders (gateways and the UI). */}}
+{{- define "openpicket.syslogDefaultEnv" -}}
+- name: OPENPICKET_SYSLOG_UNREGISTERED
+  value: {{ .Values.syslog.unregistered | quote }}
+{{- end -}}
+
+{{- define "openpicket.syslogPorts" -}}
+{{- $s := .Values.syslog -}}
+{{- if $s.enabled }}
+{{- if $s.udp.enabled }}
+- name: syslog-udp
+  containerPort: 5514
+  protocol: UDP
+{{- end }}
+{{- if $s.tcp.enabled }}
+- name: syslog-tcp
+  containerPort: 5514
+  protocol: TCP
+{{- end }}
+{{- if $s.tls.enabled }}
+- name: syslog-tls
+  containerPort: 6514
+  protocol: TCP
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "openpicket.syslogMounts" -}}
+{{- $s := .Values.syslog -}}
+{{- if and $s.enabled $s.tls.enabled }}
+- name: syslog-tls
+  mountPath: /secrets/syslog-tls
+  readOnly: true
+{{- if $s.tls.clientCASecret }}
+- name: syslog-ca
+  mountPath: /secrets/syslog-ca
+  readOnly: true
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "openpicket.syslogVolumes" -}}
+{{- $s := .Values.syslog -}}
+{{- if and $s.enabled $s.tls.enabled }}
+- name: syslog-tls
+  secret:
+    secretName: {{ required "syslog.tls.secretName is required (tls.crt, tls.key)" $s.tls.secretName }}
+{{- if $s.tls.clientCASecret }}
+- name: syslog-ca
+  secret:
+    secretName: {{ $s.tls.clientCASecret }}
+    items: [{ key: ca.crt, path: ca.crt }]
+{{- end }}
+{{- end }}
+{{- end -}}

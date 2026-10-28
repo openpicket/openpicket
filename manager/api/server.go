@@ -29,6 +29,7 @@ import (
 	"github.com/openpicket/openpicket/manager/csmetrics"
 	"github.com/openpicket/openpicket/manager/geo"
 	"github.com/openpicket/openpicket/manager/hub"
+	"github.com/openpicket/openpicket/manager/logprog"
 	"github.com/openpicket/openpicket/manager/misp"
 	"github.com/openpicket/openpicket/manager/notify"
 	"github.com/openpicket/openpicket/manager/policy"
@@ -53,9 +54,15 @@ type Config struct {
 	// Hub is the CrowdSec content store; HubRemote the CrowdSec hub.
 	Hub       *hub.Store
 	HubRemote *hub.Hub
-	Settings  *settings.Store
-	// HostKey is the manager public key line agents pin.
-	HostKey string
+	// LogPrograms are the generic log programs seen.
+	LogPrograms *logprog.Store
+	Settings    *settings.Store
+	// SyslogUnregistered is the default for unregistered syslog senders
+	// until one is stored.
+	SyslogUnregistered string
+	// HostKey returns the public key line agents pin (the gateways' when
+	// they run apart).
+	HostKey func() string
 	Replica string
 	Version string
 	// Suricontroller is the openpicket-suricontroller base URL proxied at
@@ -190,15 +197,24 @@ var procedures = map[string]spec{
 
 	apiv1connect.MetricsServiceGetCrowdSecMetricsProcedure: read,
 
-	apiv1connect.HubServiceListHubItemsProcedure:    read,
-	apiv1connect.HubServiceGetHubItemProcedure:      read,
-	apiv1connect.HubServiceGetHubRolloutProcedure:   read,
-	apiv1connect.HubServiceSetHubItemStateProcedure: adm,
-	apiv1connect.HubServiceListHubIndexProcedure:    read,
-	apiv1connect.HubServiceRefreshHubIndexProcedure: {role: auth.RoleAdmin, write: true},
-	apiv1connect.HubServicePreviewHubItemProcedure:  {role: auth.RoleAdmin},
-	apiv1connect.HubServiceInstallHubItemProcedure:  adm,
-	apiv1connect.HubServiceRemoveHubItemProcedure:   adm,
+	apiv1connect.HubServiceListHubItemsProcedure:         read,
+	apiv1connect.HubServiceGetHubItemProcedure:           read,
+	apiv1connect.HubServiceGetHubRolloutProcedure:        read,
+	apiv1connect.HubServiceSetHubItemStateProcedure:      adm,
+	apiv1connect.HubServiceListHubIndexProcedure:         read,
+	apiv1connect.HubServiceRefreshHubIndexProcedure:      {role: auth.RoleAdmin, write: true},
+	apiv1connect.HubServicePreviewHubItemProcedure:       {role: auth.RoleAdmin},
+	apiv1connect.HubServiceInstallHubItemProcedure:       adm,
+	apiv1connect.HubServiceRemoveHubItemProcedure:        adm,
+	apiv1connect.HubServiceListLogProgramsProcedure:      read,
+	apiv1connect.HubServiceSetLogProgramStorageProcedure: adm,
+
+	apiv1connect.SyslogServiceListSyslogDevicesProcedure:  read,
+	apiv1connect.SyslogServiceListSyslogSendersProcedure:  read,
+	apiv1connect.SyslogServiceGetSyslogSettingsProcedure:  read,
+	apiv1connect.SyslogServicePutSyslogDeviceProcedure:    op,
+	apiv1connect.SyslogServiceDeleteSyslogDeviceProcedure: op,
+	apiv1connect.SyslogServiceSetSyslogSettingsProcedure:  adm,
 
 	apiv1connect.NotificationServiceListNotificationsProcedure:     read,
 	apiv1connect.NotificationServiceMarkNotificationsReadProcedure: own,
@@ -246,6 +262,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(apiv1connect.NewHubServiceHandler(&hubService{s}, opts...))
 	mux.Handle(apiv1connect.NewNotificationServiceHandler(&notificationService{s}, opts...))
 	mux.Handle(apiv1connect.NewIntelServiceHandler(&intelService{s}, opts...))
+	mux.Handle(apiv1connect.NewSyslogServiceHandler(&syslogService{s}, opts...))
 	mux.HandleFunc("POST "+geoUploadPath, s.uploadGeo)
 	mux.HandleFunc("POST "+hubUploadPath, s.uploadHub)
 	return s.middleware(mux)

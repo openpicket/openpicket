@@ -2,6 +2,7 @@ package hubitem
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -67,6 +68,26 @@ func TestCompat(t *testing.T) {
 	} {
 		if DataSourceAllowed(url, []string{"hub-data.crowdsec.net"}) != ok {
 			t.Errorf("%s", url)
+		}
+	}
+}
+
+func TestParserPrograms(t *testing.T) {
+	for filter, want := range map[string]map[string]bool{
+		`evt.Parsed.program startsWith 'nginx'`:                   {"nginx": true, "nginx-ingress": true, "apache2": false},
+		`evt.Parsed.program in ['sshd-session', 'sshd']`:          {"sshd": true, "sshd-session": true, "ssh": false},
+		`evt.Parsed.program == "postgres" && evt.Parsed.x == "y"`: {"postgres": true, "postgresql": false},
+		`evt.Parsed.program matches '^(httpd|apache2)$'`:          {"httpd": true, "apache2": true, "nginx": false},
+		`evt.Line.Labels.type == 'syslog'`:                        {"syslog": false},
+	} {
+		d, err := ParseDoc(Parsers, []byte("name: a/p\nfilter: \""+strings.ReplaceAll(filter, `"`, `\"`)+"\"\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for program, ok := range want {
+			if d.HandlesProgram(program) != ok {
+				t.Errorf("%s: %s = %v", filter, program, !ok)
+			}
 		}
 	}
 }

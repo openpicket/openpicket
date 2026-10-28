@@ -1,0 +1,15 @@
+{{- if and .Values.state.enabled .Values.state.persistence.enabled (not .Values.state.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "collector.fullname" . }}-state
+  labels: {{- include "collector.labels" . | nindent 4 }}
+spec:
+  accessModes: {{- toYaml .Values.state.persistence.accessModes | nindent 4 }}
+  {{- with .Values.state.persistence.storageClass }}
+  storageClassName: {{ if eq . "-" }}""{{ else }}{{ . }}{{ end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.state.persistence.size }}
+{{- end }}

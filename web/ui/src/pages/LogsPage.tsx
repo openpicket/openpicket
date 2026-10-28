@@ -27,7 +27,7 @@ import { formatDateTime, tsDate } from "../lib/format";
 import { t, useLanguage } from "../lib/i18n";
 import { useUrlState } from "../lib/urlState";
 
-const TYPES = ["eve", "nflog", "suricata", "agent"];
+const TYPES = ["eve", "nflog", "log", "suricata", "agent"];
 const MAX_TAIL = 2000;
 
 function splitList(v: string): string[] {
@@ -83,6 +83,11 @@ function LogRow(props: { entry: LogEntry }) {
                 {labels.event_type}
               </Badge>
             )}
+            {labels.program && (
+              <Badge size="xs" variant="light" color="cyan" style={{ flex: "none" }}>
+                {labels.program}
+              </Badge>
+            )}
             <Text className="log-line" truncate style={{ minWidth: 0, whiteSpace: "nowrap" }}>
               {e.line}
             </Text>
@@ -113,6 +118,7 @@ export default function LogsPage() {
   const [node, setNode] = useUrlState("node");
   const [type, setType] = useUrlState("type");
   const [eventType, setEventType] = useUrlState("event");
+  const [program, setProgram] = useUrlState("program");
   const [text, setText] = useUrlState("text");
   const [direction, setDirection] = useUrlState("direction");
   const [range, setRange] = useUrlState("range", "1h");
@@ -133,6 +139,7 @@ export default function LogsPage() {
 
   const nodes = useLabelValues("node");
   const eventTypes = useLabelValues("event_type");
+  const programs = useLabelValues("program");
 
   const filter: LogFilter = useMemo(
     () =>
@@ -140,12 +147,13 @@ export default function LogsPage() {
         nodes: splitList(node),
         types: splitList(type),
         eventTypes: splitList(eventType),
+        programs: splitList(program),
         ip,
         text,
         direction,
         logql: advanced ? logql : "",
       }),
-    [node, type, eventType, ip, text, direction, logql, advanced],
+    [node, type, eventType, program, ip, text, direction, logql, advanced],
   );
 
   const query = useQuery({
@@ -236,6 +244,15 @@ export default function LogsPage() {
                 searchable
                 clearable
                 w={200}
+              />
+              <MultiSelect
+                label={t("Programs")}
+                data={programs.data ?? []}
+                value={splitList(program)}
+                onChange={(v) => setProgram(v.join(","))}
+                searchable
+                clearable
+                w={180}
               />
               <TextInput
                 label={t("IP")}

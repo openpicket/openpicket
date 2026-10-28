@@ -22,6 +22,14 @@ if ex wget -q -O /dev/null http://127.0.0.1:8081/openpicket 2>/dev/null; then ec
 bundle="$(mktemp)"
 trap 'docker rm -f "$name" >/dev/null 2>&1; rm -f "$bundle"' EXIT
 go run ./cmd/openpicket-manager hub-bundle > "$bundle"
+# Plus hub parsers and scenarios for the generic logs below
+# (scripts/testdata/hub, pinned by scripts/vendor-hub.sh test).
+fixtures="$(jq -c '[.[] | {path: (.type + "/" + (if .stage != "" then .stage + "/" else "" end) + (.name | sub("/"; "-")) + ".yaml"), file: .path}]' scripts/testdata/hub/manifest.json)"
+for row in $(jq -c '.[]' <<<"$fixtures"); do
+  path="$(jq -r .path <<<"$row")"
+  content="$(base64 -w0 "scripts/testdata/hub/$(jq -r .file <<<"$row")")"
+  jq --arg p "$path" --arg c "$content" '.items += [{path: $p, content: $c}]' "$bundle" > "$bundle.tmp" && mv "$bundle.tmp" "$bundle"
+done
 push() { docker exec -i -e OPENPICKET_ACQUIS_TOKEN=test-token "$name" openpicket-crowdsec-sync put; }
 push < "$bundle" >/dev/null || { docker logs "$name" | tail -40; echo "FAIL: content refused"; exit 1; }
 for _ in $(seq 1 90); do
@@ -45,6 +53,36 @@ records="$(mktemp)"
   for p in 21 22 23 25 80 110 135 139 445 3389; do
     echo "{\"timestamp\":\"2026-10-20T10:59:04.000000+0900\",\"event_type\":\"nflog\",\"prefix\":\"WAN-REJECT\",\"group\":100,\"in_iface\":\"wan\",\"ip_version\":4,\"proto\":\"TCP\",\"src_ip\":\"198.51.100.77\",\"src_port\":40000,\"dest_ip\":\"203.0.113.10\",\"dest_port\":$p,\"tcp_flags\":\"S\",\"ttl\":50,\"pkt_len\":60,\"openpicket\":{\"rid\":\"n$p\",\"direction\":\"inbound\",\"direction_confidence\":\"high\",\"remote_ip\":\"198.51.100.77\",\"local_ip\":\"203.0.113.10\"},$(meta edge-02 US)}"
   done
+  # Generic logs, as openpicket-manager wraps them: nginx probing 12
+  # missing paths -> http-probing (openpicket/logs); sshd failed passwords
+  # as syslog lines, split by the manager with each kind of header
+  # (openpicket/syslog-logs unwraps them) -> ssh-bf, one address each.
+  logline() { jq -nc --arg p "$1" --arg m "$2" --arg ts "$now" '{openpicket_log: {program: $p, message: $m}, openpicket_meta: {ts: $ts, node_id: "web-01", site: "seoul"}}'; }
+  # sysline <program> <message> <host> <timestamp> <timestamp8601> [priority]
+  sysline() { jq -nc --arg p "$1" --arg m "$2" --arg h "$3" --arg t "$4" --arg t8 "$5" --arg pri "${6:-}" --arg ts "$now" '
+    def opt(k; v): if v != "" then {(k): v} else {} end;
+    {openpicket_log: ({format: "syslog", program: $p, message: $m, pid: "42"} + opt("logsource"; $h) + opt("timestamp"; $t)
+      + opt("timestamp8601"; $t8) + opt("syslog_priority"; $pri)), openpicket_meta: {ts: $ts, node_id: "web-01", site: "seoul"}}'; }
+  for i in $(seq 1 12); do
+    logline nginx "198.51.100.67 - - [$(LC_ALL=C date -u +%d/%b/%Y:%H:%M:%S) +0000] \"GET /probe-$i.php HTTP/1.1\" 404 153 \"-\" \"curl/8.0\""
+  done
+  bsd="$(LC_ALL=C date -u '+%b %e %H:%M:%S')"
+  ng="$(date -u '+%Y-%m-%d %H:%M:%S')"
+  for i in $(seq 1 8); do
+    pw="Failed password for root from 198.51.100.%s port 4000$i ssh2"
+    # auth.log (RFC 3164)
+    sysline sshd "$(printf "$pw" 66)" web-01 "$bsd" ""
+    # the journal (RFC 3339)
+    sysline sshd "$(printf "$pw" 61)" web-01 "" "$now" 38
+    # received from a device
+    sysline sshd "$(printf "$pw" 62)" fw "$bsd" "" 38
+    # without a timestamp (RFC 5424 "-")
+    sysline sshd "$(printf "$pw" 63)" fw "" "" 38
+    # without the host (OpenWrt)
+    sysline sshd "$(printf "$pw" 64)" "" "$bsd" "" 38
+    # a syslog-ng file: local time, no host
+    sysline sshd "$(printf "$pw" 68)" "" "" "$ng"
+  done
 } > "$records"
 docker cp "$records" "$name:/tmp/records.ndjson" >/dev/null
 rm -f "$records"
@@ -57,7 +95,7 @@ fi
 decisions='[]'
 for _ in $(seq 1 30); do
   decisions="$(ex cscli decisions list -o json 2>/dev/null || echo '[]')"
-  [ "$(echo "$decisions" | jq '[.[]?.decisions[]?] | length')" -ge 3 ] && break
+  [ "$(echo "$decisions" | jq '[.[]?.decisions[]?] | length')" -ge 10 ] && break
   sleep 1
 done
 alerts="$(ex cscli alerts list -o json -l 0)"
@@ -77,6 +115,14 @@ check "alert context has the NAT" "$alerts" "map(select(.scenario==\"openpicket/
 check "alert context has node_id" "$alerts" "map(select(.scenario==\"openpicket/wan-reject-portscan\")) | .[0].meta | map(select(.key==\"node_id\")) | .[0].value" '["edge-02"]'
 check "remote geo on alert source" "$alerts" "map(select(.scenario==\"openpicket/suricata-outbound-c2\")) | .[0].source.cn" "RU"
 check "no alert from lateral traffic" "$alerts" "map(select(.source.value==\"192.168.1.70\")) | length" "0"
+check "generic log: http-probing banned" "$decisions" "$d | map(select(.value==\"198.51.100.67\")) | .[0].scenario" "crowdsecurity/http-probing"
+for ip in 66 61 62 63 64 68; do
+  check "syslog line: ssh-bf banned 198.51.100.$ip" "$decisions" "$d | map(select(.value==\"198.51.100.$ip\")) | .[0].scenario | startswith(\"crowdsecurity/ssh-bf\")" "true"
+done
+check "syslog line: machine from the header" "$alerts" "map(select(.source.value==\"198.51.100.62\")) | .[0].events[0].meta | map(select(.key==\"machine\")) | .[0].value" "fw"
+check "syslog line without a host: unknownhost" "$alerts" "map(select(.source.value==\"198.51.100.68\")) | .[0].events[0].meta | map(select(.key==\"machine\")) | .[0].value" "unknownhost"
+check "syslog line: node in the alert context" "$alerts" "map(select(.source.value==\"198.51.100.64\")) | .[0].meta | map(select(.key==\"node_id\")) | .[0].value" '["web-01"]'
+check "generic log: node in the alert context" "$alerts" "map(select(.scenario==\"crowdsecurity/http-probing\")) | .[0].meta | map(select(.key==\"node_id\")) | .[0].value" '["web-01"]'
 
 # Revision 2: the sensitive-port scenario disabled, the inbound major one
 # in simulation (alert, no decision). CrowdSec reloads.
