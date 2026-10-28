@@ -207,18 +207,19 @@ func StringField(line []byte, name string) string {
 const MaxProgram = 32
 
 // NormalizeProgram returns the canonical form of a program name (lower
-// case; letters, digits, '.', '_', '-'), or "" when nothing is left. It is
-// a Loki label and selects the CrowdSec parsers (evt.Parsed.program).
+// case; letters, digits, '.', '_', '-', '/'), or "" when nothing is left.
+// It is a Loki label and selects the CrowdSec parsers (evt.Parsed.program;
+// postfix's daemons are "postfix/smtpd").
 func NormalizeProgram(p string) string {
 	var b strings.Builder
 	for _, c := range strings.ToLower(strings.TrimSpace(p)) {
 		switch {
-		case c >= 'a' && c <= 'z', c >= '0' && c <= '9', c == '.', c == '_', c == '-':
+		case c >= 'a' && c <= 'z', c >= '0' && c <= '9', c == '.', c == '_', c == '-', c == '/':
 			b.WriteRune(c)
 		}
 		if b.Len() == MaxProgram {
 			break
 		}
 	}
-	return strings.Trim(b.String(), ".-_")
+	return strings.Trim(b.String(), ".-_/")
 }

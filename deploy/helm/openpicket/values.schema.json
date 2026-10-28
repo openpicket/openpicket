@@ -679,7 +679,7 @@
             "programRetention": {
               "type": "object",
               "propertyNames": {
-                "pattern": "^[a-z0-9._-]{1,32}$"
+                "pattern": "^[a-z0-9._/-]{1,32}$"
               },
               "additionalProperties": {
                 "type": "string",

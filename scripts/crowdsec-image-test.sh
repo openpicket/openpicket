@@ -62,6 +62,7 @@ records="$(mktemp)"
     logline nginx "198.51.100.67 - - [$(LC_ALL=C date -u +%d/%b/%Y:%H:%M:%S) +0000] \"GET /probe-$i.php HTTP/1.1\" 404 153 \"-\" \"curl/8.0\""
   done
   bsd="$(LC_ALL=C date -u '+%b %e %H:%M:%S')"
+  ng="$(date -u '+%Y-%m-%d %H:%M:%S')"
   for i in $(seq 1 8); do
     pw="Failed password for root from 198.51.100.%s port 4000$i ssh2"
     # auth.log
@@ -74,6 +75,8 @@ records="$(mktemp)"
     logline syslog "<38>$bsd sshd[42]: $(printf "$pw" 64)"
     # a device renaming its tag
     logline syslog "<38>$bsd fw auth[42]: $(printf "$pw" 65)" sshd
+    # a syslog-ng file (Alpine): the level after a local time, no host
+    logline syslog "$ng info sshd[812]: $(printf "$pw" 68)"
   done
 } > "$records"
 docker cp "$records" "$name:/tmp/records.ndjson" >/dev/null
@@ -108,10 +111,11 @@ check "alert context has node_id" "$alerts" "map(select(.scenario==\"openpicket/
 check "remote geo on alert source" "$alerts" "map(select(.scenario==\"openpicket/suricata-outbound-c2\")) | .[0].source.cn" "RU"
 check "no alert from lateral traffic" "$alerts" "map(select(.source.value==\"192.168.1.70\")) | length" "0"
 check "generic log: http-probing banned" "$decisions" "$d | map(select(.value==\"198.51.100.67\")) | .[0].scenario" "crowdsecurity/http-probing"
-for ip in 66 61 62 63 64 65; do
+for ip in 66 61 62 63 64 65 68; do
   check "syslog line: ssh-bf banned 198.51.100.$ip" "$decisions" "$d | map(select(.value==\"198.51.100.$ip\")) | .[0].scenario | startswith(\"crowdsecurity/ssh-bf\")" "true"
 done
 check "syslog line: machine from the header" "$alerts" "map(select(.source.value==\"198.51.100.62\")) | .[0].events[0].meta | map(select(.key==\"machine\")) | .[0].value" "fw"
+check "syslog-ng line: the level is not the machine" "$alerts" "map(select(.source.value==\"198.51.100.68\")) | .[0].events[0].meta | map(select(.key==\"machine\")) | .[0].value" "unknownhost"
 check "syslog line: node in the alert context" "$alerts" "map(select(.source.value==\"198.51.100.64\")) | .[0].meta | map(select(.key==\"node_id\")) | .[0].value" '["web-01"]'
 check "generic log: node in the alert context" "$alerts" "map(select(.scenario==\"crowdsecurity/http-probing\")) | .[0].meta | map(select(.key==\"node_id\")) | .[0].value" '["web-01"]'
 

@@ -1,6 +1,11 @@
 // Package syslogfmt splits syslog lines into their header fields and
 // message: RFC 3164 (BSD) with or without a priority, the same with an
-// RFC 3339 timestamp (rsyslog's high precision format), and RFC 5424.
+// RFC 3339 timestamp (rsyslog's high precision format) or a local
+// "2006-01-02 15:04:05" one, and RFC 5424. A level name may follow the
+// timestamp, as syslog-ng templates write it:
+//
+//	template("${YEAR}-${MONTH}-${DAY} ${HOUR}:${MIN}:${SEC} ${LEVEL} ${MSGHDR}${MSG}\n");
+//
 // Lines of syslog files (auth.log) and syslog messages received over the
 // network both go through it for their program (the tag), which the log
 // programs count and syslog devices rename. CrowdSec splits the lines
@@ -50,10 +55,15 @@ func Parse(line string, now time.Time) (Message, bool) {
 	var ok bool
 	if m.Time, rest, ok = bsdTime(rest, now); !ok {
 		if m.Time, rest, ok = isoTime(rest); !ok {
-			return m, false
+			if m.Time, rest, ok = localTime(rest, now); !ok {
+				return m, false
+			}
 		}
 	}
-	// HOSTNAME TAG[PID]: MSG; some senders leave the host out.
+	// [LEVEL] HOSTNAME TAG[PID]: MSG; some senders leave the host out.
+	if level, after, found := strings.Cut(rest, " "); found && levels[level] {
+		rest = after
+	}
 	host, after, found := strings.Cut(rest, " ")
 	if !found {
 		return m, false
@@ -114,6 +124,26 @@ func isoTime(s string) (time.Time, string, bool) {
 		return time.Time{}, s, false
 	}
 	return t, rest, true
+}
+
+// localTime reads "2026-10-26 19:27:54 " (fractional seconds allowed), in
+// now's location: the line has no zone.
+func localTime(s string, now time.Time) (time.Time, string, bool) {
+	f := strings.SplitN(s, " ", 3)
+	if len(f) < 3 || len(f[0]) != len("2006-01-02") {
+		return time.Time{}, s, false
+	}
+	t, err := time.ParseInLocation("2006-01-02 15:04:05", f[0]+" "+f[1], now.Location())
+	if err != nil {
+		return time.Time{}, s, false
+	}
+	return t, f[2], true
+}
+
+// levels are syslog-ng's ${LEVEL} names and their aliases.
+var levels = map[string]bool{
+	"emerg": true, "panic": true, "alert": true, "crit": true, "err": true, "error": true,
+	"warning": true, "warn": true, "notice": true, "info": true, "debug": true,
 }
 
 // parse5424 reads "TIMESTAMP HOSTNAME APP-NAME PROCID MSGID SD MSG".

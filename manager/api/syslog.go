@@ -115,7 +115,7 @@ func validSyslogDevice(d *apiv1.SyslogDevice) ([]netip.Prefix, error) {
 			return nil, fmt.Errorf("%w: syslog tag %q", errInvalid, tag)
 		}
 		if prog == "" || record.NormalizeProgram(prog) != prog {
-			return nil, fmt.Errorf("%w: program %q of %q: lowercase letters, digits, '.', '_' and '-' (at most %d)", errInvalid, prog, tag, record.MaxProgram)
+			return nil, fmt.Errorf("%w: program %q of %q: lowercase letters, digits, '.', '_', '-' and '/' (at most %d)", errInvalid, prog, tag, record.MaxProgram)
 		}
 	}
 	return out, nil

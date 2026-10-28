@@ -27,6 +27,16 @@ func TestParse(t *testing.T) {
 		{`<165>1 2026-10-23T10:00:01Z sw-01 sshd 77 ID47 [exampleSDID@32473 iut="3" eventSource="App\]x"] ` + "\ufeff" + `Invalid user bob`, 165,
 			"sw-01", "sshd", "77", "Invalid user bob", "2026-10-23T10:00:01Z"},
 		{`<34>1 2026-10-23T10:00:01Z - app - - - hello`, 34, "", "app", "", "hello", "2026-10-23T10:00:01Z"},
+		// syslog-ng: local date and time, level, no host.
+		{"2026-10-26 19:27:55 info postfix/smtpd[56825]: lost connection after CONNECT from unknown[178.16.53.230]", -1,
+			"", "postfix/smtpd", "56825", "lost connection after CONNECT from unknown[178.16.53.230]", "2026-10-26T19:27:55Z"},
+		{"2026-10-26 19:27:55 info dovecot[49]: imap-login: Login: user=<admin@example.com>, method=PLAIN, rip=40.99.87.37", -1,
+			"", "dovecot", "49", "imap-login: Login: user=<admin@example.com>, method=PLAIN, rip=40.99.87.37", "2026-10-26T19:27:55Z"},
+		// The same with a host and without a level.
+		{"2026-10-26 19:27:56.250 mail-01 postfix/smtpd[56609]: connect from unknown[178.16.53.230]", -1,
+			"mail-01", "postfix/smtpd", "56609", "connect from unknown[178.16.53.230]", "2026-10-26T19:27:56.25Z"},
+		// A level before a BSD header (syslog-ng with ${BSDDATE}).
+		{"Oct 23 10:00:01 warning web-01 sshd[812]: x", -1, "web-01", "sshd", "812", "x", "2026-10-23T10:00:01Z"},
 	} {
 		n := now
 		if c.program == "cron" {
@@ -38,7 +48,7 @@ func TestParse(t *testing.T) {
 			t.Errorf("%q: %+v %v", c.line, m, ok)
 		}
 	}
-	for _, bad := range []string{"", "plain text line", "<999>Oct 23 10:00:01 h p: x", "Oct 23 10:00:01 host no colon here", "<34>1 2026-10-23T10:00:01Z h - - - - x"} {
+	for _, bad := range []string{"", "plain text line", "<999>Oct 23 10:00:01 h p: x", "Oct 23 10:00:01 host no colon here", "<34>1 2026-10-23T10:00:01Z h - - - - x", "2026-10-26 19:27:55 info", "2026-13-26 19:27:55 info p: x"} {
 		if _, ok := Parse(bad, now); ok {
 			t.Errorf("parsed %q", bad)
 		}

@@ -10,8 +10,10 @@
 #
 # CrowdSec's syslog datasource rebuilds network messages into
 # "Jan 2 15:04:05 host tag[pid]: msg" before its parser; here they come as
-# sent, so the nodes also take a priority, RFC 5424 and senders that leave
-# out the host (OpenWrt's logd).
+# sent, so the nodes also take a priority, RFC 5424, senders that leave
+# out the host (OpenWrt's logd) and syslog-ng files with the level after
+# the time (Alpine's "${YEAR}-${MONTH}-${DAY} ${HOUR}:${MIN}:${SEC} ${LEVEL}
+# ${MSGHDR}${MSG}").
 filter: 'JsonExtract(evt.Line.Raw, "openpicket_log.program") == "syslog"'
 onsuccess: next_stage
 name: openpicket/syslog-logs
@@ -23,8 +25,15 @@ pattern_syntax:
   # values with \" \\ \] escapes.
   OPENPICKET_SYSLOG_SD: '(?:-|(?:\[(?:[^\]"\\]|"(?:[^"\\]|\\.)*")*\])+)'
   OPENPICKET_SYSLOG_5424: '%{OPENPICKET_SYSLOG_PRI}%{NONNEGINT:syslog_version} (?:-|%{TIMESTAMP_ISO8601:timestamp8601}) (?:-|%{SYSLOGHOST:logsource}) (?:-|%{NOTSPACE:program}) (?:-|%{NOTSPACE:pid}) %{NOTSPACE:msgid} %{OPENPICKET_SYSLOG_SD}(?: \x{FEFF}?%{GREEDYDATA:message})?'
+  OPENPICKET_SYSLOG_LEVEL: '(?:emerg|panic|alert|crit|error|err|warning|warn|notice|info|debug)'
+  OPENPICKET_SYSLOG_LEVELED: '(?:%{SYSLOGTIMESTAMP:timestamp}|%{TIMESTAMP_ISO8601:timestamp8601}) %{OPENPICKET_SYSLOG_LEVEL} (?:%{SYSLOGHOST:logsource} )?%{SYSLOGPROG}: %{GREEDYDATA:message}'
   OPENPICKET_SYSLOG_NOHOST: '(?:%{SYSLOGTIMESTAMP:timestamp}|%{TIMESTAMP_ISO8601:timestamp8601}) %{SYSLOGPROG}: %{GREEDYDATA:message}'
 nodes:
+  # syslog-ng with the level (the host is optional): first, or SYSLOGLINE
+  # would take the level for the host.
+  - grok:
+      pattern: '^(?:%{OPENPICKET_SYSLOG_PRI})?%{OPENPICKET_SYSLOG_LEVELED}'
+      expression: 'JsonExtractObject(evt.Line.Raw, "openpicket_log")["message"]'
   # Files (auth.log), the journal, RFC 3164: crowdsecurity/syslog-logs's
   # pattern, after an optional priority.
   - grok:
