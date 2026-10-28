@@ -229,7 +229,7 @@ openpicket:
 				progs[s["program"]] = true
 			}
 		}
-		return progs["nginx"] && progs["syslog"]
+		return progs["nginx"] && progs["sshd"]
 	})
 	// The programs seen are counted for the UI (flushed on stop).
 	acancel()

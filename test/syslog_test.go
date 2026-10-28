@@ -126,12 +126,12 @@ func TestSyslogDevices(t *testing.T) {
 	}
 	until("new device", func() bool { return has("sw-01", "switch: port 3 link down") },
 		func() { send("udp", "127.0.0.6", "port 3 link down") })
-	// Loki labels the source (syslog), as for syslog files.
+	// Loki labels the program of the header, as the log programs count it.
 	until("Loki stream", func() bool {
 		lk.mu.Lock()
 		defer lk.mu.Unlock()
 		for _, s := range lk.streams {
-			if s["node"] == "fw-01" && s["program"] == "syslog" && s["instance"] == "syslog" {
+			if s["node"] == "fw-01" && s["program"] == "sshd" && s["instance"] == "syslog" {
 				return true
 			}
 		}

@@ -110,4 +110,21 @@ func TestGenericLogLabelsAndSkip(t *testing.T) {
 	if l := got.Streams[0].Stream; l["type"] != "log" || l["program"] != "postgres" || l["node"] != "web-01" {
 		t.Fatalf("labels = %v", l)
 	}
+	// Syslog lines: each under the program of its header, the source in
+	// the metadata; a skipped one is left out.
+	b := mk("syslog")
+	b.Records = []*pipeline.Record{
+		{Line: []byte("dovecot line"), Time: now, Program: "dovecot", Syslog: true},
+		{Line: []byte("smtpd line"), Time: now, Program: "postfix/smtpd", Syslog: true},
+		{Line: []byte("nginx line"), Time: now, Program: "nginx", Syslog: true},
+	}
+	if err := s.Deliver(context.Background(), b); err != nil || pushes != 2 || len(got.Streams) != 2 {
+		t.Fatalf("syslog push: %v %d %+v", err, pushes, got.Streams)
+	}
+	for i, want := range []string{"dovecot", "postfix/smtpd"} {
+		st := got.Streams[i]
+		if st.Stream["program"] != want || st.Values[0][2].(map[string]any)["source_program"] != "syslog" {
+			t.Fatalf("stream %d: %+v", i, st)
+		}
+	}
 }
