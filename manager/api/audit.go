@@ -119,7 +119,7 @@ func auditDetail(m proto.Message) string {
 }
 
 // secretFields are never written to the audit log.
-var secretFields = map[protoreflect.Name]bool{"password": true, "secrets": true}
+var secretFields = map[protoreflect.Name]bool{"password": true, "secrets": true, "license_key": true}
 
 // scrub clears secret fields at any depth.
 func scrub(m protoreflect.Message) {

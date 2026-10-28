@@ -23,6 +23,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 
@@ -93,7 +94,7 @@ func setup(t *testing.T, readOnly bool) *env {
 	w, _ := lc.Watcher()
 	e.syncer = alerts.NewSyncer(alerts.Config{DB: pool, Instances: []alerts.Instance{{Name: "default", URL: e.lapi.URL, Watcher: w}}, Logger: log})
 	e.pokes = make(chan string, 16)
-	e.server, err = New(Config{DB: pool, Auth: chain, ReadOnly: readOnly, Geo: g, Policies: policy.New(pool, g, log), Settings: settings.New(pool),
+	e.server, err = New(Config{DB: pool, Auth: chain, ReadOnly: readOnly, Geo: g, GeoUpdater: geo.NewUpdater(g), Policies: policy.New(pool, g, log), Settings: settings.New(pool),
 		HostKey: func() string { return "ssh-ed25519 AAAA host" }, Replica: "r1", Version: "test", Suricontroller: su, PrincipalKey: priv, Logger: log,
 		Alerts: &alerts.Querier{DB: pool}, AlertStore: &alerts.Store{DB: pool}, LAPIs: []LAPI{{Name: "default", Watcher: w}},
 		Poke: func(i string) { e.pokes <- i }, Hub: hub.NewStore(pool, log), LogPrograms: logprog.New(pool, settings.New(pool), log)})
@@ -400,6 +401,31 @@ func TestPoliciesAndGeo(t *testing.T) {
 	lk, _ := admin.geo.Lookup(ctx, connect.NewRequest(&apiv1.GeoLookupRequest{Ips: []string{"1.0.0.9", "9.9.9.9"}}))
 	if lk.Msg.Results[0].Country != "CN" || lk.Msg.Results[1].Country != "" {
 		t.Fatalf("lookup: %v", lk.Msg)
+	}
+
+	// Update settings: admin only; the license key is write-only and never
+	// audited.
+	us := &apiv1.GeoUpdateSettings{Enabled: true, CountryEdition: "GeoLite2-Country", AsnEdition: "GeoLite2-ASN", IntervalHours: 24}
+	if _, err := op.geo.SetUpdateSettings(ctx, connect.NewRequest(&apiv1.SetGeoUpdateSettingsRequest{Settings: us, LicenseKey: "mm-secret"})); code(err) != connect.CodePermissionDenied {
+		t.Fatalf("operator update settings: %v", err)
+	}
+	if _, err := admin.geo.SetUpdateSettings(ctx, connect.NewRequest(&apiv1.SetGeoUpdateSettingsRequest{Settings: us})); code(err) != connect.CodeInvalidArgument {
+		t.Fatalf("enabled without key: %v", err)
+	}
+	if _, err := admin.geo.SetUpdateSettings(ctx, connect.NewRequest(&apiv1.SetGeoUpdateSettingsRequest{Settings: us, LicenseKey: "mm-secret"})); err != nil {
+		t.Fatal(err)
+	}
+	gs, err := op.geo.GetUpdateSettings(ctx, connect.NewRequest(&apiv1.GetGeoUpdateSettingsRequest{}))
+	if err != nil || !gs.Msg.Settings.LicenseKeySet || !gs.Msg.Settings.Enabled || gs.Msg.Settings.UpdatedBy == "" || len(gs.Msg.CountryEditions) == 0 ||
+		strings.Contains(protojson.Format(gs.Msg), "mm-secret") {
+		t.Fatalf("update settings: %v %v", gs, err)
+	}
+	if _, err := op.geo.RunUpdate(ctx, connect.NewRequest(&apiv1.RunGeoUpdateRequest{})); code(err) != connect.CodePermissionDenied {
+		t.Fatalf("operator run update: %v", err)
+	}
+	ga, _ := admin.system.ListAudit(ctx, connect.NewRequest(&apiv1.ListAuditRequest{ActionPrefix: "GeoService.SetUpdateSettings"}))
+	if len(ga.Msg.Entries) != 1 || strings.Contains(ga.Msg.Entries[0].Detail, "mm-secret") {
+		t.Fatalf("audit: %v", ga.Msg.Entries)
 	}
 
 	key, _ := sshkey.Generate()

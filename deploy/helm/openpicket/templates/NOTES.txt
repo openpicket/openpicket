@@ -19,7 +19,8 @@ OpenPicket is being deployed.
 {{- end }}
 
 3. Upload MaxMind GeoLite2/GeoIP2 Country and ASN databases on the GeoIP
-   page: country and AS policies and the geo of records need them.
+   page, or enter a MaxMind license key there to download them
+   periodically: country and AS policies and the geo of records need them.
 {{- if and .Values.gateway.enabled (not .Values.gateway.database.user) }}
 
 4. The gateways use the manager's database account (gateway.database.user
