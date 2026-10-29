@@ -22,6 +22,7 @@ import (
 func (m *Manager) API(cfg api.Config) (*api.Server, error) {
 	cfg.DB = m.opts.DB
 	cfg.Geo = m.geo
+	cfg.GeoUpdater = m.geoUpdater
 	cfg.Policies = m.policies
 	cfg.Hub = m.hub
 	cfg.HubRemote = m.hubRemote

@@ -28,6 +28,12 @@ service GeoService {
   // body is too large for a unary call; this deletes a database.
   rpc DeleteDatabase(DeleteDatabaseRequest) returns (DeleteDatabaseResponse);
   rpc Lookup(GeoLookupRequest) returns (GeoLookupResponse);
+  // Periodic download from MaxMind with a license key: the leader checks
+  // every interval and stores new releases like uploads.
+  rpc GetUpdateSettings(GetGeoUpdateSettingsRequest) returns (GetGeoUpdateSettingsResponse);
+  rpc SetUpdateSettings(SetGeoUpdateSettingsRequest) returns (SetGeoUpdateSettingsResponse);
+  // Checks every configured edition now (also while disabled).
+  rpc RunUpdate(RunGeoUpdateRequest) returns (RunGeoUpdateResponse);
 }
 
 message PortRange {
@@ -221,4 +227,64 @@ message GeoResult {
 
 message GeoLookupResponse {
   repeated GeoResult results = 1;
+}
+
+message GeoUpdateSettings {
+  bool enabled = 1;
+  // Output only: a license key is stored (it is never returned).
+  bool license_key_set = 2;
+  // MaxMind edition ids (GetGeoUpdateSettingsResponse lists them); empty
+  // skips the kind.
+  string country_edition = 3;
+  string asn_edition = 4;
+  // 1 to 720.
+  uint32 interval_hours = 5;
+  google.protobuf.Timestamp updated_at = 6;
+  string updated_by = 7;
+}
+
+message GeoEditionState {
+  string edition = 1;
+  // Archive of the release, e.g. GeoLite2-Country_20261027.tar.gz.
+  string file = 2;
+  // sha256 of the database stored.
+  string sha256 = 3;
+  google.protobuf.Timestamp checked_at = 4;
+}
+
+message GeoUpdateStatus {
+  google.protobuf.Timestamp last_check_at = 1;
+  // Last check that stored a new database.
+  google.protobuf.Timestamp last_download_at = 2;
+  // Failures of the last check, one line per edition; empty when it
+  // succeeded.
+  string last_error = 3;
+  google.protobuf.Timestamp error_at = 4;
+  repeated GeoEditionState editions = 5;
+  // Unset while disabled, or when the check is due now.
+  google.protobuf.Timestamp next_check_at = 6;
+}
+
+message GetGeoUpdateSettingsRequest {}
+message GetGeoUpdateSettingsResponse {
+  GeoUpdateSettings settings = 1;
+  GeoUpdateStatus status = 2;
+  repeated string country_editions = 3;
+  repeated string asn_editions = 4;
+}
+
+message SetGeoUpdateSettingsRequest {
+  GeoUpdateSettings settings = 1;
+  // Empty keeps the stored key.
+  string license_key = 2;
+}
+message SetGeoUpdateSettingsResponse {
+  GeoUpdateSettings settings = 1;
+  GeoUpdateStatus status = 2;
+}
+
+message RunGeoUpdateRequest {}
+// Failed editions are reported in status.last_error, not as an error.
+message RunGeoUpdateResponse {
+  GeoUpdateStatus status = 1;
 }

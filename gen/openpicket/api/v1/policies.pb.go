@@ -1957,6 +1957,550 @@ func (x *GeoLookupResponse) GetResults() []*GeoResult {
 	return nil
 }
 
+type GeoUpdateSettings struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Enabled bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Output only: a license key is stored (it is never returned).
+	LicenseKeySet bool `protobuf:"varint,2,opt,name=license_key_set,json=licenseKeySet,proto3" json:"license_key_set,omitempty"`
+	// MaxMind edition ids (GetGeoUpdateSettingsResponse lists them); empty
+	// skips the kind.
+	CountryEdition string `protobuf:"bytes,3,opt,name=country_edition,json=countryEdition,proto3" json:"country_edition,omitempty"`
+	AsnEdition     string `protobuf:"bytes,4,opt,name=asn_edition,json=asnEdition,proto3" json:"asn_edition,omitempty"`
+	// 1 to 720.
+	IntervalHours uint32                 `protobuf:"varint,5,opt,name=interval_hours,json=intervalHours,proto3" json:"interval_hours,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	UpdatedBy     string                 `protobuf:"bytes,7,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GeoUpdateSettings) Reset() {
+	*x = GeoUpdateSettings{}
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GeoUpdateSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GeoUpdateSettings) ProtoMessage() {}
+
+func (x *GeoUpdateSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GeoUpdateSettings.ProtoReflect.Descriptor instead.
+func (*GeoUpdateSettings) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_policies_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *GeoUpdateSettings) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *GeoUpdateSettings) GetLicenseKeySet() bool {
+	if x != nil {
+		return x.LicenseKeySet
+	}
+	return false
+}
+
+func (x *GeoUpdateSettings) GetCountryEdition() string {
+	if x != nil {
+		return x.CountryEdition
+	}
+	return ""
+}
+
+func (x *GeoUpdateSettings) GetAsnEdition() string {
+	if x != nil {
+		return x.AsnEdition
+	}
+	return ""
+}
+
+func (x *GeoUpdateSettings) GetIntervalHours() uint32 {
+	if x != nil {
+		return x.IntervalHours
+	}
+	return 0
+}
+
+func (x *GeoUpdateSettings) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *GeoUpdateSettings) GetUpdatedBy() string {
+	if x != nil {
+		return x.UpdatedBy
+	}
+	return ""
+}
+
+type GeoEditionState struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Edition string                 `protobuf:"bytes,1,opt,name=edition,proto3" json:"edition,omitempty"`
+	// Archive of the release, e.g. GeoLite2-Country_20261027.tar.gz.
+	File string `protobuf:"bytes,2,opt,name=file,proto3" json:"file,omitempty"`
+	// sha256 of the database stored.
+	Sha256        string                 `protobuf:"bytes,3,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	CheckedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=checked_at,json=checkedAt,proto3" json:"checked_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GeoEditionState) Reset() {
+	*x = GeoEditionState{}
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GeoEditionState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GeoEditionState) ProtoMessage() {}
+
+func (x *GeoEditionState) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GeoEditionState.ProtoReflect.Descriptor instead.
+func (*GeoEditionState) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_policies_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *GeoEditionState) GetEdition() string {
+	if x != nil {
+		return x.Edition
+	}
+	return ""
+}
+
+func (x *GeoEditionState) GetFile() string {
+	if x != nil {
+		return x.File
+	}
+	return ""
+}
+
+func (x *GeoEditionState) GetSha256() string {
+	if x != nil {
+		return x.Sha256
+	}
+	return ""
+}
+
+func (x *GeoEditionState) GetCheckedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CheckedAt
+	}
+	return nil
+}
+
+type GeoUpdateStatus struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	LastCheckAt *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=last_check_at,json=lastCheckAt,proto3" json:"last_check_at,omitempty"`
+	// Last check that stored a new database.
+	LastDownloadAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=last_download_at,json=lastDownloadAt,proto3" json:"last_download_at,omitempty"`
+	// Failures of the last check, one line per edition; empty when it
+	// succeeded.
+	LastError string                 `protobuf:"bytes,3,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	ErrorAt   *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=error_at,json=errorAt,proto3" json:"error_at,omitempty"`
+	Editions  []*GeoEditionState     `protobuf:"bytes,5,rep,name=editions,proto3" json:"editions,omitempty"`
+	// Unset while disabled, or when the check is due now.
+	NextCheckAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=next_check_at,json=nextCheckAt,proto3" json:"next_check_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GeoUpdateStatus) Reset() {
+	*x = GeoUpdateStatus{}
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GeoUpdateStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GeoUpdateStatus) ProtoMessage() {}
+
+func (x *GeoUpdateStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GeoUpdateStatus.ProtoReflect.Descriptor instead.
+func (*GeoUpdateStatus) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_policies_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *GeoUpdateStatus) GetLastCheckAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastCheckAt
+	}
+	return nil
+}
+
+func (x *GeoUpdateStatus) GetLastDownloadAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastDownloadAt
+	}
+	return nil
+}
+
+func (x *GeoUpdateStatus) GetLastError() string {
+	if x != nil {
+		return x.LastError
+	}
+	return ""
+}
+
+func (x *GeoUpdateStatus) GetErrorAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ErrorAt
+	}
+	return nil
+}
+
+func (x *GeoUpdateStatus) GetEditions() []*GeoEditionState {
+	if x != nil {
+		return x.Editions
+	}
+	return nil
+}
+
+func (x *GeoUpdateStatus) GetNextCheckAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NextCheckAt
+	}
+	return nil
+}
+
+type GetGeoUpdateSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetGeoUpdateSettingsRequest) Reset() {
+	*x = GetGeoUpdateSettingsRequest{}
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGeoUpdateSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGeoUpdateSettingsRequest) ProtoMessage() {}
+
+func (x *GetGeoUpdateSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGeoUpdateSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetGeoUpdateSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_policies_proto_rawDescGZIP(), []int{38}
+}
+
+type GetGeoUpdateSettingsResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Settings        *GeoUpdateSettings     `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	Status          *GeoUpdateStatus       `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	CountryEditions []string               `protobuf:"bytes,3,rep,name=country_editions,json=countryEditions,proto3" json:"country_editions,omitempty"`
+	AsnEditions     []string               `protobuf:"bytes,4,rep,name=asn_editions,json=asnEditions,proto3" json:"asn_editions,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GetGeoUpdateSettingsResponse) Reset() {
+	*x = GetGeoUpdateSettingsResponse{}
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGeoUpdateSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGeoUpdateSettingsResponse) ProtoMessage() {}
+
+func (x *GetGeoUpdateSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGeoUpdateSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetGeoUpdateSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_policies_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *GetGeoUpdateSettingsResponse) GetSettings() *GeoUpdateSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+func (x *GetGeoUpdateSettingsResponse) GetStatus() *GeoUpdateStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *GetGeoUpdateSettingsResponse) GetCountryEditions() []string {
+	if x != nil {
+		return x.CountryEditions
+	}
+	return nil
+}
+
+func (x *GetGeoUpdateSettingsResponse) GetAsnEditions() []string {
+	if x != nil {
+		return x.AsnEditions
+	}
+	return nil
+}
+
+type SetGeoUpdateSettingsRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Settings *GeoUpdateSettings     `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	// Empty keeps the stored key.
+	LicenseKey    string `protobuf:"bytes,2,opt,name=license_key,json=licenseKey,proto3" json:"license_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetGeoUpdateSettingsRequest) Reset() {
+	*x = SetGeoUpdateSettingsRequest{}
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetGeoUpdateSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetGeoUpdateSettingsRequest) ProtoMessage() {}
+
+func (x *SetGeoUpdateSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetGeoUpdateSettingsRequest.ProtoReflect.Descriptor instead.
+func (*SetGeoUpdateSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_policies_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *SetGeoUpdateSettingsRequest) GetSettings() *GeoUpdateSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+func (x *SetGeoUpdateSettingsRequest) GetLicenseKey() string {
+	if x != nil {
+		return x.LicenseKey
+	}
+	return ""
+}
+
+type SetGeoUpdateSettingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *GeoUpdateSettings     `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	Status        *GeoUpdateStatus       `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetGeoUpdateSettingsResponse) Reset() {
+	*x = SetGeoUpdateSettingsResponse{}
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetGeoUpdateSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetGeoUpdateSettingsResponse) ProtoMessage() {}
+
+func (x *SetGeoUpdateSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetGeoUpdateSettingsResponse.ProtoReflect.Descriptor instead.
+func (*SetGeoUpdateSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_policies_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *SetGeoUpdateSettingsResponse) GetSettings() *GeoUpdateSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+func (x *SetGeoUpdateSettingsResponse) GetStatus() *GeoUpdateStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+type RunGeoUpdateRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunGeoUpdateRequest) Reset() {
+	*x = RunGeoUpdateRequest{}
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunGeoUpdateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunGeoUpdateRequest) ProtoMessage() {}
+
+func (x *RunGeoUpdateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunGeoUpdateRequest.ProtoReflect.Descriptor instead.
+func (*RunGeoUpdateRequest) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_policies_proto_rawDescGZIP(), []int{42}
+}
+
+// Failed editions are reported in status.last_error, not as an error.
+type RunGeoUpdateResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        *GeoUpdateStatus       `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunGeoUpdateResponse) Reset() {
+	*x = RunGeoUpdateResponse{}
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunGeoUpdateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunGeoUpdateResponse) ProtoMessage() {}
+
+func (x *RunGeoUpdateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_policies_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunGeoUpdateResponse.ProtoReflect.Descriptor instead.
+func (*RunGeoUpdateResponse) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_policies_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *RunGeoUpdateResponse) GetStatus() *GeoUpdateStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
 var File_openpicket_api_v1_policies_proto protoreflect.FileDescriptor
 
 const file_openpicket_api_v1_policies_proto_rawDesc = "" +
@@ -2094,7 +2638,48 @@ const file_openpicket_api_v1_policies_proto_rawDesc = "" +
 	"\x03asn\x18\x03 \x01(\rR\x03asn\x12\x15\n" +
 	"\x06as_org\x18\x04 \x01(\tR\x05asOrg\"K\n" +
 	"\x11GeoLookupResponse\x126\n" +
-	"\aresults\x18\x01 \x03(\v2\x1c.openpicket.api.v1.GeoResultR\aresults2\x9f\a\n" +
+	"\aresults\x18\x01 \x03(\v2\x1c.openpicket.api.v1.GeoResultR\aresults\"\xa0\x02\n" +
+	"\x11GeoUpdateSettings\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12&\n" +
+	"\x0flicense_key_set\x18\x02 \x01(\bR\rlicenseKeySet\x12'\n" +
+	"\x0fcountry_edition\x18\x03 \x01(\tR\x0ecountryEdition\x12\x1f\n" +
+	"\vasn_edition\x18\x04 \x01(\tR\n" +
+	"asnEdition\x12%\n" +
+	"\x0einterval_hours\x18\x05 \x01(\rR\rintervalHours\x129\n" +
+	"\n" +
+	"updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_by\x18\a \x01(\tR\tupdatedBy\"\x92\x01\n" +
+	"\x0fGeoEditionState\x12\x18\n" +
+	"\aedition\x18\x01 \x01(\tR\aedition\x12\x12\n" +
+	"\x04file\x18\x02 \x01(\tR\x04file\x12\x16\n" +
+	"\x06sha256\x18\x03 \x01(\tR\x06sha256\x129\n" +
+	"\n" +
+	"checked_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcheckedAt\"\xed\x02\n" +
+	"\x0fGeoUpdateStatus\x12>\n" +
+	"\rlast_check_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\vlastCheckAt\x12D\n" +
+	"\x10last_download_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x0elastDownloadAt\x12\x1d\n" +
+	"\n" +
+	"last_error\x18\x03 \x01(\tR\tlastError\x125\n" +
+	"\berror_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\aerrorAt\x12>\n" +
+	"\beditions\x18\x05 \x03(\v2\".openpicket.api.v1.GeoEditionStateR\beditions\x12>\n" +
+	"\rnext_check_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vnextCheckAt\"\x1d\n" +
+	"\x1bGetGeoUpdateSettingsRequest\"\xea\x01\n" +
+	"\x1cGetGeoUpdateSettingsResponse\x12@\n" +
+	"\bsettings\x18\x01 \x01(\v2$.openpicket.api.v1.GeoUpdateSettingsR\bsettings\x12:\n" +
+	"\x06status\x18\x02 \x01(\v2\".openpicket.api.v1.GeoUpdateStatusR\x06status\x12)\n" +
+	"\x10country_editions\x18\x03 \x03(\tR\x0fcountryEditions\x12!\n" +
+	"\fasn_editions\x18\x04 \x03(\tR\vasnEditions\"\x80\x01\n" +
+	"\x1bSetGeoUpdateSettingsRequest\x12@\n" +
+	"\bsettings\x18\x01 \x01(\v2$.openpicket.api.v1.GeoUpdateSettingsR\bsettings\x12\x1f\n" +
+	"\vlicense_key\x18\x02 \x01(\tR\n" +
+	"licenseKey\"\x9c\x01\n" +
+	"\x1cSetGeoUpdateSettingsResponse\x12@\n" +
+	"\bsettings\x18\x01 \x01(\v2$.openpicket.api.v1.GeoUpdateSettingsR\bsettings\x12:\n" +
+	"\x06status\x18\x02 \x01(\v2\".openpicket.api.v1.GeoUpdateStatusR\x06status\"\x15\n" +
+	"\x13RunGeoUpdateRequest\"R\n" +
+	"\x14RunGeoUpdateResponse\x12:\n" +
+	"\x06status\x18\x01 \x01(\v2\".openpicket.api.v1.GeoUpdateStatusR\x06status2\x9f\a\n" +
 	"\rPolicyService\x12_\n" +
 	"\fListPolicies\x12&.openpicket.api.v1.ListPoliciesRequest\x1a'.openpicket.api.v1.ListPoliciesResponse\x12V\n" +
 	"\tPutPolicy\x12#.openpicket.api.v1.PutPolicyRequest\x1a$.openpicket.api.v1.PutPolicyResponse\x12_\n" +
@@ -2104,12 +2689,15 @@ const file_openpicket_api_v1_policies_proto_rawDesc = "" +
 	"\x0ePutAddressList\x12(.openpicket.api.v1.PutAddressListRequest\x1a).openpicket.api.v1.PutAddressListResponse\x12n\n" +
 	"\x11DeleteAddressList\x12+.openpicket.api.v1.DeleteAddressListRequest\x1a,.openpicket.api.v1.DeleteAddressListResponse\x12b\n" +
 	"\rPolicyHistory\x12'.openpicket.api.v1.PolicyHistoryRequest\x1a(.openpicket.api.v1.PolicyHistoryResponse\x12b\n" +
-	"\rPreviewBundle\x12'.openpicket.api.v1.PreviewBundleRequest\x1a(.openpicket.api.v1.PreviewBundleResponse2\xac\x02\n" +
+	"\rPreviewBundle\x12'.openpicket.api.v1.PreviewBundleRequest\x1a(.openpicket.api.v1.PreviewBundleResponse2\xf6\x04\n" +
 	"\n" +
 	"GeoService\x12b\n" +
 	"\rListDatabases\x12'.openpicket.api.v1.ListDatabasesRequest\x1a(.openpicket.api.v1.ListDatabasesResponse\x12e\n" +
 	"\x0eDeleteDatabase\x12(.openpicket.api.v1.DeleteDatabaseRequest\x1a).openpicket.api.v1.DeleteDatabaseResponse\x12S\n" +
-	"\x06Lookup\x12#.openpicket.api.v1.GeoLookupRequest\x1a$.openpicket.api.v1.GeoLookupResponseB>Z<github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1b\x06proto3"
+	"\x06Lookup\x12#.openpicket.api.v1.GeoLookupRequest\x1a$.openpicket.api.v1.GeoLookupResponse\x12t\n" +
+	"\x11GetUpdateSettings\x12..openpicket.api.v1.GetGeoUpdateSettingsRequest\x1a/.openpicket.api.v1.GetGeoUpdateSettingsResponse\x12t\n" +
+	"\x11SetUpdateSettings\x12..openpicket.api.v1.SetGeoUpdateSettingsRequest\x1a/.openpicket.api.v1.SetGeoUpdateSettingsResponse\x12\\\n" +
+	"\tRunUpdate\x12&.openpicket.api.v1.RunGeoUpdateRequest\x1a'.openpicket.api.v1.RunGeoUpdateResponseB>Z<github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1b\x06proto3"
 
 var (
 	file_openpicket_api_v1_policies_proto_rawDescOnce sync.Once
@@ -2123,96 +2711,124 @@ func file_openpicket_api_v1_policies_proto_rawDescGZIP() []byte {
 	return file_openpicket_api_v1_policies_proto_rawDescData
 }
 
-var file_openpicket_api_v1_policies_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_openpicket_api_v1_policies_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_openpicket_api_v1_policies_proto_goTypes = []any{
-	(*PortRange)(nil),                 // 0: openpicket.api.v1.PortRange
-	(*PolicySource)(nil),              // 1: openpicket.api.v1.PolicySource
-	(*PolicyRule)(nil),                // 2: openpicket.api.v1.PolicyRule
-	(*LabelValues)(nil),               // 3: openpicket.api.v1.LabelValues
-	(*PolicyScope)(nil),               // 4: openpicket.api.v1.PolicyScope
-	(*Policy)(nil),                    // 5: openpicket.api.v1.Policy
-	(*ListPoliciesRequest)(nil),       // 6: openpicket.api.v1.ListPoliciesRequest
-	(*ListPoliciesResponse)(nil),      // 7: openpicket.api.v1.ListPoliciesResponse
-	(*PutPolicyRequest)(nil),          // 8: openpicket.api.v1.PutPolicyRequest
-	(*PutPolicyResponse)(nil),         // 9: openpicket.api.v1.PutPolicyResponse
-	(*DeletePolicyRequest)(nil),       // 10: openpicket.api.v1.DeletePolicyRequest
-	(*DeletePolicyResponse)(nil),      // 11: openpicket.api.v1.DeletePolicyResponse
-	(*ReorderPoliciesRequest)(nil),    // 12: openpicket.api.v1.ReorderPoliciesRequest
-	(*ReorderPoliciesResponse)(nil),   // 13: openpicket.api.v1.ReorderPoliciesResponse
-	(*AddressList)(nil),               // 14: openpicket.api.v1.AddressList
-	(*ListAddressListsRequest)(nil),   // 15: openpicket.api.v1.ListAddressListsRequest
-	(*ListAddressListsResponse)(nil),  // 16: openpicket.api.v1.ListAddressListsResponse
-	(*PutAddressListRequest)(nil),     // 17: openpicket.api.v1.PutAddressListRequest
-	(*PutAddressListResponse)(nil),    // 18: openpicket.api.v1.PutAddressListResponse
-	(*DeleteAddressListRequest)(nil),  // 19: openpicket.api.v1.DeleteAddressListRequest
-	(*DeleteAddressListResponse)(nil), // 20: openpicket.api.v1.DeleteAddressListResponse
-	(*PolicyHistoryRequest)(nil),      // 21: openpicket.api.v1.PolicyHistoryRequest
-	(*PolicyChange)(nil),              // 22: openpicket.api.v1.PolicyChange
-	(*PolicyHistoryResponse)(nil),     // 23: openpicket.api.v1.PolicyHistoryResponse
-	(*PreviewBundleRequest)(nil),      // 24: openpicket.api.v1.PreviewBundleRequest
-	(*SkippedPolicy)(nil),             // 25: openpicket.api.v1.SkippedPolicy
-	(*PreviewBundleResponse)(nil),     // 26: openpicket.api.v1.PreviewBundleResponse
-	(*GeoDatabase)(nil),               // 27: openpicket.api.v1.GeoDatabase
-	(*ListDatabasesRequest)(nil),      // 28: openpicket.api.v1.ListDatabasesRequest
-	(*ListDatabasesResponse)(nil),     // 29: openpicket.api.v1.ListDatabasesResponse
-	(*DeleteDatabaseRequest)(nil),     // 30: openpicket.api.v1.DeleteDatabaseRequest
-	(*DeleteDatabaseResponse)(nil),    // 31: openpicket.api.v1.DeleteDatabaseResponse
-	(*GeoLookupRequest)(nil),          // 32: openpicket.api.v1.GeoLookupRequest
-	(*GeoResult)(nil),                 // 33: openpicket.api.v1.GeoResult
-	(*GeoLookupResponse)(nil),         // 34: openpicket.api.v1.GeoLookupResponse
-	nil,                               // 35: openpicket.api.v1.PolicyScope.LabelsEntry
-	(*timestamppb.Timestamp)(nil),     // 36: google.protobuf.Timestamp
+	(*PortRange)(nil),                    // 0: openpicket.api.v1.PortRange
+	(*PolicySource)(nil),                 // 1: openpicket.api.v1.PolicySource
+	(*PolicyRule)(nil),                   // 2: openpicket.api.v1.PolicyRule
+	(*LabelValues)(nil),                  // 3: openpicket.api.v1.LabelValues
+	(*PolicyScope)(nil),                  // 4: openpicket.api.v1.PolicyScope
+	(*Policy)(nil),                       // 5: openpicket.api.v1.Policy
+	(*ListPoliciesRequest)(nil),          // 6: openpicket.api.v1.ListPoliciesRequest
+	(*ListPoliciesResponse)(nil),         // 7: openpicket.api.v1.ListPoliciesResponse
+	(*PutPolicyRequest)(nil),             // 8: openpicket.api.v1.PutPolicyRequest
+	(*PutPolicyResponse)(nil),            // 9: openpicket.api.v1.PutPolicyResponse
+	(*DeletePolicyRequest)(nil),          // 10: openpicket.api.v1.DeletePolicyRequest
+	(*DeletePolicyResponse)(nil),         // 11: openpicket.api.v1.DeletePolicyResponse
+	(*ReorderPoliciesRequest)(nil),       // 12: openpicket.api.v1.ReorderPoliciesRequest
+	(*ReorderPoliciesResponse)(nil),      // 13: openpicket.api.v1.ReorderPoliciesResponse
+	(*AddressList)(nil),                  // 14: openpicket.api.v1.AddressList
+	(*ListAddressListsRequest)(nil),      // 15: openpicket.api.v1.ListAddressListsRequest
+	(*ListAddressListsResponse)(nil),     // 16: openpicket.api.v1.ListAddressListsResponse
+	(*PutAddressListRequest)(nil),        // 17: openpicket.api.v1.PutAddressListRequest
+	(*PutAddressListResponse)(nil),       // 18: openpicket.api.v1.PutAddressListResponse
+	(*DeleteAddressListRequest)(nil),     // 19: openpicket.api.v1.DeleteAddressListRequest
+	(*DeleteAddressListResponse)(nil),    // 20: openpicket.api.v1.DeleteAddressListResponse
+	(*PolicyHistoryRequest)(nil),         // 21: openpicket.api.v1.PolicyHistoryRequest
+	(*PolicyChange)(nil),                 // 22: openpicket.api.v1.PolicyChange
+	(*PolicyHistoryResponse)(nil),        // 23: openpicket.api.v1.PolicyHistoryResponse
+	(*PreviewBundleRequest)(nil),         // 24: openpicket.api.v1.PreviewBundleRequest
+	(*SkippedPolicy)(nil),                // 25: openpicket.api.v1.SkippedPolicy
+	(*PreviewBundleResponse)(nil),        // 26: openpicket.api.v1.PreviewBundleResponse
+	(*GeoDatabase)(nil),                  // 27: openpicket.api.v1.GeoDatabase
+	(*ListDatabasesRequest)(nil),         // 28: openpicket.api.v1.ListDatabasesRequest
+	(*ListDatabasesResponse)(nil),        // 29: openpicket.api.v1.ListDatabasesResponse
+	(*DeleteDatabaseRequest)(nil),        // 30: openpicket.api.v1.DeleteDatabaseRequest
+	(*DeleteDatabaseResponse)(nil),       // 31: openpicket.api.v1.DeleteDatabaseResponse
+	(*GeoLookupRequest)(nil),             // 32: openpicket.api.v1.GeoLookupRequest
+	(*GeoResult)(nil),                    // 33: openpicket.api.v1.GeoResult
+	(*GeoLookupResponse)(nil),            // 34: openpicket.api.v1.GeoLookupResponse
+	(*GeoUpdateSettings)(nil),            // 35: openpicket.api.v1.GeoUpdateSettings
+	(*GeoEditionState)(nil),              // 36: openpicket.api.v1.GeoEditionState
+	(*GeoUpdateStatus)(nil),              // 37: openpicket.api.v1.GeoUpdateStatus
+	(*GetGeoUpdateSettingsRequest)(nil),  // 38: openpicket.api.v1.GetGeoUpdateSettingsRequest
+	(*GetGeoUpdateSettingsResponse)(nil), // 39: openpicket.api.v1.GetGeoUpdateSettingsResponse
+	(*SetGeoUpdateSettingsRequest)(nil),  // 40: openpicket.api.v1.SetGeoUpdateSettingsRequest
+	(*SetGeoUpdateSettingsResponse)(nil), // 41: openpicket.api.v1.SetGeoUpdateSettingsResponse
+	(*RunGeoUpdateRequest)(nil),          // 42: openpicket.api.v1.RunGeoUpdateRequest
+	(*RunGeoUpdateResponse)(nil),         // 43: openpicket.api.v1.RunGeoUpdateResponse
+	nil,                                  // 44: openpicket.api.v1.PolicyScope.LabelsEntry
+	(*timestamppb.Timestamp)(nil),        // 45: google.protobuf.Timestamp
 }
 var file_openpicket_api_v1_policies_proto_depIdxs = []int32{
 	1,  // 0: openpicket.api.v1.PolicyRule.source:type_name -> openpicket.api.v1.PolicySource
-	35, // 1: openpicket.api.v1.PolicyScope.labels:type_name -> openpicket.api.v1.PolicyScope.LabelsEntry
+	44, // 1: openpicket.api.v1.PolicyScope.labels:type_name -> openpicket.api.v1.PolicyScope.LabelsEntry
 	4,  // 2: openpicket.api.v1.Policy.scope:type_name -> openpicket.api.v1.PolicyScope
 	0,  // 3: openpicket.api.v1.Policy.ports:type_name -> openpicket.api.v1.PortRange
 	2,  // 4: openpicket.api.v1.Policy.rules:type_name -> openpicket.api.v1.PolicyRule
-	36, // 5: openpicket.api.v1.Policy.updated_at:type_name -> google.protobuf.Timestamp
-	36, // 6: openpicket.api.v1.Policy.compile_error_since:type_name -> google.protobuf.Timestamp
+	45, // 5: openpicket.api.v1.Policy.updated_at:type_name -> google.protobuf.Timestamp
+	45, // 6: openpicket.api.v1.Policy.compile_error_since:type_name -> google.protobuf.Timestamp
 	5,  // 7: openpicket.api.v1.ListPoliciesResponse.policies:type_name -> openpicket.api.v1.Policy
 	5,  // 8: openpicket.api.v1.PutPolicyRequest.policy:type_name -> openpicket.api.v1.Policy
-	36, // 9: openpicket.api.v1.AddressList.updated_at:type_name -> google.protobuf.Timestamp
+	45, // 9: openpicket.api.v1.AddressList.updated_at:type_name -> google.protobuf.Timestamp
 	14, // 10: openpicket.api.v1.ListAddressListsResponse.lists:type_name -> openpicket.api.v1.AddressList
 	14, // 11: openpicket.api.v1.PutAddressListRequest.list:type_name -> openpicket.api.v1.AddressList
-	36, // 12: openpicket.api.v1.PolicyChange.changed_at:type_name -> google.protobuf.Timestamp
+	45, // 12: openpicket.api.v1.PolicyChange.changed_at:type_name -> google.protobuf.Timestamp
 	22, // 13: openpicket.api.v1.PolicyHistoryResponse.changes:type_name -> openpicket.api.v1.PolicyChange
 	25, // 14: openpicket.api.v1.PreviewBundleResponse.skipped:type_name -> openpicket.api.v1.SkippedPolicy
-	36, // 15: openpicket.api.v1.GeoDatabase.build_time:type_name -> google.protobuf.Timestamp
-	36, // 16: openpicket.api.v1.GeoDatabase.uploaded_at:type_name -> google.protobuf.Timestamp
+	45, // 15: openpicket.api.v1.GeoDatabase.build_time:type_name -> google.protobuf.Timestamp
+	45, // 16: openpicket.api.v1.GeoDatabase.uploaded_at:type_name -> google.protobuf.Timestamp
 	27, // 17: openpicket.api.v1.ListDatabasesResponse.databases:type_name -> openpicket.api.v1.GeoDatabase
 	33, // 18: openpicket.api.v1.GeoLookupResponse.results:type_name -> openpicket.api.v1.GeoResult
-	3,  // 19: openpicket.api.v1.PolicyScope.LabelsEntry.value:type_name -> openpicket.api.v1.LabelValues
-	6,  // 20: openpicket.api.v1.PolicyService.ListPolicies:input_type -> openpicket.api.v1.ListPoliciesRequest
-	8,  // 21: openpicket.api.v1.PolicyService.PutPolicy:input_type -> openpicket.api.v1.PutPolicyRequest
-	10, // 22: openpicket.api.v1.PolicyService.DeletePolicy:input_type -> openpicket.api.v1.DeletePolicyRequest
-	12, // 23: openpicket.api.v1.PolicyService.ReorderPolicies:input_type -> openpicket.api.v1.ReorderPoliciesRequest
-	15, // 24: openpicket.api.v1.PolicyService.ListAddressLists:input_type -> openpicket.api.v1.ListAddressListsRequest
-	17, // 25: openpicket.api.v1.PolicyService.PutAddressList:input_type -> openpicket.api.v1.PutAddressListRequest
-	19, // 26: openpicket.api.v1.PolicyService.DeleteAddressList:input_type -> openpicket.api.v1.DeleteAddressListRequest
-	21, // 27: openpicket.api.v1.PolicyService.PolicyHistory:input_type -> openpicket.api.v1.PolicyHistoryRequest
-	24, // 28: openpicket.api.v1.PolicyService.PreviewBundle:input_type -> openpicket.api.v1.PreviewBundleRequest
-	28, // 29: openpicket.api.v1.GeoService.ListDatabases:input_type -> openpicket.api.v1.ListDatabasesRequest
-	30, // 30: openpicket.api.v1.GeoService.DeleteDatabase:input_type -> openpicket.api.v1.DeleteDatabaseRequest
-	32, // 31: openpicket.api.v1.GeoService.Lookup:input_type -> openpicket.api.v1.GeoLookupRequest
-	7,  // 32: openpicket.api.v1.PolicyService.ListPolicies:output_type -> openpicket.api.v1.ListPoliciesResponse
-	9,  // 33: openpicket.api.v1.PolicyService.PutPolicy:output_type -> openpicket.api.v1.PutPolicyResponse
-	11, // 34: openpicket.api.v1.PolicyService.DeletePolicy:output_type -> openpicket.api.v1.DeletePolicyResponse
-	13, // 35: openpicket.api.v1.PolicyService.ReorderPolicies:output_type -> openpicket.api.v1.ReorderPoliciesResponse
-	16, // 36: openpicket.api.v1.PolicyService.ListAddressLists:output_type -> openpicket.api.v1.ListAddressListsResponse
-	18, // 37: openpicket.api.v1.PolicyService.PutAddressList:output_type -> openpicket.api.v1.PutAddressListResponse
-	20, // 38: openpicket.api.v1.PolicyService.DeleteAddressList:output_type -> openpicket.api.v1.DeleteAddressListResponse
-	23, // 39: openpicket.api.v1.PolicyService.PolicyHistory:output_type -> openpicket.api.v1.PolicyHistoryResponse
-	26, // 40: openpicket.api.v1.PolicyService.PreviewBundle:output_type -> openpicket.api.v1.PreviewBundleResponse
-	29, // 41: openpicket.api.v1.GeoService.ListDatabases:output_type -> openpicket.api.v1.ListDatabasesResponse
-	31, // 42: openpicket.api.v1.GeoService.DeleteDatabase:output_type -> openpicket.api.v1.DeleteDatabaseResponse
-	34, // 43: openpicket.api.v1.GeoService.Lookup:output_type -> openpicket.api.v1.GeoLookupResponse
-	32, // [32:44] is the sub-list for method output_type
-	20, // [20:32] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	45, // 19: openpicket.api.v1.GeoUpdateSettings.updated_at:type_name -> google.protobuf.Timestamp
+	45, // 20: openpicket.api.v1.GeoEditionState.checked_at:type_name -> google.protobuf.Timestamp
+	45, // 21: openpicket.api.v1.GeoUpdateStatus.last_check_at:type_name -> google.protobuf.Timestamp
+	45, // 22: openpicket.api.v1.GeoUpdateStatus.last_download_at:type_name -> google.protobuf.Timestamp
+	45, // 23: openpicket.api.v1.GeoUpdateStatus.error_at:type_name -> google.protobuf.Timestamp
+	36, // 24: openpicket.api.v1.GeoUpdateStatus.editions:type_name -> openpicket.api.v1.GeoEditionState
+	45, // 25: openpicket.api.v1.GeoUpdateStatus.next_check_at:type_name -> google.protobuf.Timestamp
+	35, // 26: openpicket.api.v1.GetGeoUpdateSettingsResponse.settings:type_name -> openpicket.api.v1.GeoUpdateSettings
+	37, // 27: openpicket.api.v1.GetGeoUpdateSettingsResponse.status:type_name -> openpicket.api.v1.GeoUpdateStatus
+	35, // 28: openpicket.api.v1.SetGeoUpdateSettingsRequest.settings:type_name -> openpicket.api.v1.GeoUpdateSettings
+	35, // 29: openpicket.api.v1.SetGeoUpdateSettingsResponse.settings:type_name -> openpicket.api.v1.GeoUpdateSettings
+	37, // 30: openpicket.api.v1.SetGeoUpdateSettingsResponse.status:type_name -> openpicket.api.v1.GeoUpdateStatus
+	37, // 31: openpicket.api.v1.RunGeoUpdateResponse.status:type_name -> openpicket.api.v1.GeoUpdateStatus
+	3,  // 32: openpicket.api.v1.PolicyScope.LabelsEntry.value:type_name -> openpicket.api.v1.LabelValues
+	6,  // 33: openpicket.api.v1.PolicyService.ListPolicies:input_type -> openpicket.api.v1.ListPoliciesRequest
+	8,  // 34: openpicket.api.v1.PolicyService.PutPolicy:input_type -> openpicket.api.v1.PutPolicyRequest
+	10, // 35: openpicket.api.v1.PolicyService.DeletePolicy:input_type -> openpicket.api.v1.DeletePolicyRequest
+	12, // 36: openpicket.api.v1.PolicyService.ReorderPolicies:input_type -> openpicket.api.v1.ReorderPoliciesRequest
+	15, // 37: openpicket.api.v1.PolicyService.ListAddressLists:input_type -> openpicket.api.v1.ListAddressListsRequest
+	17, // 38: openpicket.api.v1.PolicyService.PutAddressList:input_type -> openpicket.api.v1.PutAddressListRequest
+	19, // 39: openpicket.api.v1.PolicyService.DeleteAddressList:input_type -> openpicket.api.v1.DeleteAddressListRequest
+	21, // 40: openpicket.api.v1.PolicyService.PolicyHistory:input_type -> openpicket.api.v1.PolicyHistoryRequest
+	24, // 41: openpicket.api.v1.PolicyService.PreviewBundle:input_type -> openpicket.api.v1.PreviewBundleRequest
+	28, // 42: openpicket.api.v1.GeoService.ListDatabases:input_type -> openpicket.api.v1.ListDatabasesRequest
+	30, // 43: openpicket.api.v1.GeoService.DeleteDatabase:input_type -> openpicket.api.v1.DeleteDatabaseRequest
+	32, // 44: openpicket.api.v1.GeoService.Lookup:input_type -> openpicket.api.v1.GeoLookupRequest
+	38, // 45: openpicket.api.v1.GeoService.GetUpdateSettings:input_type -> openpicket.api.v1.GetGeoUpdateSettingsRequest
+	40, // 46: openpicket.api.v1.GeoService.SetUpdateSettings:input_type -> openpicket.api.v1.SetGeoUpdateSettingsRequest
+	42, // 47: openpicket.api.v1.GeoService.RunUpdate:input_type -> openpicket.api.v1.RunGeoUpdateRequest
+	7,  // 48: openpicket.api.v1.PolicyService.ListPolicies:output_type -> openpicket.api.v1.ListPoliciesResponse
+	9,  // 49: openpicket.api.v1.PolicyService.PutPolicy:output_type -> openpicket.api.v1.PutPolicyResponse
+	11, // 50: openpicket.api.v1.PolicyService.DeletePolicy:output_type -> openpicket.api.v1.DeletePolicyResponse
+	13, // 51: openpicket.api.v1.PolicyService.ReorderPolicies:output_type -> openpicket.api.v1.ReorderPoliciesResponse
+	16, // 52: openpicket.api.v1.PolicyService.ListAddressLists:output_type -> openpicket.api.v1.ListAddressListsResponse
+	18, // 53: openpicket.api.v1.PolicyService.PutAddressList:output_type -> openpicket.api.v1.PutAddressListResponse
+	20, // 54: openpicket.api.v1.PolicyService.DeleteAddressList:output_type -> openpicket.api.v1.DeleteAddressListResponse
+	23, // 55: openpicket.api.v1.PolicyService.PolicyHistory:output_type -> openpicket.api.v1.PolicyHistoryResponse
+	26, // 56: openpicket.api.v1.PolicyService.PreviewBundle:output_type -> openpicket.api.v1.PreviewBundleResponse
+	29, // 57: openpicket.api.v1.GeoService.ListDatabases:output_type -> openpicket.api.v1.ListDatabasesResponse
+	31, // 58: openpicket.api.v1.GeoService.DeleteDatabase:output_type -> openpicket.api.v1.DeleteDatabaseResponse
+	34, // 59: openpicket.api.v1.GeoService.Lookup:output_type -> openpicket.api.v1.GeoLookupResponse
+	39, // 60: openpicket.api.v1.GeoService.GetUpdateSettings:output_type -> openpicket.api.v1.GetGeoUpdateSettingsResponse
+	41, // 61: openpicket.api.v1.GeoService.SetUpdateSettings:output_type -> openpicket.api.v1.SetGeoUpdateSettingsResponse
+	43, // 62: openpicket.api.v1.GeoService.RunUpdate:output_type -> openpicket.api.v1.RunGeoUpdateResponse
+	48, // [48:63] is the sub-list for method output_type
+	33, // [33:48] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_openpicket_api_v1_policies_proto_init() }
@@ -2227,7 +2843,7 @@ func file_openpicket_api_v1_policies_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_openpicket_api_v1_policies_proto_rawDesc), len(file_openpicket_api_v1_policies_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   36,
+			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

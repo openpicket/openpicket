@@ -69,6 +69,14 @@ const (
 	GeoServiceDeleteDatabaseProcedure = "/openpicket.api.v1.GeoService/DeleteDatabase"
 	// GeoServiceLookupProcedure is the fully-qualified name of the GeoService's Lookup RPC.
 	GeoServiceLookupProcedure = "/openpicket.api.v1.GeoService/Lookup"
+	// GeoServiceGetUpdateSettingsProcedure is the fully-qualified name of the GeoService's
+	// GetUpdateSettings RPC.
+	GeoServiceGetUpdateSettingsProcedure = "/openpicket.api.v1.GeoService/GetUpdateSettings"
+	// GeoServiceSetUpdateSettingsProcedure is the fully-qualified name of the GeoService's
+	// SetUpdateSettings RPC.
+	GeoServiceSetUpdateSettingsProcedure = "/openpicket.api.v1.GeoService/SetUpdateSettings"
+	// GeoServiceRunUpdateProcedure is the fully-qualified name of the GeoService's RunUpdate RPC.
+	GeoServiceRunUpdateProcedure = "/openpicket.api.v1.GeoService/RunUpdate"
 )
 
 // PolicyServiceClient is a client for the openpicket.api.v1.PolicyService service.
@@ -360,6 +368,12 @@ type GeoServiceClient interface {
 	// body is too large for a unary call; this deletes a database.
 	DeleteDatabase(context.Context, *connect.Request[v1.DeleteDatabaseRequest]) (*connect.Response[v1.DeleteDatabaseResponse], error)
 	Lookup(context.Context, *connect.Request[v1.GeoLookupRequest]) (*connect.Response[v1.GeoLookupResponse], error)
+	// Periodic download from MaxMind with a license key: the leader checks
+	// every interval and stores new releases like uploads.
+	GetUpdateSettings(context.Context, *connect.Request[v1.GetGeoUpdateSettingsRequest]) (*connect.Response[v1.GetGeoUpdateSettingsResponse], error)
+	SetUpdateSettings(context.Context, *connect.Request[v1.SetGeoUpdateSettingsRequest]) (*connect.Response[v1.SetGeoUpdateSettingsResponse], error)
+	// Checks every configured edition now (also while disabled).
+	RunUpdate(context.Context, *connect.Request[v1.RunGeoUpdateRequest]) (*connect.Response[v1.RunGeoUpdateResponse], error)
 }
 
 // NewGeoServiceClient constructs a client for the openpicket.api.v1.GeoService service. By default,
@@ -391,14 +405,35 @@ func NewGeoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(geoServiceMethods.ByName("Lookup")),
 			connect.WithClientOptions(opts...),
 		),
+		getUpdateSettings: connect.NewClient[v1.GetGeoUpdateSettingsRequest, v1.GetGeoUpdateSettingsResponse](
+			httpClient,
+			baseURL+GeoServiceGetUpdateSettingsProcedure,
+			connect.WithSchema(geoServiceMethods.ByName("GetUpdateSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		setUpdateSettings: connect.NewClient[v1.SetGeoUpdateSettingsRequest, v1.SetGeoUpdateSettingsResponse](
+			httpClient,
+			baseURL+GeoServiceSetUpdateSettingsProcedure,
+			connect.WithSchema(geoServiceMethods.ByName("SetUpdateSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		runUpdate: connect.NewClient[v1.RunGeoUpdateRequest, v1.RunGeoUpdateResponse](
+			httpClient,
+			baseURL+GeoServiceRunUpdateProcedure,
+			connect.WithSchema(geoServiceMethods.ByName("RunUpdate")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // geoServiceClient implements GeoServiceClient.
 type geoServiceClient struct {
-	listDatabases  *connect.Client[v1.ListDatabasesRequest, v1.ListDatabasesResponse]
-	deleteDatabase *connect.Client[v1.DeleteDatabaseRequest, v1.DeleteDatabaseResponse]
-	lookup         *connect.Client[v1.GeoLookupRequest, v1.GeoLookupResponse]
+	listDatabases     *connect.Client[v1.ListDatabasesRequest, v1.ListDatabasesResponse]
+	deleteDatabase    *connect.Client[v1.DeleteDatabaseRequest, v1.DeleteDatabaseResponse]
+	lookup            *connect.Client[v1.GeoLookupRequest, v1.GeoLookupResponse]
+	getUpdateSettings *connect.Client[v1.GetGeoUpdateSettingsRequest, v1.GetGeoUpdateSettingsResponse]
+	setUpdateSettings *connect.Client[v1.SetGeoUpdateSettingsRequest, v1.SetGeoUpdateSettingsResponse]
+	runUpdate         *connect.Client[v1.RunGeoUpdateRequest, v1.RunGeoUpdateResponse]
 }
 
 // ListDatabases calls openpicket.api.v1.GeoService.ListDatabases.
@@ -416,6 +451,21 @@ func (c *geoServiceClient) Lookup(ctx context.Context, req *connect.Request[v1.G
 	return c.lookup.CallUnary(ctx, req)
 }
 
+// GetUpdateSettings calls openpicket.api.v1.GeoService.GetUpdateSettings.
+func (c *geoServiceClient) GetUpdateSettings(ctx context.Context, req *connect.Request[v1.GetGeoUpdateSettingsRequest]) (*connect.Response[v1.GetGeoUpdateSettingsResponse], error) {
+	return c.getUpdateSettings.CallUnary(ctx, req)
+}
+
+// SetUpdateSettings calls openpicket.api.v1.GeoService.SetUpdateSettings.
+func (c *geoServiceClient) SetUpdateSettings(ctx context.Context, req *connect.Request[v1.SetGeoUpdateSettingsRequest]) (*connect.Response[v1.SetGeoUpdateSettingsResponse], error) {
+	return c.setUpdateSettings.CallUnary(ctx, req)
+}
+
+// RunUpdate calls openpicket.api.v1.GeoService.RunUpdate.
+func (c *geoServiceClient) RunUpdate(ctx context.Context, req *connect.Request[v1.RunGeoUpdateRequest]) (*connect.Response[v1.RunGeoUpdateResponse], error) {
+	return c.runUpdate.CallUnary(ctx, req)
+}
+
 // GeoServiceHandler is an implementation of the openpicket.api.v1.GeoService service.
 type GeoServiceHandler interface {
 	ListDatabases(context.Context, *connect.Request[v1.ListDatabasesRequest]) (*connect.Response[v1.ListDatabasesResponse], error)
@@ -423,6 +473,12 @@ type GeoServiceHandler interface {
 	// body is too large for a unary call; this deletes a database.
 	DeleteDatabase(context.Context, *connect.Request[v1.DeleteDatabaseRequest]) (*connect.Response[v1.DeleteDatabaseResponse], error)
 	Lookup(context.Context, *connect.Request[v1.GeoLookupRequest]) (*connect.Response[v1.GeoLookupResponse], error)
+	// Periodic download from MaxMind with a license key: the leader checks
+	// every interval and stores new releases like uploads.
+	GetUpdateSettings(context.Context, *connect.Request[v1.GetGeoUpdateSettingsRequest]) (*connect.Response[v1.GetGeoUpdateSettingsResponse], error)
+	SetUpdateSettings(context.Context, *connect.Request[v1.SetGeoUpdateSettingsRequest]) (*connect.Response[v1.SetGeoUpdateSettingsResponse], error)
+	// Checks every configured edition now (also while disabled).
+	RunUpdate(context.Context, *connect.Request[v1.RunGeoUpdateRequest]) (*connect.Response[v1.RunGeoUpdateResponse], error)
 }
 
 // NewGeoServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -450,6 +506,24 @@ func NewGeoServiceHandler(svc GeoServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(geoServiceMethods.ByName("Lookup")),
 		connect.WithHandlerOptions(opts...),
 	)
+	geoServiceGetUpdateSettingsHandler := connect.NewUnaryHandler(
+		GeoServiceGetUpdateSettingsProcedure,
+		svc.GetUpdateSettings,
+		connect.WithSchema(geoServiceMethods.ByName("GetUpdateSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	geoServiceSetUpdateSettingsHandler := connect.NewUnaryHandler(
+		GeoServiceSetUpdateSettingsProcedure,
+		svc.SetUpdateSettings,
+		connect.WithSchema(geoServiceMethods.ByName("SetUpdateSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	geoServiceRunUpdateHandler := connect.NewUnaryHandler(
+		GeoServiceRunUpdateProcedure,
+		svc.RunUpdate,
+		connect.WithSchema(geoServiceMethods.ByName("RunUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/openpicket.api.v1.GeoService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case GeoServiceListDatabasesProcedure:
@@ -458,6 +532,12 @@ func NewGeoServiceHandler(svc GeoServiceHandler, opts ...connect.HandlerOption) 
 			geoServiceDeleteDatabaseHandler.ServeHTTP(w, r)
 		case GeoServiceLookupProcedure:
 			geoServiceLookupHandler.ServeHTTP(w, r)
+		case GeoServiceGetUpdateSettingsProcedure:
+			geoServiceGetUpdateSettingsHandler.ServeHTTP(w, r)
+		case GeoServiceSetUpdateSettingsProcedure:
+			geoServiceSetUpdateSettingsHandler.ServeHTTP(w, r)
+		case GeoServiceRunUpdateProcedure:
+			geoServiceRunUpdateHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -477,4 +557,16 @@ func (UnimplementedGeoServiceHandler) DeleteDatabase(context.Context, *connect.R
 
 func (UnimplementedGeoServiceHandler) Lookup(context.Context, *connect.Request[v1.GeoLookupRequest]) (*connect.Response[v1.GeoLookupResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.GeoService.Lookup is not implemented"))
+}
+
+func (UnimplementedGeoServiceHandler) GetUpdateSettings(context.Context, *connect.Request[v1.GetGeoUpdateSettingsRequest]) (*connect.Response[v1.GetGeoUpdateSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.GeoService.GetUpdateSettings is not implemented"))
+}
+
+func (UnimplementedGeoServiceHandler) SetUpdateSettings(context.Context, *connect.Request[v1.SetGeoUpdateSettingsRequest]) (*connect.Response[v1.SetGeoUpdateSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.GeoService.SetUpdateSettings is not implemented"))
+}
+
+func (UnimplementedGeoServiceHandler) RunUpdate(context.Context, *connect.Request[v1.RunGeoUpdateRequest]) (*connect.Response[v1.RunGeoUpdateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("openpicket.api.v1.GeoService.RunUpdate is not implemented"))
 }

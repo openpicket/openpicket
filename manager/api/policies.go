@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -234,6 +236,77 @@ func (g *geoService) Lookup(_ context.Context, req *connect.Request[apiv1.GeoLoo
 		res.Results = append(res.Results, r)
 	}
 	return connect.NewResponse(res), nil
+}
+
+func (g *geoService) updater() (*geo.Updater, error) {
+	if g.s.cfg.GeoUpdater == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GeoIP updates are not available"))
+	}
+	return g.s.cfg.GeoUpdater, nil
+}
+
+func (g *geoService) GetUpdateSettings(ctx context.Context, _ *connect.Request[apiv1.GetGeoUpdateSettingsRequest]) (*connect.Response[apiv1.GetGeoUpdateSettingsResponse], error) {
+	u, err := g.updater()
+	if err != nil {
+		return nil, err
+	}
+	set, st, err := u.Settings(ctx)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	return connect.NewResponse(&apiv1.GetGeoUpdateSettingsResponse{Settings: toGeoUpdateSettingsMsg(set), Status: toGeoUpdateStatusMsg(st),
+		CountryEditions: geo.CountryEditions, AsnEditions: geo.ASNEditions}), nil
+}
+
+func (g *geoService) SetUpdateSettings(ctx context.Context, req *connect.Request[apiv1.SetGeoUpdateSettingsRequest]) (*connect.Response[apiv1.SetGeoUpdateSettingsResponse], error) {
+	u, err := g.updater()
+	if err != nil {
+		return nil, err
+	}
+	m := req.Msg.GetSettings()
+	in := geo.UpdateSettings{Enabled: m.GetEnabled(), CountryEdition: m.GetCountryEdition(), ASNEdition: m.GetAsnEdition(), IntervalHours: int(m.GetIntervalHours())}
+	if err := u.SetSettings(ctx, in, req.Msg.GetLicenseKey(), by(ctx)); err != nil {
+		return nil, toConnectError(err)
+	}
+	set, st, err := u.Settings(ctx)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	return connect.NewResponse(&apiv1.SetGeoUpdateSettingsResponse{Settings: toGeoUpdateSettingsMsg(set), Status: toGeoUpdateStatusMsg(st)}), nil
+}
+
+func (g *geoService) RunUpdate(ctx context.Context, _ *connect.Request[apiv1.RunGeoUpdateRequest]) (*connect.Response[apiv1.RunGeoUpdateResponse], error) {
+	u, err := g.updater()
+	if err != nil {
+		return nil, err
+	}
+	// Failed editions are in the status; other errors fail the call.
+	st, err := u.Update(ctx)
+	if st == nil {
+		return nil, toConnectError(err)
+	}
+	return connect.NewResponse(&apiv1.RunGeoUpdateResponse{Status: toGeoUpdateStatusMsg(st)}), nil
+}
+
+func toGeoUpdateSettingsMsg(s *geo.UpdateSettings) *apiv1.GeoUpdateSettings {
+	return &apiv1.GeoUpdateSettings{Enabled: s.Enabled, LicenseKeySet: s.LicenseKeySet, CountryEdition: s.CountryEdition, AsnEdition: s.ASNEdition,
+		IntervalHours: uint32(s.IntervalHours), UpdatedAt: timestamppb.New(s.UpdatedAt), UpdatedBy: s.UpdatedBy}
+}
+
+func toGeoUpdateStatusMsg(s *geo.UpdateStatus) *apiv1.GeoUpdateStatus {
+	ts := func(t time.Time) *timestamppb.Timestamp {
+		if t.IsZero() {
+			return nil
+		}
+		return timestamppb.New(t)
+	}
+	out := &apiv1.GeoUpdateStatus{LastCheckAt: ts(s.LastCheckAt), LastDownloadAt: ts(s.LastDownloadAt), LastError: s.LastError, ErrorAt: ts(s.ErrorAt),
+		NextCheckAt: ts(s.NextCheckAt)}
+	for _, ed := range slices.Sorted(maps.Keys(s.Editions)) {
+		e := s.Editions[ed]
+		out.Editions = append(out.Editions, &apiv1.GeoEditionState{Edition: ed, File: e.File, Sha256: e.SHA256, CheckedAt: ts(e.CheckedAt)})
+	}
+	return out
 }
 
 // uploadGeo accepts a MaxMind database (multipart field "file", or the raw

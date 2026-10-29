@@ -50,7 +50,10 @@ type Config struct {
 	// client address (login rate limit, audit).
 	TrustProxyHeaders bool
 	Geo               *geo.Store
-	Policies          *policy.Service
+	// GeoUpdater downloads the MaxMind databases; nil disables the
+	// update settings.
+	GeoUpdater *geo.Updater
+	Policies   *policy.Service
 	// Hub is the CrowdSec content store; HubRemote the CrowdSec hub.
 	Hub       *hub.Store
 	HubRemote *hub.Hub
@@ -180,9 +183,12 @@ var procedures = map[string]spec{
 	apiv1connect.PolicyServicePutAddressListProcedure:    op,
 	apiv1connect.PolicyServiceDeleteAddressListProcedure: op,
 
-	apiv1connect.GeoServiceListDatabasesProcedure:  read,
-	apiv1connect.GeoServiceLookupProcedure:         read,
-	apiv1connect.GeoServiceDeleteDatabaseProcedure: adm,
+	apiv1connect.GeoServiceListDatabasesProcedure:     read,
+	apiv1connect.GeoServiceLookupProcedure:            read,
+	apiv1connect.GeoServiceDeleteDatabaseProcedure:    adm,
+	apiv1connect.GeoServiceGetUpdateSettingsProcedure: read,
+	apiv1connect.GeoServiceSetUpdateSettingsProcedure: adm,
+	apiv1connect.GeoServiceRunUpdateProcedure:         adm,
 	geoUploadPath: adm,
 	hubUploadPath: adm,
 
@@ -436,7 +442,7 @@ func toConnectError(err error) error {
 		return err
 	case errors.Is(err, policy.ErrNotFound), errors.Is(err, pgx.ErrNoRows), errors.Is(err, errNotFound), errors.Is(err, hub.ErrNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, policy.ErrInvalid), errors.Is(err, errInvalid), errors.Is(err, hub.ErrInvalid):
+	case errors.Is(err, policy.ErrInvalid), errors.Is(err, errInvalid), errors.Is(err, hub.ErrInvalid), geo.IsInvalid(err):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, errExists):
 		return connect.NewError(connect.CodeAlreadyExists, err)

@@ -1,21 +1,41 @@
-import { useState } from "react";
-import { ActionIcon, Alert, Badge, Button, Group, Paper, Stack, Table, Text, Textarea, Title, Tooltip } from "@mantine/core";
+import { type ReactNode, useState } from "react";
+import {
+  ActionIcon,
+  Alert,
+  Badge,
+  Button,
+  Group,
+  NumberInput,
+  Paper,
+  PasswordInput,
+  Select,
+  SimpleGrid,
+  Stack,
+  Switch,
+  Table,
+  Text,
+  Textarea,
+  Title,
+  Tooltip,
+} from "@mantine/core";
 import { Dropzone } from "@mantine/dropzone";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconDatabase, IconSearch, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
+import { IconAlertTriangle, IconCloudDownload, IconDatabase, IconDeviceFloppy, IconSearch, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, uploadGeoDatabase } from "../api/client";
 import { errorMessage } from "../api/errors";
 import { useAccess } from "../api/hooks";
 import { queryClient } from "../api/queryClient";
-import { CopyIcon, EmptyState, ErrorAlert, LoadingBlock, PageHeader, TimeAgo } from "../components/common";
+import { CopyIcon, EmptyState, ErrorAlert, KeyValue, LoadingBlock, PageHeader, TimeAgo, TimeLeft } from "../components/common";
 import { Country } from "../components/geo";
+import type { GetGeoUpdateSettingsResponse, GeoUpdateStatus } from "../gen/openpicket/api/v1/policies_pb";
 import { formatBytes, formatDateTime, tsDate } from "../lib/format";
 import { t } from "../lib/i18n";
 
 function invalidateGeo() {
   void queryClient.invalidateQueries({ queryKey: ["geoDatabases"] });
+  void queryClient.invalidateQueries({ queryKey: ["geoUpdate"] });
   // Bundles and previews depend on the geo data.
   void queryClient.invalidateQueries({ queryKey: ["bundlePreview"] });
   void queryClient.invalidateQueries({ queryKey: ["nodes"] });
@@ -59,6 +79,184 @@ function Upload() {
         </div>
       </Group>
     </Dropzone>
+  );
+}
+
+function UpdateStatus(props: { status?: GeoUpdateStatus; enabled: boolean }) {
+  const st = props.status;
+  return (
+    <Stack gap="sm">
+      {st?.lastError && (
+        <Alert color="red" icon={<IconAlertTriangle size={18} />} title={t("The last check failed")}>
+          <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+            {st.lastError}
+          </Text>
+        </Alert>
+      )}
+      <KeyValue
+        labelWidth={130}
+        rows={[
+          [t("Last check"), <TimeAgo ts={st?.lastCheckAt} />],
+          [t("Last download"), <TimeAgo ts={st?.lastDownloadAt} />],
+          [
+            t("Next check"),
+            !props.enabled ? (
+              <Text span size="sm" c="dimmed">
+                {t("disabled")}
+              </Text>
+            ) : st?.nextCheckAt ? (
+              <TimeLeft ts={st.nextCheckAt} />
+            ) : (
+              <Text span size="sm">
+                {t("within a minute")}
+              </Text>
+            ),
+          ],
+          ...(st?.editions ?? []).map((e): [string, ReactNode] => [
+            e.edition,
+            <Tooltip label={`SHA-256 ${e.sha256}`} withArrow openDelay={300}>
+              <Text span size="sm" ff="monospace">
+                {e.file || e.sha256.slice(0, 12)}
+              </Text>
+            </Tooltip>,
+          ]),
+        ]}
+      />
+    </Stack>
+  );
+}
+
+function AutoUpdateForm(props: { data: GetGeoUpdateSettingsResponse; canAdmin: boolean }) {
+  const cur = props.data.settings;
+  const [enabled, setEnabled] = useState(cur?.enabled ?? false);
+  const [licenseKey, setLicenseKey] = useState("");
+  const [country, setCountry] = useState(cur?.countryEdition ?? "");
+  const [asn, setAsn] = useState(cur?.asnEdition ?? "");
+  const [hours, setHours] = useState<number>(cur?.intervalHours || 24);
+  const keySet = cur?.licenseKeySet ?? false;
+  const ro = !props.canAdmin;
+  const none = { value: "", label: t("None") };
+  const save = useMutation({
+    mutationFn: () =>
+      api.geo.setUpdateSettings({
+        settings: { enabled, countryEdition: country, asnEdition: asn, intervalHours: hours },
+        licenseKey,
+      }),
+    meta: { errorTitle: t("Could not save the settings") },
+    onSuccess: () => {
+      setLicenseKey("");
+      void queryClient.invalidateQueries({ queryKey: ["geoUpdate"] });
+      notifications.show({ color: "teal", message: t("Saved the download settings") });
+    },
+  });
+  const run = useMutation({
+    mutationFn: () => api.geo.runUpdate({}),
+    meta: { errorTitle: t("Download failed") },
+    onSuccess: (res) => {
+      invalidateGeo();
+      if (res.status?.lastError) {
+        notifications.show({ color: "red", title: t("Download failed"), message: res.status.lastError, autoClose: 8000 });
+      } else {
+        notifications.show({ color: "teal", message: t("The databases are up to date") });
+      }
+    },
+  });
+  const dirty =
+    licenseKey !== "" || enabled !== cur?.enabled || country !== cur?.countryEdition || asn !== cur?.asnEdition || hours !== cur?.intervalHours;
+  return (
+    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
+      <Stack gap="sm">
+        <Switch
+          label={t("Download periodically")}
+          description={t("Checks MaxMind every interval and stores a new release like an upload, replacing the database of that kind.")}
+          checked={enabled}
+          onChange={(e) => setEnabled(e.currentTarget.checked)}
+          disabled={ro}
+        />
+        <PasswordInput
+          label={t("License key")}
+          description={t("A MaxMind license key (GeoLite2 keys are free: maxmind.com, Manage License Keys).")}
+          placeholder={keySet ? t("Stored; leave empty to keep it.") : undefined}
+          value={licenseKey}
+          onChange={(e) => setLicenseKey(e.currentTarget.value)}
+          required={enabled && !keySet}
+          disabled={ro}
+          autoComplete="off"
+        />
+        <Group grow align="flex-start">
+          <Select
+            label={t("Country database")}
+            data={[none, ...props.data.countryEditions.map((e) => ({ value: e, label: e }))]}
+            value={country}
+            onChange={(v) => setCountry(v ?? "")}
+            allowDeselect={false}
+            disabled={ro}
+          />
+          <Select
+            label={t("ASN database")}
+            data={[none, ...props.data.asnEditions.map((e) => ({ value: e, label: e }))]}
+            value={asn}
+            onChange={(v) => setAsn(v ?? "")}
+            allowDeselect={false}
+            disabled={ro}
+          />
+        </Group>
+        <NumberInput
+          label={t("Check every (hours)")}
+          description={t("GeoLite2 releases come out twice a week; checks that find no new release download nothing.")}
+          min={1}
+          max={720}
+          value={hours}
+          onChange={(v) => setHours(Number(v) || 1)}
+          disabled={ro}
+          maw={480}
+        />
+        {props.canAdmin && (
+          <Group mt="xs">
+            <Button leftSection={<IconDeviceFloppy size={16} />} onClick={() => save.mutate()} loading={save.isPending} disabled={!dirty}>
+              {t("Save")}
+            </Button>
+            <Tooltip label={t("Save a license key first")} disabled={keySet} withArrow>
+              <Button
+                variant="default"
+                leftSection={<IconCloudDownload size={16} />}
+                onClick={() => run.mutate()}
+                loading={run.isPending}
+                disabled={!keySet || dirty}
+              >
+                {t("Download now")}
+              </Button>
+            </Tooltip>
+          </Group>
+        )}
+      </Stack>
+      <UpdateStatus status={props.data.status} enabled={(cur?.enabled ?? false) && keySet} />
+    </SimpleGrid>
+  );
+}
+
+function AutoUpdate(props: { canAdmin: boolean }) {
+  const q = useQuery({ queryKey: ["geoUpdate"], queryFn: () => api.geo.getUpdateSettings({}) });
+  const s = q.data?.settings;
+  return (
+    <Paper withBorder p="md" radius="md">
+      <Group justify="space-between" mb="sm">
+        <Title order={5}>{t("Automatic download")}</Title>
+        {s && (
+          <Badge variant="light" color={s.enabled && s.licenseKeySet ? "teal" : "gray"}>
+            {s.enabled && s.licenseKeySet ? t("Enabled") : t("Disabled")}
+          </Badge>
+        )}
+      </Group>
+      {q.isPending ? (
+        <LoadingBlock h={120} />
+      ) : q.isError ? (
+        <ErrorAlert error={q.error} onRetry={() => q.refetch()} />
+      ) : (
+        // Remount after a save so the form shows the stored settings.
+        <AutoUpdateForm key={`${s?.updatedAt?.seconds}`} data={q.data} canAdmin={props.canAdmin} />
+      )}
+    </Paper>
   );
 }
 
@@ -141,7 +339,7 @@ export default function GeoIpPage() {
     <>
       <PageHeader
         title={t("GeoIP")}
-        description={t("MaxMind databases uploaded here are the only GeoIP source: log enrichment, country and AS port policies, and the UI use them.")}
+        description={t("MaxMind databases uploaded or downloaded here are the only GeoIP source: log enrichment, country and AS port policies, and the UI use them.")}
       />
       <Stack>
         {dbs.isPending ? (
@@ -227,6 +425,7 @@ export default function GeoIpPage() {
             )}
           </>
         )}
+        <AutoUpdate canAdmin={access.canAdmin} />
         {access.canAdmin && <Upload />}
         <Lookup />
       </Stack>

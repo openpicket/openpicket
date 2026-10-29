@@ -207,6 +207,7 @@ type Manager struct {
 	relay      *relay.Relay
 	dist       *relay.Distributor
 	geo        *geo.Store
+	geoUpdater *geo.Updater
 	hub        *hub.Store
 	hubRemote  *hub.Hub
 	programs   *logprog.Store
@@ -285,6 +286,7 @@ func New(opts Options) (*Manager, error) {
 		return nil, err
 	}
 	m.geo = geo.New(opts.DB, opts.Logger)
+	m.geoUpdater = geo.NewUpdater(m.geo)
 	m.policies = policy.New(opts.DB, m.geo, opts.Logger)
 	// Compilation results (last good versions, errors) are written by the
 	// API replicas; a gateway compiles for its streams only.
@@ -583,6 +585,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		if m.misp != nil {
 			el.Add("misp", func(ctx context.Context, l *db.Leadership) { m.misp.Run(ctx, l) })
 		}
+		el.Add("geo-update", func(ctx context.Context, _ *db.Leadership) { m.geoUpdater.Run(ctx) })
 		el.Add("notify", func(ctx context.Context, l *db.Leadership) { m.notify.Run(ctx, l) })
 		el.Add("hub", func(ctx context.Context, l *db.Leadership) {
 			go m.hubRemote.RunRefresh(ctx)

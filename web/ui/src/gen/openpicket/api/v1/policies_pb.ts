@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file openpicket/api/v1/policies.proto.
  */
 export const file_openpicket_api_v1_policies: GenFile = /*@__PURE__*/
-  fileDesc("CiBvcGVucGlja2V0L2FwaS92MS9wb2xpY2llcy5wcm90bxIRb3BlbnBpY2tldC5hcGkudjEiJQoJUG9ydFJhbmdlEgwKBGZyb20YASABKA0SCgoCdG8YAiABKA0iTQoMUG9saWN5U291cmNlEhEKCWNvdW50cmllcxgBIAMoCRIMCgRhc25zGAIgAygNEg0KBWxpc3RzGAMgAygJEg0KBWNpZHJzGAQgAygJIk0KClBvbGljeVJ1bGUSLwoGc291cmNlGAEgASgLMh8ub3BlbnBpY2tldC5hcGkudjEuUG9saWN5U291cmNlEg4KBmFjdGlvbhgCIAEoCSIdCgtMYWJlbFZhbHVlcxIOCgZ2YWx1ZXMYASADKAkipwEKC1BvbGljeVNjb3BlEg0KBW5vZGVzGAEgAygJEjoKBmxhYmVscxgCIAMoCzIqLm9wZW5waWNrZXQuYXBpLnYxLlBvbGljeVNjb3BlLkxhYmVsc0VudHJ5Gk0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRItCgV2YWx1ZRgCIAEoCzIeLm9wZW5waWNrZXQuYXBpLnYxLkxhYmVsVmFsdWVzOgI4ASLBAwoGUG9saWN5EgoKAmlkGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEg8KB2VuYWJsZWQYAyABKAgSLQoFc2NvcGUYBCABKAsyHi5vcGVucGlja2V0LmFwaS52MS5Qb2xpY3lTY29wZRIMCgRtb2RlGAUgASgJEg0KBXByb3RvGAYgASgJEisKBXBvcnRzGAcgAygLMhwub3BlbnBpY2tldC5hcGkudjEuUG9ydFJhbmdlEiwKBXJ1bGVzGAggAygLMh0ub3BlbnBpY2tldC5hcGkudjEuUG9saWN5UnVsZRIWCg5kZWZhdWx0X2FjdGlvbhgJIAEoCRIRCglsb2dfZHJvcHMYCiABKAgSEAoIcG9zaXRpb24YCyABKAUSLgoKdXBkYXRlZF9hdBgMIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKdXBkYXRlZF9ieRgNIAEoCRIVCg1jb21waWxlX2Vycm9yGA4gASgJEjcKE2NvbXBpbGVfZXJyb3Jfc2luY2UYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg0KBXN0YWxlGBAgASgIIhUKE0xpc3RQb2xpY2llc1JlcXVlc3QiVAoUTGlzdFBvbGljaWVzUmVzcG9uc2USKwoIcG9saWNpZXMYASADKAsyGS5vcGVucGlja2V0LmFwaS52MS5Qb2xpY3kSDwoHdmVyc2lvbhgCIAEoBCJhChBQdXRQb2xpY3lSZXF1ZXN0EikKBnBvbGljeRgBIAEoCzIZLm9wZW5waWNrZXQuYXBpLnYxLlBvbGljeRIVCghwb3NpdGlvbhgCIAEoBUgAiAEBQgsKCV9wb3NpdGlvbiIkChFQdXRQb2xpY3lSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgEIiEKE0RlbGV0ZVBvbGljeVJlcXVlc3QSCgoCaWQYASABKAkiJwoURGVsZXRlUG9saWN5UmVzcG9uc2USDwoHdmVyc2lvbhgBIAEoBCIlChZSZW9yZGVyUG9saWNpZXNSZXF1ZXN0EgsKA2lkcxgBIAMoCSIqChdSZW9yZGVyUG9saWNpZXNSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgEIqIBCgtBZGRyZXNzTGlzdBIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEg0KBWNpZHJzGAMgAygJEgwKBGFzbnMYBCADKA0SLgoKdXBkYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKdXBkYXRlZF9ieRgGIAEoCRIPCgd1c2VkX2J5GAcgAygJIhkKF0xpc3RBZGRyZXNzTGlzdHNSZXF1ZXN0IkkKGExpc3RBZGRyZXNzTGlzdHNSZXNwb25zZRItCgVsaXN0cxgBIAMoCzIeLm9wZW5waWNrZXQuYXBpLnYxLkFkZHJlc3NMaXN0IkUKFVB1dEFkZHJlc3NMaXN0UmVxdWVzdBIsCgRsaXN0GAEgASgLMh4ub3BlbnBpY2tldC5hcGkudjEuQWRkcmVzc0xpc3QiKQoWUHV0QWRkcmVzc0xpc3RSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgEIigKGERlbGV0ZUFkZHJlc3NMaXN0UmVxdWVzdBIMCgRuYW1lGAEgASgJIiwKGURlbGV0ZUFkZHJlc3NMaXN0UmVzcG9uc2USDwoHdmVyc2lvbhgBIAEoBCI4ChRQb2xpY3lIaXN0b3J5UmVxdWVzdBIRCglwb2xpY3lfaWQYASABKAkSDQoFbGltaXQYAiABKAUimQEKDFBvbGljeUNoYW5nZRIRCglwb2xpY3lfaWQYASABKAkSDwoHdmVyc2lvbhgCIAEoBBIOCgZhY3Rpb24YAyABKAkSEQoJc3BlY19qc29uGAQgASgJEi4KCmNoYW5nZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmNoYW5nZWRfYnkYBiABKAkiSQoVUG9saWN5SGlzdG9yeVJlc3BvbnNlEjAKB2NoYW5nZXMYASADKAsyHy5vcGVucGlja2V0LmFwaS52MS5Qb2xpY3lDaGFuZ2UiJwoUUHJldmlld0J1bmRsZVJlcXVlc3QSDwoHbm9kZV9pZBgBIAEoCSJBCg1Ta2lwcGVkUG9saWN5EhEKCXBvbGljeV9pZBgBIAEoCRIOCgZyZWFzb24YAiABKAkSDQoFc3RhbGUYAyABKAgilAEKFVByZXZpZXdCdW5kbGVSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgEEhAKCHBvbGljaWVzGAIgAygJEjEKB3NraXBwZWQYAyADKAsyIC5vcGVucGlja2V0LmFwaS52MS5Ta2lwcGVkUG9saWN5EhAKCGVsZW1lbnRzGAQgASgNEhMKC2J1bmRsZV9qc29uGAUgASgJIsYBCgtHZW9EYXRhYmFzZRIMCgRraW5kGAEgASgJEhUKDWRhdGFiYXNlX3R5cGUYAiABKAkSLgoKYnVpbGRfdGltZRgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDgoGc2hhMjU2GAQgASgJEgwKBHNpemUYBSABKAMSLwoLdXBsb2FkZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhMKC3VwbG9hZGVkX2J5GAcgASgJIhYKFExpc3REYXRhYmFzZXNSZXF1ZXN0IloKFUxpc3REYXRhYmFzZXNSZXNwb25zZRIxCglkYXRhYmFzZXMYASADKAsyHi5vcGVucGlja2V0LmFwaS52MS5HZW9EYXRhYmFzZRIOCgZsb2FkZWQYAiABKAgiJQoVRGVsZXRlRGF0YWJhc2VSZXF1ZXN0EgwKBGtpbmQYASABKAkiGAoWRGVsZXRlRGF0YWJhc2VSZXNwb25zZSIfChBHZW9Mb29rdXBSZXF1ZXN0EgsKA2lwcxgBIAMoCSJFCglHZW9SZXN1bHQSCgoCaXAYASABKAkSDwoHY291bnRyeRgCIAEoCRILCgNhc24YAyABKA0SDgoGYXNfb3JnGAQgASgJIkIKEUdlb0xvb2t1cFJlc3BvbnNlEi0KB3Jlc3VsdHMYASADKAsyHC5vcGVucGlja2V0LmFwaS52MS5HZW9SZXN1bHQynwcKDVBvbGljeVNlcnZpY2USXwoMTGlzdFBvbGljaWVzEiYub3BlbnBpY2tldC5hcGkudjEuTGlzdFBvbGljaWVzUmVxdWVzdBonLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RQb2xpY2llc1Jlc3BvbnNlElYKCVB1dFBvbGljeRIjLm9wZW5waWNrZXQuYXBpLnYxLlB1dFBvbGljeVJlcXVlc3QaJC5vcGVucGlja2V0LmFwaS52MS5QdXRQb2xpY3lSZXNwb25zZRJfCgxEZWxldGVQb2xpY3kSJi5vcGVucGlja2V0LmFwaS52MS5EZWxldGVQb2xpY3lSZXF1ZXN0Gicub3BlbnBpY2tldC5hcGkudjEuRGVsZXRlUG9saWN5UmVzcG9uc2USaAoPUmVvcmRlclBvbGljaWVzEikub3BlbnBpY2tldC5hcGkudjEuUmVvcmRlclBvbGljaWVzUmVxdWVzdBoqLm9wZW5waWNrZXQuYXBpLnYxLlJlb3JkZXJQb2xpY2llc1Jlc3BvbnNlEmsKEExpc3RBZGRyZXNzTGlzdHMSKi5vcGVucGlja2V0LmFwaS52MS5MaXN0QWRkcmVzc0xpc3RzUmVxdWVzdBorLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RBZGRyZXNzTGlzdHNSZXNwb25zZRJlCg5QdXRBZGRyZXNzTGlzdBIoLm9wZW5waWNrZXQuYXBpLnYxLlB1dEFkZHJlc3NMaXN0UmVxdWVzdBopLm9wZW5waWNrZXQuYXBpLnYxLlB1dEFkZHJlc3NMaXN0UmVzcG9uc2USbgoRRGVsZXRlQWRkcmVzc0xpc3QSKy5vcGVucGlja2V0LmFwaS52MS5EZWxldGVBZGRyZXNzTGlzdFJlcXVlc3QaLC5vcGVucGlja2V0LmFwaS52MS5EZWxldGVBZGRyZXNzTGlzdFJlc3BvbnNlEmIKDVBvbGljeUhpc3RvcnkSJy5vcGVucGlja2V0LmFwaS52MS5Qb2xpY3lIaXN0b3J5UmVxdWVzdBooLm9wZW5waWNrZXQuYXBpLnYxLlBvbGljeUhpc3RvcnlSZXNwb25zZRJiCg1QcmV2aWV3QnVuZGxlEicub3BlbnBpY2tldC5hcGkudjEuUHJldmlld0J1bmRsZVJlcXVlc3QaKC5vcGVucGlja2V0LmFwaS52MS5QcmV2aWV3QnVuZGxlUmVzcG9uc2UyrAIKCkdlb1NlcnZpY2USYgoNTGlzdERhdGFiYXNlcxInLm9wZW5waWNrZXQuYXBpLnYxLkxpc3REYXRhYmFzZXNSZXF1ZXN0Gigub3BlbnBpY2tldC5hcGkudjEuTGlzdERhdGFiYXNlc1Jlc3BvbnNlEmUKDkRlbGV0ZURhdGFiYXNlEigub3BlbnBpY2tldC5hcGkudjEuRGVsZXRlRGF0YWJhc2VSZXF1ZXN0Gikub3BlbnBpY2tldC5hcGkudjEuRGVsZXRlRGF0YWJhc2VSZXNwb25zZRJTCgZMb29rdXASIy5vcGVucGlja2V0LmFwaS52MS5HZW9Mb29rdXBSZXF1ZXN0GiQub3BlbnBpY2tldC5hcGkudjEuR2VvTG9va3VwUmVzcG9uc2VCPlo8Z2l0aHViLmNvbS9vcGVucGlja2V0L29wZW5waWNrZXQvZ2VuL29wZW5waWNrZXQvYXBpL3YxO2FwaXYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("CiBvcGVucGlja2V0L2FwaS92MS9wb2xpY2llcy5wcm90bxIRb3BlbnBpY2tldC5hcGkudjEiJQoJUG9ydFJhbmdlEgwKBGZyb20YASABKA0SCgoCdG8YAiABKA0iTQoMUG9saWN5U291cmNlEhEKCWNvdW50cmllcxgBIAMoCRIMCgRhc25zGAIgAygNEg0KBWxpc3RzGAMgAygJEg0KBWNpZHJzGAQgAygJIk0KClBvbGljeVJ1bGUSLwoGc291cmNlGAEgASgLMh8ub3BlbnBpY2tldC5hcGkudjEuUG9saWN5U291cmNlEg4KBmFjdGlvbhgCIAEoCSIdCgtMYWJlbFZhbHVlcxIOCgZ2YWx1ZXMYASADKAkipwEKC1BvbGljeVNjb3BlEg0KBW5vZGVzGAEgAygJEjoKBmxhYmVscxgCIAMoCzIqLm9wZW5waWNrZXQuYXBpLnYxLlBvbGljeVNjb3BlLkxhYmVsc0VudHJ5Gk0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRItCgV2YWx1ZRgCIAEoCzIeLm9wZW5waWNrZXQuYXBpLnYxLkxhYmVsVmFsdWVzOgI4ASLBAwoGUG9saWN5EgoKAmlkGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEg8KB2VuYWJsZWQYAyABKAgSLQoFc2NvcGUYBCABKAsyHi5vcGVucGlja2V0LmFwaS52MS5Qb2xpY3lTY29wZRIMCgRtb2RlGAUgASgJEg0KBXByb3RvGAYgASgJEisKBXBvcnRzGAcgAygLMhwub3BlbnBpY2tldC5hcGkudjEuUG9ydFJhbmdlEiwKBXJ1bGVzGAggAygLMh0ub3BlbnBpY2tldC5hcGkudjEuUG9saWN5UnVsZRIWCg5kZWZhdWx0X2FjdGlvbhgJIAEoCRIRCglsb2dfZHJvcHMYCiABKAgSEAoIcG9zaXRpb24YCyABKAUSLgoKdXBkYXRlZF9hdBgMIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKdXBkYXRlZF9ieRgNIAEoCRIVCg1jb21waWxlX2Vycm9yGA4gASgJEjcKE2NvbXBpbGVfZXJyb3Jfc2luY2UYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg0KBXN0YWxlGBAgASgIIhUKE0xpc3RQb2xpY2llc1JlcXVlc3QiVAoUTGlzdFBvbGljaWVzUmVzcG9uc2USKwoIcG9saWNpZXMYASADKAsyGS5vcGVucGlja2V0LmFwaS52MS5Qb2xpY3kSDwoHdmVyc2lvbhgCIAEoBCJhChBQdXRQb2xpY3lSZXF1ZXN0EikKBnBvbGljeRgBIAEoCzIZLm9wZW5waWNrZXQuYXBpLnYxLlBvbGljeRIVCghwb3NpdGlvbhgCIAEoBUgAiAEBQgsKCV9wb3NpdGlvbiIkChFQdXRQb2xpY3lSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgEIiEKE0RlbGV0ZVBvbGljeVJlcXVlc3QSCgoCaWQYASABKAkiJwoURGVsZXRlUG9saWN5UmVzcG9uc2USDwoHdmVyc2lvbhgBIAEoBCIlChZSZW9yZGVyUG9saWNpZXNSZXF1ZXN0EgsKA2lkcxgBIAMoCSIqChdSZW9yZGVyUG9saWNpZXNSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgEIqIBCgtBZGRyZXNzTGlzdBIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEg0KBWNpZHJzGAMgAygJEgwKBGFzbnMYBCADKA0SLgoKdXBkYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKdXBkYXRlZF9ieRgGIAEoCRIPCgd1c2VkX2J5GAcgAygJIhkKF0xpc3RBZGRyZXNzTGlzdHNSZXF1ZXN0IkkKGExpc3RBZGRyZXNzTGlzdHNSZXNwb25zZRItCgVsaXN0cxgBIAMoCzIeLm9wZW5waWNrZXQuYXBpLnYxLkFkZHJlc3NMaXN0IkUKFVB1dEFkZHJlc3NMaXN0UmVxdWVzdBIsCgRsaXN0GAEgASgLMh4ub3BlbnBpY2tldC5hcGkudjEuQWRkcmVzc0xpc3QiKQoWUHV0QWRkcmVzc0xpc3RSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgEIigKGERlbGV0ZUFkZHJlc3NMaXN0UmVxdWVzdBIMCgRuYW1lGAEgASgJIiwKGURlbGV0ZUFkZHJlc3NMaXN0UmVzcG9uc2USDwoHdmVyc2lvbhgBIAEoBCI4ChRQb2xpY3lIaXN0b3J5UmVxdWVzdBIRCglwb2xpY3lfaWQYASABKAkSDQoFbGltaXQYAiABKAUimQEKDFBvbGljeUNoYW5nZRIRCglwb2xpY3lfaWQYASABKAkSDwoHdmVyc2lvbhgCIAEoBBIOCgZhY3Rpb24YAyABKAkSEQoJc3BlY19qc29uGAQgASgJEi4KCmNoYW5nZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmNoYW5nZWRfYnkYBiABKAkiSQoVUG9saWN5SGlzdG9yeVJlc3BvbnNlEjAKB2NoYW5nZXMYASADKAsyHy5vcGVucGlja2V0LmFwaS52MS5Qb2xpY3lDaGFuZ2UiJwoUUHJldmlld0J1bmRsZVJlcXVlc3QSDwoHbm9kZV9pZBgBIAEoCSJBCg1Ta2lwcGVkUG9saWN5EhEKCXBvbGljeV9pZBgBIAEoCRIOCgZyZWFzb24YAiABKAkSDQoFc3RhbGUYAyABKAgilAEKFVByZXZpZXdCdW5kbGVSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgEEhAKCHBvbGljaWVzGAIgAygJEjEKB3NraXBwZWQYAyADKAsyIC5vcGVucGlja2V0LmFwaS52MS5Ta2lwcGVkUG9saWN5EhAKCGVsZW1lbnRzGAQgASgNEhMKC2J1bmRsZV9qc29uGAUgASgJIsYBCgtHZW9EYXRhYmFzZRIMCgRraW5kGAEgASgJEhUKDWRhdGFiYXNlX3R5cGUYAiABKAkSLgoKYnVpbGRfdGltZRgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDgoGc2hhMjU2GAQgASgJEgwKBHNpemUYBSABKAMSLwoLdXBsb2FkZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhMKC3VwbG9hZGVkX2J5GAcgASgJIhYKFExpc3REYXRhYmFzZXNSZXF1ZXN0IloKFUxpc3REYXRhYmFzZXNSZXNwb25zZRIxCglkYXRhYmFzZXMYASADKAsyHi5vcGVucGlja2V0LmFwaS52MS5HZW9EYXRhYmFzZRIOCgZsb2FkZWQYAiABKAgiJQoVRGVsZXRlRGF0YWJhc2VSZXF1ZXN0EgwKBGtpbmQYASABKAkiGAoWRGVsZXRlRGF0YWJhc2VSZXNwb25zZSIfChBHZW9Mb29rdXBSZXF1ZXN0EgsKA2lwcxgBIAMoCSJFCglHZW9SZXN1bHQSCgoCaXAYASABKAkSDwoHY291bnRyeRgCIAEoCRILCgNhc24YAyABKA0SDgoGYXNfb3JnGAQgASgJIkIKEUdlb0xvb2t1cFJlc3BvbnNlEi0KB3Jlc3VsdHMYASADKAsyHC5vcGVucGlja2V0LmFwaS52MS5HZW9SZXN1bHQixwEKEUdlb1VwZGF0ZVNldHRpbmdzEg8KB2VuYWJsZWQYASABKAgSFwoPbGljZW5zZV9rZXlfc2V0GAIgASgIEhcKD2NvdW50cnlfZWRpdGlvbhgDIAEoCRITCgthc25fZWRpdGlvbhgEIAEoCRIWCg5pbnRlcnZhbF9ob3VycxgFIAEoDRIuCgp1cGRhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBISCgp1cGRhdGVkX2J5GAcgASgJInAKD0dlb0VkaXRpb25TdGF0ZRIPCgdlZGl0aW9uGAEgASgJEgwKBGZpbGUYAiABKAkSDgoGc2hhMjU2GAMgASgJEi4KCmNoZWNrZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIqUCCg9HZW9VcGRhdGVTdGF0dXMSMQoNbGFzdF9jaGVja19hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNAoQbGFzdF9kb3dubG9hZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKbGFzdF9lcnJvchgDIAEoCRIsCghlcnJvcl9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNAoIZWRpdGlvbnMYBSADKAsyIi5vcGVucGlja2V0LmFwaS52MS5HZW9FZGl0aW9uU3RhdGUSMQoNbmV4dF9jaGVja19hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiHQobR2V0R2VvVXBkYXRlU2V0dGluZ3NSZXF1ZXN0IroBChxHZXRHZW9VcGRhdGVTZXR0aW5nc1Jlc3BvbnNlEjYKCHNldHRpbmdzGAEgASgLMiQub3BlbnBpY2tldC5hcGkudjEuR2VvVXBkYXRlU2V0dGluZ3MSMgoGc3RhdHVzGAIgASgLMiIub3BlbnBpY2tldC5hcGkudjEuR2VvVXBkYXRlU3RhdHVzEhgKEGNvdW50cnlfZWRpdGlvbnMYAyADKAkSFAoMYXNuX2VkaXRpb25zGAQgAygJImoKG1NldEdlb1VwZGF0ZVNldHRpbmdzUmVxdWVzdBI2CghzZXR0aW5ncxgBIAEoCzIkLm9wZW5waWNrZXQuYXBpLnYxLkdlb1VwZGF0ZVNldHRpbmdzEhMKC2xpY2Vuc2Vfa2V5GAIgASgJIooBChxTZXRHZW9VcGRhdGVTZXR0aW5nc1Jlc3BvbnNlEjYKCHNldHRpbmdzGAEgASgLMiQub3BlbnBpY2tldC5hcGkudjEuR2VvVXBkYXRlU2V0dGluZ3MSMgoGc3RhdHVzGAIgASgLMiIub3BlbnBpY2tldC5hcGkudjEuR2VvVXBkYXRlU3RhdHVzIhUKE1J1bkdlb1VwZGF0ZVJlcXVlc3QiSgoUUnVuR2VvVXBkYXRlUmVzcG9uc2USMgoGc3RhdHVzGAEgASgLMiIub3BlbnBpY2tldC5hcGkudjEuR2VvVXBkYXRlU3RhdHVzMp8HCg1Qb2xpY3lTZXJ2aWNlEl8KDExpc3RQb2xpY2llcxImLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RQb2xpY2llc1JlcXVlc3QaJy5vcGVucGlja2V0LmFwaS52MS5MaXN0UG9saWNpZXNSZXNwb25zZRJWCglQdXRQb2xpY3kSIy5vcGVucGlja2V0LmFwaS52MS5QdXRQb2xpY3lSZXF1ZXN0GiQub3BlbnBpY2tldC5hcGkudjEuUHV0UG9saWN5UmVzcG9uc2USXwoMRGVsZXRlUG9saWN5EiYub3BlbnBpY2tldC5hcGkudjEuRGVsZXRlUG9saWN5UmVxdWVzdBonLm9wZW5waWNrZXQuYXBpLnYxLkRlbGV0ZVBvbGljeVJlc3BvbnNlEmgKD1Jlb3JkZXJQb2xpY2llcxIpLm9wZW5waWNrZXQuYXBpLnYxLlJlb3JkZXJQb2xpY2llc1JlcXVlc3QaKi5vcGVucGlja2V0LmFwaS52MS5SZW9yZGVyUG9saWNpZXNSZXNwb25zZRJrChBMaXN0QWRkcmVzc0xpc3RzEioub3BlbnBpY2tldC5hcGkudjEuTGlzdEFkZHJlc3NMaXN0c1JlcXVlc3QaKy5vcGVucGlja2V0LmFwaS52MS5MaXN0QWRkcmVzc0xpc3RzUmVzcG9uc2USZQoOUHV0QWRkcmVzc0xpc3QSKC5vcGVucGlja2V0LmFwaS52MS5QdXRBZGRyZXNzTGlzdFJlcXVlc3QaKS5vcGVucGlja2V0LmFwaS52MS5QdXRBZGRyZXNzTGlzdFJlc3BvbnNlEm4KEURlbGV0ZUFkZHJlc3NMaXN0Eisub3BlbnBpY2tldC5hcGkudjEuRGVsZXRlQWRkcmVzc0xpc3RSZXF1ZXN0Giwub3BlbnBpY2tldC5hcGkudjEuRGVsZXRlQWRkcmVzc0xpc3RSZXNwb25zZRJiCg1Qb2xpY3lIaXN0b3J5Eicub3BlbnBpY2tldC5hcGkudjEuUG9saWN5SGlzdG9yeVJlcXVlc3QaKC5vcGVucGlja2V0LmFwaS52MS5Qb2xpY3lIaXN0b3J5UmVzcG9uc2USYgoNUHJldmlld0J1bmRsZRInLm9wZW5waWNrZXQuYXBpLnYxLlByZXZpZXdCdW5kbGVSZXF1ZXN0Gigub3BlbnBpY2tldC5hcGkudjEuUHJldmlld0J1bmRsZVJlc3BvbnNlMvYECgpHZW9TZXJ2aWNlEmIKDUxpc3REYXRhYmFzZXMSJy5vcGVucGlja2V0LmFwaS52MS5MaXN0RGF0YWJhc2VzUmVxdWVzdBooLm9wZW5waWNrZXQuYXBpLnYxLkxpc3REYXRhYmFzZXNSZXNwb25zZRJlCg5EZWxldGVEYXRhYmFzZRIoLm9wZW5waWNrZXQuYXBpLnYxLkRlbGV0ZURhdGFiYXNlUmVxdWVzdBopLm9wZW5waWNrZXQuYXBpLnYxLkRlbGV0ZURhdGFiYXNlUmVzcG9uc2USUwoGTG9va3VwEiMub3BlbnBpY2tldC5hcGkudjEuR2VvTG9va3VwUmVxdWVzdBokLm9wZW5waWNrZXQuYXBpLnYxLkdlb0xvb2t1cFJlc3BvbnNlEnQKEUdldFVwZGF0ZVNldHRpbmdzEi4ub3BlbnBpY2tldC5hcGkudjEuR2V0R2VvVXBkYXRlU2V0dGluZ3NSZXF1ZXN0Gi8ub3BlbnBpY2tldC5hcGkudjEuR2V0R2VvVXBkYXRlU2V0dGluZ3NSZXNwb25zZRJ0ChFTZXRVcGRhdGVTZXR0aW5ncxIuLm9wZW5waWNrZXQuYXBpLnYxLlNldEdlb1VwZGF0ZVNldHRpbmdzUmVxdWVzdBovLm9wZW5waWNrZXQuYXBpLnYxLlNldEdlb1VwZGF0ZVNldHRpbmdzUmVzcG9uc2USXAoJUnVuVXBkYXRlEiYub3BlbnBpY2tldC5hcGkudjEuUnVuR2VvVXBkYXRlUmVxdWVzdBonLm9wZW5waWNrZXQuYXBpLnYxLlJ1bkdlb1VwZGF0ZVJlc3BvbnNlQj5aPGdpdGh1Yi5jb20vb3BlbnBpY2tldC9vcGVucGlja2V0L2dlbi9vcGVucGlja2V0L2FwaS92MTthcGl2MWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message openpicket.api.v1.PortRange
@@ -885,6 +885,268 @@ export const GeoLookupResponseSchema: GenMessage<GeoLookupResponse> = /*@__PURE_
   messageDesc(file_openpicket_api_v1_policies, 34);
 
 /**
+ * @generated from message openpicket.api.v1.GeoUpdateSettings
+ */
+export type GeoUpdateSettings = Message<"openpicket.api.v1.GeoUpdateSettings"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * Output only: a license key is stored (it is never returned).
+   *
+   * @generated from field: bool license_key_set = 2;
+   */
+  licenseKeySet: boolean;
+
+  /**
+   * MaxMind edition ids (GetGeoUpdateSettingsResponse lists them); empty
+   * skips the kind.
+   *
+   * @generated from field: string country_edition = 3;
+   */
+  countryEdition: string;
+
+  /**
+   * @generated from field: string asn_edition = 4;
+   */
+  asnEdition: string;
+
+  /**
+   * 1 to 720.
+   *
+   * @generated from field: uint32 interval_hours = 5;
+   */
+  intervalHours: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 6;
+   */
+  updatedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: string updated_by = 7;
+   */
+  updatedBy: string;
+};
+
+/**
+ * Describes the message openpicket.api.v1.GeoUpdateSettings.
+ * Use `create(GeoUpdateSettingsSchema)` to create a new message.
+ */
+export const GeoUpdateSettingsSchema: GenMessage<GeoUpdateSettings> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_policies, 35);
+
+/**
+ * @generated from message openpicket.api.v1.GeoEditionState
+ */
+export type GeoEditionState = Message<"openpicket.api.v1.GeoEditionState"> & {
+  /**
+   * @generated from field: string edition = 1;
+   */
+  edition: string;
+
+  /**
+   * Archive of the release, e.g. GeoLite2-Country_20261027.tar.gz.
+   *
+   * @generated from field: string file = 2;
+   */
+  file: string;
+
+  /**
+   * sha256 of the database stored.
+   *
+   * @generated from field: string sha256 = 3;
+   */
+  sha256: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp checked_at = 4;
+   */
+  checkedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message openpicket.api.v1.GeoEditionState.
+ * Use `create(GeoEditionStateSchema)` to create a new message.
+ */
+export const GeoEditionStateSchema: GenMessage<GeoEditionState> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_policies, 36);
+
+/**
+ * @generated from message openpicket.api.v1.GeoUpdateStatus
+ */
+export type GeoUpdateStatus = Message<"openpicket.api.v1.GeoUpdateStatus"> & {
+  /**
+   * @generated from field: google.protobuf.Timestamp last_check_at = 1;
+   */
+  lastCheckAt?: Timestamp | undefined;
+
+  /**
+   * Last check that stored a new database.
+   *
+   * @generated from field: google.protobuf.Timestamp last_download_at = 2;
+   */
+  lastDownloadAt?: Timestamp | undefined;
+
+  /**
+   * Failures of the last check, one line per edition; empty when it
+   * succeeded.
+   *
+   * @generated from field: string last_error = 3;
+   */
+  lastError: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp error_at = 4;
+   */
+  errorAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: repeated openpicket.api.v1.GeoEditionState editions = 5;
+   */
+  editions: GeoEditionState[];
+
+  /**
+   * Unset while disabled, or when the check is due now.
+   *
+   * @generated from field: google.protobuf.Timestamp next_check_at = 6;
+   */
+  nextCheckAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message openpicket.api.v1.GeoUpdateStatus.
+ * Use `create(GeoUpdateStatusSchema)` to create a new message.
+ */
+export const GeoUpdateStatusSchema: GenMessage<GeoUpdateStatus> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_policies, 37);
+
+/**
+ * @generated from message openpicket.api.v1.GetGeoUpdateSettingsRequest
+ */
+export type GetGeoUpdateSettingsRequest = Message<"openpicket.api.v1.GetGeoUpdateSettingsRequest"> & {
+};
+
+/**
+ * Describes the message openpicket.api.v1.GetGeoUpdateSettingsRequest.
+ * Use `create(GetGeoUpdateSettingsRequestSchema)` to create a new message.
+ */
+export const GetGeoUpdateSettingsRequestSchema: GenMessage<GetGeoUpdateSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_policies, 38);
+
+/**
+ * @generated from message openpicket.api.v1.GetGeoUpdateSettingsResponse
+ */
+export type GetGeoUpdateSettingsResponse = Message<"openpicket.api.v1.GetGeoUpdateSettingsResponse"> & {
+  /**
+   * @generated from field: openpicket.api.v1.GeoUpdateSettings settings = 1;
+   */
+  settings?: GeoUpdateSettings | undefined;
+
+  /**
+   * @generated from field: openpicket.api.v1.GeoUpdateStatus status = 2;
+   */
+  status?: GeoUpdateStatus | undefined;
+
+  /**
+   * @generated from field: repeated string country_editions = 3;
+   */
+  countryEditions: string[];
+
+  /**
+   * @generated from field: repeated string asn_editions = 4;
+   */
+  asnEditions: string[];
+};
+
+/**
+ * Describes the message openpicket.api.v1.GetGeoUpdateSettingsResponse.
+ * Use `create(GetGeoUpdateSettingsResponseSchema)` to create a new message.
+ */
+export const GetGeoUpdateSettingsResponseSchema: GenMessage<GetGeoUpdateSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_policies, 39);
+
+/**
+ * @generated from message openpicket.api.v1.SetGeoUpdateSettingsRequest
+ */
+export type SetGeoUpdateSettingsRequest = Message<"openpicket.api.v1.SetGeoUpdateSettingsRequest"> & {
+  /**
+   * @generated from field: openpicket.api.v1.GeoUpdateSettings settings = 1;
+   */
+  settings?: GeoUpdateSettings | undefined;
+
+  /**
+   * Empty keeps the stored key.
+   *
+   * @generated from field: string license_key = 2;
+   */
+  licenseKey: string;
+};
+
+/**
+ * Describes the message openpicket.api.v1.SetGeoUpdateSettingsRequest.
+ * Use `create(SetGeoUpdateSettingsRequestSchema)` to create a new message.
+ */
+export const SetGeoUpdateSettingsRequestSchema: GenMessage<SetGeoUpdateSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_policies, 40);
+
+/**
+ * @generated from message openpicket.api.v1.SetGeoUpdateSettingsResponse
+ */
+export type SetGeoUpdateSettingsResponse = Message<"openpicket.api.v1.SetGeoUpdateSettingsResponse"> & {
+  /**
+   * @generated from field: openpicket.api.v1.GeoUpdateSettings settings = 1;
+   */
+  settings?: GeoUpdateSettings | undefined;
+
+  /**
+   * @generated from field: openpicket.api.v1.GeoUpdateStatus status = 2;
+   */
+  status?: GeoUpdateStatus | undefined;
+};
+
+/**
+ * Describes the message openpicket.api.v1.SetGeoUpdateSettingsResponse.
+ * Use `create(SetGeoUpdateSettingsResponseSchema)` to create a new message.
+ */
+export const SetGeoUpdateSettingsResponseSchema: GenMessage<SetGeoUpdateSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_policies, 41);
+
+/**
+ * @generated from message openpicket.api.v1.RunGeoUpdateRequest
+ */
+export type RunGeoUpdateRequest = Message<"openpicket.api.v1.RunGeoUpdateRequest"> & {
+};
+
+/**
+ * Describes the message openpicket.api.v1.RunGeoUpdateRequest.
+ * Use `create(RunGeoUpdateRequestSchema)` to create a new message.
+ */
+export const RunGeoUpdateRequestSchema: GenMessage<RunGeoUpdateRequest> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_policies, 42);
+
+/**
+ * Failed editions are reported in status.last_error, not as an error.
+ *
+ * @generated from message openpicket.api.v1.RunGeoUpdateResponse
+ */
+export type RunGeoUpdateResponse = Message<"openpicket.api.v1.RunGeoUpdateResponse"> & {
+  /**
+   * @generated from field: openpicket.api.v1.GeoUpdateStatus status = 1;
+   */
+  status?: GeoUpdateStatus | undefined;
+};
+
+/**
+ * Describes the message openpicket.api.v1.RunGeoUpdateResponse.
+ * Use `create(RunGeoUpdateResponseSchema)` to create a new message.
+ */
+export const RunGeoUpdateResponseSchema: GenMessage<RunGeoUpdateResponse> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_policies, 43);
+
+/**
  * Port policies: allow or block sources on public (pre-DNAT) ports.
  *
  * @generated from service openpicket.api.v1.PolicyService
@@ -1001,6 +1263,35 @@ export const GeoService: GenService<{
     methodKind: "unary";
     input: typeof GeoLookupRequestSchema;
     output: typeof GeoLookupResponseSchema;
+  },
+  /**
+   * Periodic download from MaxMind with a license key: the leader checks
+   * every interval and stores new releases like uploads.
+   *
+   * @generated from rpc openpicket.api.v1.GeoService.GetUpdateSettings
+   */
+  getUpdateSettings: {
+    methodKind: "unary";
+    input: typeof GetGeoUpdateSettingsRequestSchema;
+    output: typeof GetGeoUpdateSettingsResponseSchema;
+  },
+  /**
+   * @generated from rpc openpicket.api.v1.GeoService.SetUpdateSettings
+   */
+  setUpdateSettings: {
+    methodKind: "unary";
+    input: typeof SetGeoUpdateSettingsRequestSchema;
+    output: typeof SetGeoUpdateSettingsResponseSchema;
+  },
+  /**
+   * Checks every configured edition now (also while disabled).
+   *
+   * @generated from rpc openpicket.api.v1.GeoService.RunUpdate
+   */
+  runUpdate: {
+    methodKind: "unary";
+    input: typeof RunGeoUpdateRequestSchema;
+    output: typeof RunGeoUpdateResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_openpicket_api_v1_policies, 1);
