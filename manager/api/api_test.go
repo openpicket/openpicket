@@ -621,6 +621,9 @@ func TestLogQL(t *testing.T) {
 	if q != want {
 		t.Fatalf("got  %s\nwant %s", q, want)
 	}
+	if q, err := LogQL(&apiv1.LogFilter{Programs: []string{"postfix/smtpd"}}); err != nil || q != `{job="openpicket", program=~"^(postfix/smtpd)$"}` {
+		t.Fatalf("program: %s %v", q, err)
+	}
 	if _, err := LogQL(&apiv1.LogFilter{Nodes: []string{`a"}`}}); code(err) != connect.CodeInvalidArgument {
 		t.Fatalf("injection: %v", err)
 	}

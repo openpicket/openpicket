@@ -16,7 +16,8 @@ import (
 
 type logService struct{ s *Server }
 
-var plainValue = regexp.MustCompile(`^[A-Za-z0-9_.:\-]{1,128}$`)
+// plainValue admits '/' for program labels such as postfix/smtpd.
+var plainValue = regexp.MustCompile(`^[A-Za-z0-9_.:/\-]{1,128}$`)
 
 func anyOf(label string, values []string) (string, error) {
 	if len(values) == 0 {
