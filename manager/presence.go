@@ -2,7 +2,9 @@ package manager
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -29,17 +31,25 @@ type presence struct {
 	pending map[string]pendingStatus // session id -> latest status
 }
 
+// sessionStale matches the API's sessionTimeout: a session whose heartbeat
+// is older is shown offline, and its row may be taken over.
+const sessionStale = 90 * time.Second
+
+// upsertSession makes a session the holder of its node.
+const upsertSession = `INSERT INTO openpicket.node_sessions AS cur (node_id, session_id, replica, remote_addr, boot_id, connected_at, heartbeat_at, hello, status, status_at)
+	VALUES ($1,$2,$3,$4,$5,$6,now(),$7,NULL,NULL)
+	ON CONFLICT (node_id) DO UPDATE SET session_id=excluded.session_id, replica=excluded.replica, remote_addr=excluded.remote_addr,
+		boot_id=excluded.boot_id, connected_at=excluded.connected_at, heartbeat_at=excluded.heartbeat_at,
+		hello=excluded.hello, status=NULL, status_at=NULL`
+
 // connected records a new session. A database failure is logged and
-// ignored: an outage must not refuse agents (§5.1).
+// ignored: an outage must not refuse agents (§5.1); the heartbeat records
+// the session later (rerecord).
 func (p *presence) connected(ctx context.Context, s *gateway.Session) {
 	hello, _ := proto.Marshal(s.Hello())
 	err := pgx.BeginFunc(ctx, p.db, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, `INSERT INTO openpicket.node_sessions (node_id, session_id, replica, remote_addr, boot_id, connected_at, heartbeat_at, hello, status, status_at)
-			VALUES ($1,$2,$3,$4,$5,now(),now(),$6,NULL,NULL)
-			ON CONFLICT (node_id) DO UPDATE SET session_id=excluded.session_id, replica=excluded.replica, remote_addr=excluded.remote_addr,
-				boot_id=excluded.boot_id, connected_at=excluded.connected_at, heartbeat_at=excluded.heartbeat_at,
-				hello=excluded.hello, status=NULL, status_at=NULL`,
-			s.NodeID, s.ID, p.replica, s.RemoteAddr, s.BootID(), hello); err != nil {
+		if _, err := tx.Exec(ctx, upsertSession,
+			s.NodeID, s.ID, p.replica, s.RemoteAddr, s.BootID(), s.ConnectedAt, hello); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE openpicket.nodes SET dp_last_seen_at = now() WHERE id = $1`, s.NodeID); err != nil {
@@ -121,19 +131,46 @@ func (p *presence) run(ctx context.Context, every time.Duration) {
 			continue
 		case <-t.C:
 		}
-		var ids, nodes []string
-		for _, s := range p.gw.Sessions() {
-			ids, nodes = append(ids, s.ID), append(nodes, s.NodeID)
-		}
-		if len(ids) == 0 {
+		sessions := p.gw.Sessions()
+		if len(sessions) == 0 {
 			continue
 		}
-		if _, err := p.db.Exec(ctx, `UPDATE openpicket.node_sessions SET heartbeat_at = now() WHERE session_id = ANY($1)`, ids); err != nil {
+		var ids, nodes []string
+		for _, s := range sessions {
+			ids, nodes = append(ids, s.ID), append(nodes, s.NodeID)
+		}
+		rows, _ := p.db.Query(ctx, `UPDATE openpicket.node_sessions SET heartbeat_at = now() WHERE session_id = ANY($1) RETURNING session_id`, ids)
+		beat, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
 			p.log.Warn("session heartbeat", "err", err)
 			continue
 		}
 		if _, err := p.db.Exec(ctx, `UPDATE openpicket.nodes SET dp_last_seen_at = now() WHERE id = ANY($1)`, nodes); err != nil {
 			p.log.Warn("node last seen", "err", err)
+		}
+		p.rerecord(ctx, sessions, beat)
+	}
+}
+
+// rerecord records the local sessions the heartbeat missed: their row was
+// not written at connect (database outage), or it still names an earlier
+// session whose replica died. Another session's row is taken over only once
+// its heartbeat is stale, so a live session on another replica is kept.
+func (p *presence) rerecord(ctx context.Context, sessions []*gateway.Session, beat []string) {
+	stale := fmt.Sprintf("%d seconds", int(sessionStale.Seconds()))
+	for _, s := range sessions {
+		if slices.Contains(beat, s.ID) || p.gw.Session(s.NodeID) != s {
+			continue
+		}
+		hello, _ := proto.Marshal(s.Hello())
+		tag, err := p.db.Exec(ctx, upsertSession+` WHERE cur.session_id = excluded.session_id OR cur.heartbeat_at < now() - $8::interval`,
+			s.NodeID, s.ID, p.replica, s.RemoteAddr, s.BootID(), s.ConnectedAt, hello, stale)
+		if err != nil {
+			p.log.Warn("re-record session", "node", s.NodeID, "err", err)
+			continue
+		}
+		if tag.RowsAffected() > 0 {
+			p.log.Info("re-recorded session", "node", s.NodeID, "session", s.ID)
 		}
 	}
 }
