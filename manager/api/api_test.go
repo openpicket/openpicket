@@ -26,6 +26,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/jc-lab/suricontroller/pkg/sshkey"
 
@@ -36,6 +37,7 @@ import (
 	"github.com/openpicket/openpicket/internal/pgtest"
 	"github.com/openpicket/openpicket/internal/schema"
 	"github.com/openpicket/openpicket/manager/alerts"
+	"github.com/openpicket/openpicket/manager/allowlist"
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/geo"
 	"github.com/openpicket/openpicket/manager/hub"
@@ -97,7 +99,8 @@ func setup(t *testing.T, readOnly bool) *env {
 	e.server, err = New(Config{DB: pool, Auth: chain, ReadOnly: readOnly, Geo: g, GeoUpdater: geo.NewUpdater(g), Policies: policy.New(pool, g, log), Settings: settings.New(pool),
 		HostKey: func() string { return "ssh-ed25519 AAAA host" }, Replica: "r1", Version: "test", Suricontroller: su, PrincipalKey: priv, Logger: log,
 		Alerts: &alerts.Querier{DB: pool}, AlertStore: &alerts.Store{DB: pool}, LAPIs: []LAPI{{Name: "default", Watcher: w}},
-		Poke: func(i string) { e.pokes <- i }, Hub: hub.NewStore(pool, log), LogPrograms: logprog.New(pool, settings.New(pool), log)})
+		Poke: func(i string) { e.pokes <- i }, Hub: hub.NewStore(pool, log), LogPrograms: logprog.New(pool, settings.New(pool), log),
+		Allowlist: allowlist.New(pool, nil)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,6 +125,7 @@ type clients struct {
 	geo    apiv1connect.GeoServiceClient
 	hub    apiv1connect.HubServiceClient
 	syslog apiv1connect.SyslogServiceClient
+	allow  apiv1connect.AllowlistServiceClient
 }
 
 type headerRT struct {
@@ -150,7 +154,7 @@ func (e *env) clients(h http.Header) *clients {
 		auth: apiv1connect.NewAuthServiceClient(hc, base), nodes: apiv1connect.NewNodeServiceClient(hc, base),
 		pol: apiv1connect.NewPolicyServiceClient(hc, base), system: apiv1connect.NewSystemServiceClient(hc, base),
 		geo: apiv1connect.NewGeoServiceClient(hc, base), hub: apiv1connect.NewHubServiceClient(hc, base),
-		syslog: apiv1connect.NewSyslogServiceClient(hc, base)}
+		syslog: apiv1connect.NewSyslogServiceClient(hc, base), allow: apiv1connect.NewAllowlistServiceClient(hc, base)}
 }
 
 func code(err error) connect.Code {
@@ -768,6 +772,78 @@ func httptestCapture(t *testing.T) (string, chan string) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { ch <- r.Header.Get("Authorization") }))
 	t.Cleanup(srv.Close)
 	return srv.URL, ch
+}
+
+func TestAllowlist(t *testing.T) {
+	e := setup(t, false)
+	ctx := context.Background()
+	admin := e.clients(nil)
+	if _, err := admin.auth.Login(ctx, connect.NewRequest(&apiv1.LoginRequest{Username: "admin", Password: "s3cret-pw"})); err != nil {
+		t.Fatal(err)
+	}
+	op := e.clients(viewerHeaders("olga", "secops"))
+	viewer := e.clients(viewerHeaders("vera", "staff"))
+	put := func(c *clients, network string, wide bool, exp *timestamppb.Timestamp) error {
+		_, err := c.allow.PutAllowlistEntry(ctx, connect.NewRequest(&apiv1.PutAllowlistEntryRequest{
+			Entry: &apiv1.AllowlistEntry{Network: network, Description: "office", ExpiresAt: exp}, Wide: wide}))
+		return err
+	}
+	if err := put(op, "192.0.2.0/24", false, nil); code(err) != connect.CodePermissionDenied {
+		t.Fatalf("operator put: %v", err)
+	}
+	for _, bad := range []struct {
+		network string
+		wide    bool
+		exp     *timestamppb.Timestamp
+	}{{"example.com", false, nil}, {"10.0.0.0/7", false, nil}, {"0.0.0.0/0", true, nil}, {"192.0.2.0/24", false, timestamppb.New(time.Now().Add(-time.Hour))}} {
+		if err := put(admin, bad.network, bad.wide, bad.exp); code(err) != connect.CodeInvalidArgument {
+			t.Errorf("put %v: %v", bad, err)
+		}
+	}
+	if err := put(admin, "192.0.2.7/24", false, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := put(admin, "10.0.0.0/7", true, timestamppb.New(time.Now().Add(time.Hour))); err != nil {
+		t.Fatal(err)
+	}
+	list, err := viewer.allow.ListAllowlist(ctx, connect.NewRequest(&apiv1.ListAllowlistRequest{}))
+	if err != nil || len(list.Msg.Entries) != 2 {
+		t.Fatalf("list: %v %v", list, err)
+	}
+	if got := list.Msg.Entries[1]; got.Network != "192.0.2.0/24" || !got.Active || got.ExpiresAt != nil || got.CreatedBy != "static:admin" {
+		t.Fatalf("entry: %+v", got)
+	}
+
+	// Covered values cannot be banned by hand; others still can.
+	for _, req := range []*apiv1.AddDecisionRequest{{Value: "192.0.2.9"}, {Scope: "Range", Value: "192.0.0.0/16"}} {
+		if _, err := op.dec.AddDecision(ctx, connect.NewRequest(req)); code(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "192.0.2.0/24") {
+			t.Fatalf("add %v: %v", req, err)
+		}
+	}
+	if _, err := op.dec.AddDecision(ctx, connect.NewRequest(&apiv1.AddDecisionRequest{Value: "198.51.100.9"})); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(e.lapi.Alerts()); n != 1 {
+		t.Fatalf("pushed alerts = %d", n)
+	}
+	prop, err := viewer.dec.GetPropagation(ctx, connect.NewRequest(&apiv1.GetPropagationRequest{Value: "192.0.2.9"}))
+	if err != nil || len(prop.Msg.Allowlisted) != 1 || prop.Msg.Allowlisted[0] != "192.0.2.0/24" {
+		t.Fatalf("propagation: %v %v", prop, err)
+	}
+
+	if _, err := admin.allow.DeleteAllowlistEntry(ctx, connect.NewRequest(&apiv1.DeleteAllowlistEntryRequest{Network: "192.0.2.0/24"})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.allow.DeleteAllowlistEntry(ctx, connect.NewRequest(&apiv1.DeleteAllowlistEntryRequest{Network: "192.0.2.0/24"})); code(err) != connect.CodeNotFound {
+		t.Fatalf("second delete: %v", err)
+	}
+	if _, err := op.dec.AddDecision(ctx, connect.NewRequest(&apiv1.AddDecisionRequest{Value: "192.0.2.9"})); err != nil {
+		t.Fatalf("add after removing the entry: %v", err)
+	}
+	audit, _ := op.system.ListAudit(ctx, connect.NewRequest(&apiv1.ListAuditRequest{ActionPrefix: "AllowlistService."}))
+	if len(audit.Msg.Entries) != 3 || audit.Msg.Entries[0].Target != "192.0.2.0/24" {
+		t.Fatalf("audit: %v", audit.Msg.Entries)
+	}
 }
 
 // Every procedure of every API service must be in the access table: a

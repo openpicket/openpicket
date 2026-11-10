@@ -32,6 +32,7 @@ import (
 
 	dataplanev1 "github.com/openpicket/openpicket/gen/openpicket/dataplane/v1"
 	"github.com/openpicket/openpicket/manager/alerts"
+	"github.com/openpicket/openpicket/manager/allowlist"
 	"github.com/openpicket/openpicket/manager/api"
 	"github.com/openpicket/openpicket/manager/csmetrics"
 	"github.com/openpicket/openpicket/manager/db"
@@ -213,6 +214,7 @@ type Manager struct {
 	programs   *logprog.Store
 	rollout    *hub.Rollout
 	policies   *policy.Service
+	allow      *allowlist.Store
 	alerts     *alerts.Syncer
 	lokiQuery  *loki.Querier
 	notify     *notify.Engine
@@ -362,6 +364,7 @@ func New(opts Options) (*Manager, error) {
 	if !opts.Role.API() {
 		return m, nil
 	}
+	m.allow = allowlist.New(opts.DB, nil)
 	if opts.LAPI.URL != "" {
 		lc, err := lapi.New(opts.LAPI)
 		if err != nil {
@@ -372,6 +375,8 @@ func New(opts Options) (*Manager, error) {
 			rules = *opts.EdgeRules
 		}
 		m.relay = relay.New(relay.Config{LAPI: lc, Rules: rules, Logger: opts.Logger, Registerer: m.reg, PullInterval: opts.RelayPullInterval})
+		m.listener.Handle(db.ChannelAllowlist, m.relay.Notified)
+		m.listener.OnResync(func() { m.relay.Notified("") })
 	} else {
 		m.log.Warn("no LAPI configured: decisions are not distributed to nodes")
 	}
@@ -515,9 +520,10 @@ func (m *Manager) setupMISP() error {
 		return err
 	}
 	o := m.opts.MISP
-	m.misp = misp.New(misp.Config{DB: m.opts.DB, Client: c, LAPI: w, Interval: o.Interval, Renew: o.Renew, DefaultTTL: o.DefaultTTL,
+	m.misp = misp.New(misp.Config{DB: m.opts.DB, Client: c, LAPI: w, Allowlist: m.allow, Interval: o.Interval, Renew: o.Renew, DefaultTTL: o.DefaultTTL,
 		ProposeMinAlerts: o.ProposeMinAlerts, ProposeWindow: o.ProposeWindow, Logger: m.log})
 	m.listener.Handle(db.ChannelMISP, func(string) { m.misp.Poke() })
+	m.listener.Handle(db.ChannelAllowlist, func(string) { m.misp.Poke() })
 	return nil
 }
 

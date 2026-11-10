@@ -216,6 +216,11 @@ func (d *decisionService) AddDecision(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, toConnectError(err)
 	}
+	// The LAPI does not check its own allowlists for alerts carrying
+	// decisions; the relay would keep this one off the edge anyway.
+	if err := d.refuseAllowlisted(ctx, scope, value); err != nil {
+		return nil, err
+	}
 	dur, err := lapiDuration(m.GetDuration())
 	if err != nil {
 		return nil, toConnectError(err)
@@ -247,6 +252,30 @@ func (d *decisionService) AddDecision(ctx context.Context, req *connect.Request[
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New(res.Errors[0].Error))
 	}
 	return connect.NewResponse(res), nil
+}
+
+// refuseAllowlisted refuses an address or range the central allowlist
+// covers.
+func (d *decisionService) refuseAllowlisted(ctx context.Context, scope, value string) error {
+	if d.s.cfg.Allowlist == nil || (scope != "Ip" && scope != "Range") {
+		return nil
+	}
+	cov, err := d.s.cfg.Allowlist.Covering(ctx, value)
+	if err != nil {
+		return toConnectError(err)
+	}
+	if len(cov) > 0 {
+		return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%s is allowlisted (%s)", value, joinPrefixes(cov)))
+	}
+	return nil
+}
+
+func joinPrefixes(ps []netip.Prefix) string {
+	out := make([]string, len(ps))
+	for i, p := range ps {
+		out[i] = p.String()
+	}
+	return strings.Join(out, ", ")
 }
 
 func (d *decisionService) DeleteDecisions(ctx context.Context, req *connect.Request[apiv1.DeleteDecisionsRequest]) (*connect.Response[apiv1.DeleteDecisionsResponse], error) {
@@ -312,9 +341,19 @@ func (d *decisionService) GetPropagation(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, err
 	}
-	res, err := q.Propagation(ctx, strings.TrimSpace(req.Msg.GetValue()))
+	value := strings.TrimSpace(req.Msg.GetValue())
+	res, err := q.Propagation(ctx, value)
 	if err != nil {
 		return nil, toConnectError(err)
+	}
+	if d.s.cfg.Allowlist != nil {
+		cov, err := d.s.cfg.Allowlist.Covering(ctx, value)
+		if err != nil {
+			return nil, toConnectError(err)
+		}
+		for _, p := range cov {
+			res.Allowlisted = append(res.Allowlisted, p.String())
+		}
 	}
 	return connect.NewResponse(res), nil
 }

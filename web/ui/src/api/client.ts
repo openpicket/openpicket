@@ -11,6 +11,7 @@ import { NotificationService } from "../gen/openpicket/api/v1/notifications_pb";
 import { IntelService } from "../gen/openpicket/api/v1/intel_pb";
 import { HubService } from "../gen/openpicket/api/v1/hub_pb";
 import { SyslogService } from "../gen/openpicket/api/v1/syslog_pb";
+import { AllowlistService } from "../gen/openpicket/api/v1/allowlist_pb";
 
 /** Base URL of the API (same origin). */
 export const apiBase = new URL("/api", window.location.origin).href;
@@ -38,6 +39,7 @@ export const api = {
   intel: createClient(IntelService, transport),
   hub: createClient(HubService, transport),
   syslog: createClient(SyslogService, transport),
+  allowlist: createClient(AllowlistService, transport),
 };
 
 /** Uploads a MaxMind database (multipart; not a Connect call). */

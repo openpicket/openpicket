@@ -57,7 +57,7 @@ func actionName(procedure string) string {
 	return strings.ReplaceAll(p, "/", ".")
 }
 
-var targetFields = []protoreflect.Name{"id", "name", "value", "ip", "node_id", "policy_id", "kind", "ids"}
+var targetFields = []protoreflect.Name{"id", "name", "value", "ip", "node_id", "policy_id", "kind", "ids", "network"}
 
 // auditTarget finds the object a request acts on: a well-known top-level
 // field, or one inside the first message field (PutPolicy{policy{id}}).

@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/openpicket/openpicket/manager/allowlist"
 	"github.com/openpicket/openpicket/manager/db"
 	"github.com/openpicket/openpicket/manager/lapi"
 )
@@ -75,7 +76,7 @@ func Normalize(scope, value string) (string, string, bool) {
 	switch strings.ToLower(scope) {
 	case "ip":
 		a, err := netip.ParseAddr(value)
-		if err != nil {
+		if err != nil || a.Zone() != "" {
 			return "", "", false
 		}
 		return a.Unmap().String(), "ip", true
@@ -131,6 +132,8 @@ type Relay struct {
 	pulls    *prometheus.CounterVec
 	resyncs  prometheus.Counter
 	lastPull prometheus.Gauge
+	// poke wakes Run after an allowlist change.
+	poke chan struct{}
 }
 
 // New creates a relay.
@@ -157,6 +160,7 @@ func New(cfg Config) *Relay {
 		pulls:    prometheus.NewCounterVec(prometheus.CounterOpts{Name: "openpicket_relay_pulls_total", Help: "LAPI stream pulls."}, []string{"result"}),
 		resyncs:  prometheus.NewCounter(prometheus.CounterOpts{Name: "openpicket_relay_full_resyncs_total", Help: "Startup (full) pulls."}),
 		lastPull: prometheus.NewGauge(prometheus.GaugeOpts{Name: "openpicket_relay_last_pull_timestamp_seconds", Help: "Time of the last successful pull."}),
+		poke:     make(chan struct{}, 1),
 	}
 	if cfg.Registerer != nil {
 		for _, c := range []prometheus.Collector{r.version, r.pulls, r.resyncs, r.lastPull} {
@@ -172,12 +176,23 @@ type Fencer interface {
 	Fenced(ctx context.Context, fn func(tx pgx.Tx) error) error
 }
 
+// Notified reports an allowlist change (openpicket_allowlist).
+func (r *Relay) Notified(string) {
+	select {
+	case r.poke <- struct{}{}:
+	default:
+	}
+}
+
 // Run pulls until ctx ends (leadership lost or shutdown). Leadership
 // starts with a full resync: the previous leader may have received a
-// delta it never committed (§4.3).
+// delta it never committed (§4.3). The allowlist is reconciled at the
+// start, after a change, when an entry runs out and every
+// FullResyncInterval.
 func (r *Relay) Run(ctx context.Context, l Fencer) {
 	needResync := true
 	lastFull := time.Time{}
+	allowDue := time.Time{}
 	for ctx.Err() == nil {
 		full := needResync || r.cfg.Now().Sub(lastFull) >= r.cfg.FullResyncInterval
 		changed, err := r.pull(ctx, l, full)
@@ -209,9 +224,26 @@ func (r *Relay) Run(ctx context.Context, l Fencer) {
 		if err := r.expire(ctx, l); err != nil && !errors.Is(err, context.Canceled) {
 			r.log.Warn("expire edge decisions", "err", err)
 		}
+		if !r.cfg.Now().Before(allowDue) {
+			next, err := r.Reconcile(ctx, l)
+			switch {
+			case errors.Is(err, db.ErrNotLeader):
+				r.log.Warn("relay stopped: no longer the leader")
+				return
+			case err != nil:
+				if ctx.Err() != nil {
+					return
+				}
+				r.log.Warn("apply the allowlist to edge decisions; retrying at the next pull", "err", err)
+			default:
+				allowDue = next
+			}
+		}
 		select {
 		case <-ctx.Done():
 			return
+		case <-r.poke:
+			allowDue = time.Time{}
 		case <-time.After(r.cfg.PullInterval):
 		}
 	}
@@ -335,8 +367,12 @@ type edgeRow struct {
 func (r *Relay) recompute(ctx context.Context, tx pgx.Tx, values []string) (int, error) {
 	now := r.cfg.Now()
 	want := map[string]edgeRow{}
+	// Eligible values are canonical addresses or ranges (Normalize); the
+	// CASE keeps the cast off the others whatever the plan.
 	rows, err := tx.Query(ctx, `SELECT value, scope, origin, scenario, until, both_ways FROM openpicket.lapi_decisions
-		WHERE value = ANY($1) AND eligible AND until > $2 ORDER BY value, until DESC`, values, now)
+		WHERE value = ANY($1) AND eligible AND until > $2
+			AND NOT `+allowlist.Covered("CASE WHEN eligible THEN value::inet END", "$2")+`
+		ORDER BY value, until DESC`, values, now)
 	if err != nil {
 		return 0, err
 	}
@@ -428,6 +464,45 @@ func (r *Relay) recompute(ctx context.Context, tx pgx.Tx, values []string) (int,
 		}
 	}
 	return changed, nil
+}
+
+// Reconcile recomputes the values whose edge rows disagree with the
+// allowlist in force: blocked although an entry covers them, or left out
+// although none does any more. It returns when to reconcile next: when the
+// next entry runs out, or after FullResyncInterval at the latest.
+func (r *Relay) Reconcile(ctx context.Context, l Fencer) (time.Time, error) {
+	var next time.Time
+	err := l.Fenced(ctx, func(tx pgx.Tx) error {
+		now := r.cfg.Now()
+		rows, err := tx.Query(ctx, `SELECT DISTINCT d.value FROM openpicket.lapi_decisions d
+			LEFT JOIN openpicket.edge_decisions e ON e.value = d.value AND NOT e.deleted
+			WHERE d.eligible AND d.until > $1
+				AND (e.value IS NOT NULL) = `+allowlist.Covered("CASE WHEN d.eligible THEN d.value::inet END", "$1"), now)
+		if err != nil {
+			return err
+		}
+		vals, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			return err
+		}
+		if len(vals) > 0 {
+			changed, err := r.recompute(ctx, tx, vals)
+			if err != nil {
+				return err
+			}
+			r.log.Info("allowlist applied to edge decisions", "changes", changed)
+		}
+		var exp *time.Time
+		if err := tx.QueryRow(ctx, `SELECT min(expires_at) FROM openpicket.allowlist WHERE expires_at > $1`, now).Scan(&exp); err != nil {
+			return err
+		}
+		next = now.Add(r.cfg.FullResyncInterval)
+		if exp != nil && exp.Before(next) {
+			next = *exp
+		}
+		return nil
+	})
+	return next, err
 }
 
 func absDur(d time.Duration) time.Duration {

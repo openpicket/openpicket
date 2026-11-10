@@ -2091,12 +2091,15 @@ type GetPropagationResponse struct {
 	AtEdge bool `protobuf:"varint,1,opt,name=at_edge,json=atEdge,proto3" json:"at_edge,omitempty"`
 	// Over all of them: the strongest direction, the latest version and
 	// expiry.
-	Direction     string                 `protobuf:"bytes,2,opt,name=direction,proto3" json:"direction,omitempty"`
-	Version       uint64                 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
-	Until         *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=until,proto3" json:"until,omitempty"`
-	Nodes         []*NodePropagation     `protobuf:"bytes,5,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	Decisions     []*Decision            `protobuf:"bytes,6,rep,name=decisions,proto3" json:"decisions,omitempty"`
-	Edge          []*EdgeBlock           `protobuf:"bytes,8,rep,name=edge,proto3" json:"edge,omitempty"`
+	Direction string                 `protobuf:"bytes,2,opt,name=direction,proto3" json:"direction,omitempty"`
+	Version   uint64                 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	Until     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=until,proto3" json:"until,omitempty"`
+	Nodes     []*NodePropagation     `protobuf:"bytes,5,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	Decisions []*Decision            `protobuf:"bytes,6,rep,name=decisions,proto3" json:"decisions,omitempty"`
+	Edge      []*EdgeBlock           `protobuf:"bytes,8,rep,name=edge,proto3" json:"edge,omitempty"`
+	// Central allowlist entries covering the value: its decisions stay off
+	// the edge.
+	Allowlisted   []string `protobuf:"bytes,9,rep,name=allowlisted,proto3" json:"allowlisted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2176,6 +2179,13 @@ func (x *GetPropagationResponse) GetDecisions() []*Decision {
 func (x *GetPropagationResponse) GetEdge() []*EdgeBlock {
 	if x != nil {
 		return x.Edge
+	}
+	return nil
+}
+
+func (x *GetPropagationResponse) GetAllowlisted() []string {
+	if x != nil {
+		return x.Allowlisted
 	}
 	return nil
 }
@@ -2674,7 +2684,7 @@ const file_openpicket_api_v1_crowdsec_proto_rawDesc = "" +
 	"\x05value\x18\x01 \x01(\tR\x05value\x12\x1c\n" +
 	"\tdirection\x18\x02 \x01(\tR\tdirection\x12\x18\n" +
 	"\aversion\x18\x03 \x01(\x04R\aversion\x120\n" +
-	"\x05until\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x05until\"\xc8\x02\n" +
+	"\x05until\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x05until\"\xea\x02\n" +
 	"\x16GetPropagationResponse\x12\x17\n" +
 	"\aat_edge\x18\x01 \x01(\bR\x06atEdge\x12\x1c\n" +
 	"\tdirection\x18\x02 \x01(\tR\tdirection\x12\x18\n" +
@@ -2682,7 +2692,8 @@ const file_openpicket_api_v1_crowdsec_proto_rawDesc = "" +
 	"\x05until\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x05until\x128\n" +
 	"\x05nodes\x18\x05 \x03(\v2\".openpicket.api.v1.NodePropagationR\x05nodes\x129\n" +
 	"\tdecisions\x18\x06 \x03(\v2\x1b.openpicket.api.v1.DecisionR\tdecisions\x120\n" +
-	"\x04edge\x18\b \x03(\v2\x1c.openpicket.api.v1.EdgeBlockR\x04edgeJ\x04\b\a\x10\b\"\xce\x01\n" +
+	"\x04edge\x18\b \x03(\v2\x1c.openpicket.api.v1.EdgeBlockR\x04edge\x12 \n" +
+	"\vallowlisted\x18\t \x03(\tR\vallowlistedJ\x04\b\a\x10\b\"\xce\x01\n" +
 	"\x11GetSummaryRequest\x12.\n" +
 	"\x04from\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12*\n" +
 	"\x02to\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\x12\x14\n" +

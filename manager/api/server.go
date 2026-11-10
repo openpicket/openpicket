@@ -25,6 +25,7 @@ import (
 	apiv1 "github.com/openpicket/openpicket/gen/openpicket/api/v1"
 	"github.com/openpicket/openpicket/gen/openpicket/api/v1/apiv1connect"
 	"github.com/openpicket/openpicket/manager/alerts"
+	"github.com/openpicket/openpicket/manager/allowlist"
 	"github.com/openpicket/openpicket/manager/auth"
 	"github.com/openpicket/openpicket/manager/csmetrics"
 	"github.com/openpicket/openpicket/manager/geo"
@@ -54,6 +55,9 @@ type Config struct {
 	// update settings.
 	GeoUpdater *geo.Updater
 	Policies   *policy.Service
+	// Allowlist is the central allowlist: decisions it covers are refused
+	// and kept off the edge.
+	Allowlist *allowlist.Store
 	// Hub is the CrowdSec content store; HubRemote the CrowdSec hub.
 	Hub       *hub.Store
 	HubRemote *hub.Hub
@@ -173,6 +177,10 @@ var procedures = map[string]spec{
 
 	apiv1connect.DashboardServiceGetSummaryProcedure: read,
 
+	apiv1connect.AllowlistServiceListAllowlistProcedure:        read,
+	apiv1connect.AllowlistServicePutAllowlistEntryProcedure:    adm,
+	apiv1connect.AllowlistServiceDeleteAllowlistEntryProcedure: adm,
+
 	apiv1connect.PolicyServiceListPoliciesProcedure:      read,
 	apiv1connect.PolicyServiceListAddressListsProcedure:  read,
 	apiv1connect.PolicyServicePolicyHistoryProcedure:     read,
@@ -263,6 +271,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(apiv1connect.NewAlertServiceHandler(&alertService{s}, opts...))
 	mux.Handle(apiv1connect.NewDecisionServiceHandler(&decisionService{s}, opts...))
 	mux.Handle(apiv1connect.NewDashboardServiceHandler(&dashboardService{s}, opts...))
+	mux.Handle(apiv1connect.NewAllowlistServiceHandler(&allowlistService{s}, opts...))
 	mux.Handle(apiv1connect.NewLogServiceHandler(&logService{s}, opts...))
 	mux.Handle(apiv1connect.NewMetricsServiceHandler(&metricsService{s}, opts...))
 	mux.Handle(apiv1connect.NewHubServiceHandler(&hubService{s}, opts...))
@@ -440,9 +449,11 @@ func toConnectError(err error) error {
 	switch {
 	case errors.As(err, &ce):
 		return err
-	case errors.Is(err, policy.ErrNotFound), errors.Is(err, pgx.ErrNoRows), errors.Is(err, errNotFound), errors.Is(err, hub.ErrNotFound):
+	case errors.Is(err, policy.ErrNotFound), errors.Is(err, pgx.ErrNoRows), errors.Is(err, errNotFound), errors.Is(err, hub.ErrNotFound),
+		errors.Is(err, allowlist.ErrNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, policy.ErrInvalid), errors.Is(err, errInvalid), errors.Is(err, hub.ErrInvalid), geo.IsInvalid(err):
+	case errors.Is(err, policy.ErrInvalid), errors.Is(err, errInvalid), errors.Is(err, hub.ErrInvalid), geo.IsInvalid(err),
+		errors.Is(err, allowlist.ErrInvalid):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, errExists):
 		return connect.NewError(connect.CodeAlreadyExists, err)

@@ -107,6 +107,12 @@ export function Propagation(props: { value: string }) {
   const applied = p.nodes.filter((n) => n.applied).length;
   return (
     <Stack>
+      {p.allowlisted.length > 0 && (
+        <Alert color="teal" variant="light" title={t("Allowlisted")}>
+          {t("The central allowlist covers this value ({networks}): its decisions stay off the edge.", { networks: p.allowlisted.join(", ") })}{" "}
+          <Link to="/allowlist">{t("Allowlist")}</Link>
+        </Alert>
+      )}
       {p.atEdge ? (
         <>
           <Group gap="sm">
@@ -129,7 +135,9 @@ export function Propagation(props: { value: string }) {
         </>
       ) : (
         <Alert color="gray" variant="light">
-          {t("No edge block for this value: no active IP/range ban, or the edge rules exclude it.")}
+          {p.allowlisted.length > 0
+            ? t("No edge block for this value.")
+            : t("No edge block for this value: no active IP/range ban, or the edge rules exclude it.")}
         </Alert>
       )}
       {p.atEdge && p.nodes.length > 0 && (

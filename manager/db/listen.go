@@ -23,6 +23,7 @@ const (
 	ChannelMISP      = "openpicket_misp"
 	ChannelHub       = "openpicket_hub"
 	ChannelSyslog    = "openpicket_syslog"
+	ChannelAllowlist = "openpicket_allowlist"
 )
 
 // Listener keeps a dedicated connection listening on notification channels
