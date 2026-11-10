@@ -32,9 +32,28 @@ message AllowlistEntry {
   bool active = 9;
 }
 
+// How the openpicket allowlist of a CrowdSec LAPI follows the entries
+// (openpicket-crowdsec-sync applies them with cscli). The LAPI then drops
+// alerts from these networks and deletes their decisions; removing an
+// entry does not bring deleted decisions back.
+message AllowlistLAPIStatus {
+  string instance = 1;
+  // A sync URL is configured for the instance.
+  bool enabled = 2;
+  // Last push, last successful one, last one that changed something.
+  google.protobuf.Timestamp attempt_at = 3;
+  google.protobuf.Timestamp synced_at = 4;
+  google.protobuf.Timestamp changed_at = 5;
+  // Items in the LAPI allowlist after the last successful push.
+  int32 items = 6;
+  // Error of the last push ("" when it succeeded).
+  string error = 7;
+}
+
 message ListAllowlistRequest {}
 message ListAllowlistResponse {
   repeated AllowlistEntry entries = 1;
+  repeated AllowlistLAPIStatus lapis = 2;
 }
 
 message PutAllowlistEntryRequest {

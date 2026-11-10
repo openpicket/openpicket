@@ -13,3 +13,17 @@ CREATE TABLE openpicket.allowlist (
     updated_by  text NOT NULL DEFAULT ''
 );
 CREATE INDEX allowlist_network ON openpicket.allowlist USING gist (network inet_ops);
+
+-- The openpicket allowlist of each LAPI follows the entries
+-- (openpicket-crowdsec-sync applies them with cscli): last push per
+-- instance.
+CREATE TABLE openpicket.allowlist_lapi_sync (
+    instance   text PRIMARY KEY,
+    attempt_at timestamptz NOT NULL,
+    -- Last push the LAPI applied.
+    synced_at  timestamptz,
+    -- Last push that changed something.
+    changed_at timestamptz,
+    items      int NOT NULL DEFAULT 0,
+    error      text NOT NULL DEFAULT ''
+);

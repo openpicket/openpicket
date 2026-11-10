@@ -136,7 +136,7 @@ func TestRefusedBundleKeepsContent(t *testing.T) {
 
 func TestHandlerAuth(t *testing.T) {
 	s, _, _, _ := setup(t)
-	h := Handler(s, "X-OpenPicket-Token", "secret")
+	h := Handler(s, nil, "X-OpenPicket-Token", "secret")
 	body, _ := json.Marshal(bundle(1))
 	for _, c := range []struct {
 		token string

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file openpicket/api/v1/allowlist.proto.
  */
 export const file_openpicket_api_v1_allowlist: GenFile = /*@__PURE__*/
-  fileDesc("CiFvcGVucGlja2V0L2FwaS92MS9hbGxvd2xpc3QucHJvdG8SEW9wZW5waWNrZXQuYXBpLnYxIpACCg5BbGxvd2xpc3RFbnRyeRIPCgduZXR3b3JrGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEi4KCmV4cGlyZXNfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmNyZWF0ZWRfYnkYBSABKAkSLgoKdXBkYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKdXBkYXRlZF9ieRgHIAEoCRIQCghleGNsdWRlZBgIIAEoAxIOCgZhY3RpdmUYCSABKAgiFgoUTGlzdEFsbG93bGlzdFJlcXVlc3QiSwoVTGlzdEFsbG93bGlzdFJlc3BvbnNlEjIKB2VudHJpZXMYASADKAsyIS5vcGVucGlja2V0LmFwaS52MS5BbGxvd2xpc3RFbnRyeSJaChhQdXRBbGxvd2xpc3RFbnRyeVJlcXVlc3QSMAoFZW50cnkYASABKAsyIS5vcGVucGlja2V0LmFwaS52MS5BbGxvd2xpc3RFbnRyeRIMCgR3aWRlGAIgASgIIiwKGVB1dEFsbG93bGlzdEVudHJ5UmVzcG9uc2USDwoHbmV0d29yaxgBIAEoCSIuChtEZWxldGVBbGxvd2xpc3RFbnRyeVJlcXVlc3QSDwoHbmV0d29yaxgBIAEoCSIeChxEZWxldGVBbGxvd2xpc3RFbnRyeVJlc3BvbnNlMt8CChBBbGxvd2xpc3RTZXJ2aWNlEmIKDUxpc3RBbGxvd2xpc3QSJy5vcGVucGlja2V0LmFwaS52MS5MaXN0QWxsb3dsaXN0UmVxdWVzdBooLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RBbGxvd2xpc3RSZXNwb25zZRJuChFQdXRBbGxvd2xpc3RFbnRyeRIrLm9wZW5waWNrZXQuYXBpLnYxLlB1dEFsbG93bGlzdEVudHJ5UmVxdWVzdBosLm9wZW5waWNrZXQuYXBpLnYxLlB1dEFsbG93bGlzdEVudHJ5UmVzcG9uc2USdwoURGVsZXRlQWxsb3dsaXN0RW50cnkSLi5vcGVucGlja2V0LmFwaS52MS5EZWxldGVBbGxvd2xpc3RFbnRyeVJlcXVlc3QaLy5vcGVucGlja2V0LmFwaS52MS5EZWxldGVBbGxvd2xpc3RFbnRyeVJlc3BvbnNlQj5aPGdpdGh1Yi5jb20vb3BlbnBpY2tldC9vcGVucGlja2V0L2dlbi9vcGVucGlja2V0L2FwaS92MTthcGl2MWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("CiFvcGVucGlja2V0L2FwaS92MS9hbGxvd2xpc3QucHJvdG8SEW9wZW5waWNrZXQuYXBpLnYxIpACCg5BbGxvd2xpc3RFbnRyeRIPCgduZXR3b3JrGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEi4KCmV4cGlyZXNfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmNyZWF0ZWRfYnkYBSABKAkSLgoKdXBkYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKdXBkYXRlZF9ieRgHIAEoCRIQCghleGNsdWRlZBgIIAEoAxIOCgZhY3RpdmUYCSABKAgi5QEKE0FsbG93bGlzdExBUElTdGF0dXMSEAoIaW5zdGFuY2UYASABKAkSDwoHZW5hYmxlZBgCIAEoCBIuCgphdHRlbXB0X2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBItCglzeW5jZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmNoYW5nZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg0KBWl0ZW1zGAYgASgFEg0KBWVycm9yGAcgASgJIhYKFExpc3RBbGxvd2xpc3RSZXF1ZXN0IoIBChVMaXN0QWxsb3dsaXN0UmVzcG9uc2USMgoHZW50cmllcxgBIAMoCzIhLm9wZW5waWNrZXQuYXBpLnYxLkFsbG93bGlzdEVudHJ5EjUKBWxhcGlzGAIgAygLMiYub3BlbnBpY2tldC5hcGkudjEuQWxsb3dsaXN0TEFQSVN0YXR1cyJaChhQdXRBbGxvd2xpc3RFbnRyeVJlcXVlc3QSMAoFZW50cnkYASABKAsyIS5vcGVucGlja2V0LmFwaS52MS5BbGxvd2xpc3RFbnRyeRIMCgR3aWRlGAIgASgIIiwKGVB1dEFsbG93bGlzdEVudHJ5UmVzcG9uc2USDwoHbmV0d29yaxgBIAEoCSIuChtEZWxldGVBbGxvd2xpc3RFbnRyeVJlcXVlc3QSDwoHbmV0d29yaxgBIAEoCSIeChxEZWxldGVBbGxvd2xpc3RFbnRyeVJlc3BvbnNlMt8CChBBbGxvd2xpc3RTZXJ2aWNlEmIKDUxpc3RBbGxvd2xpc3QSJy5vcGVucGlja2V0LmFwaS52MS5MaXN0QWxsb3dsaXN0UmVxdWVzdBooLm9wZW5waWNrZXQuYXBpLnYxLkxpc3RBbGxvd2xpc3RSZXNwb25zZRJuChFQdXRBbGxvd2xpc3RFbnRyeRIrLm9wZW5waWNrZXQuYXBpLnYxLlB1dEFsbG93bGlzdEVudHJ5UmVxdWVzdBosLm9wZW5waWNrZXQuYXBpLnYxLlB1dEFsbG93bGlzdEVudHJ5UmVzcG9uc2USdwoURGVsZXRlQWxsb3dsaXN0RW50cnkSLi5vcGVucGlja2V0LmFwaS52MS5EZWxldGVBbGxvd2xpc3RFbnRyeVJlcXVlc3QaLy5vcGVucGlja2V0LmFwaS52MS5EZWxldGVBbGxvd2xpc3RFbnRyeVJlc3BvbnNlQj5aPGdpdGh1Yi5jb20vb3BlbnBpY2tldC9vcGVucGlja2V0L2dlbi9vcGVucGlja2V0L2FwaS92MTthcGl2MWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message openpicket.api.v1.AllowlistEntry
@@ -82,6 +82,66 @@ export const AllowlistEntrySchema: GenMessage<AllowlistEntry> = /*@__PURE__*/
   messageDesc(file_openpicket_api_v1_allowlist, 0);
 
 /**
+ * How the openpicket allowlist of a CrowdSec LAPI follows the entries
+ * (openpicket-crowdsec-sync applies them with cscli). The LAPI then drops
+ * alerts from these networks and deletes their decisions; removing an
+ * entry does not bring deleted decisions back.
+ *
+ * @generated from message openpicket.api.v1.AllowlistLAPIStatus
+ */
+export type AllowlistLAPIStatus = Message<"openpicket.api.v1.AllowlistLAPIStatus"> & {
+  /**
+   * @generated from field: string instance = 1;
+   */
+  instance: string;
+
+  /**
+   * A sync URL is configured for the instance.
+   *
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * Last push, last successful one, last one that changed something.
+   *
+   * @generated from field: google.protobuf.Timestamp attempt_at = 3;
+   */
+  attemptAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp synced_at = 4;
+   */
+  syncedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp changed_at = 5;
+   */
+  changedAt?: Timestamp | undefined;
+
+  /**
+   * Items in the LAPI allowlist after the last successful push.
+   *
+   * @generated from field: int32 items = 6;
+   */
+  items: number;
+
+  /**
+   * Error of the last push ("" when it succeeded).
+   *
+   * @generated from field: string error = 7;
+   */
+  error: string;
+};
+
+/**
+ * Describes the message openpicket.api.v1.AllowlistLAPIStatus.
+ * Use `create(AllowlistLAPIStatusSchema)` to create a new message.
+ */
+export const AllowlistLAPIStatusSchema: GenMessage<AllowlistLAPIStatus> = /*@__PURE__*/
+  messageDesc(file_openpicket_api_v1_allowlist, 1);
+
+/**
  * @generated from message openpicket.api.v1.ListAllowlistRequest
  */
 export type ListAllowlistRequest = Message<"openpicket.api.v1.ListAllowlistRequest"> & {
@@ -92,7 +152,7 @@ export type ListAllowlistRequest = Message<"openpicket.api.v1.ListAllowlistReque
  * Use `create(ListAllowlistRequestSchema)` to create a new message.
  */
 export const ListAllowlistRequestSchema: GenMessage<ListAllowlistRequest> = /*@__PURE__*/
-  messageDesc(file_openpicket_api_v1_allowlist, 1);
+  messageDesc(file_openpicket_api_v1_allowlist, 2);
 
 /**
  * @generated from message openpicket.api.v1.ListAllowlistResponse
@@ -102,6 +162,11 @@ export type ListAllowlistResponse = Message<"openpicket.api.v1.ListAllowlistResp
    * @generated from field: repeated openpicket.api.v1.AllowlistEntry entries = 1;
    */
   entries: AllowlistEntry[];
+
+  /**
+   * @generated from field: repeated openpicket.api.v1.AllowlistLAPIStatus lapis = 2;
+   */
+  lapis: AllowlistLAPIStatus[];
 };
 
 /**
@@ -109,7 +174,7 @@ export type ListAllowlistResponse = Message<"openpicket.api.v1.ListAllowlistResp
  * Use `create(ListAllowlistResponseSchema)` to create a new message.
  */
 export const ListAllowlistResponseSchema: GenMessage<ListAllowlistResponse> = /*@__PURE__*/
-  messageDesc(file_openpicket_api_v1_allowlist, 2);
+  messageDesc(file_openpicket_api_v1_allowlist, 3);
 
 /**
  * @generated from message openpicket.api.v1.PutAllowlistEntryRequest
@@ -133,7 +198,7 @@ export type PutAllowlistEntryRequest = Message<"openpicket.api.v1.PutAllowlistEn
  * Use `create(PutAllowlistEntryRequestSchema)` to create a new message.
  */
 export const PutAllowlistEntryRequestSchema: GenMessage<PutAllowlistEntryRequest> = /*@__PURE__*/
-  messageDesc(file_openpicket_api_v1_allowlist, 3);
+  messageDesc(file_openpicket_api_v1_allowlist, 4);
 
 /**
  * @generated from message openpicket.api.v1.PutAllowlistEntryResponse
@@ -152,7 +217,7 @@ export type PutAllowlistEntryResponse = Message<"openpicket.api.v1.PutAllowlistE
  * Use `create(PutAllowlistEntryResponseSchema)` to create a new message.
  */
 export const PutAllowlistEntryResponseSchema: GenMessage<PutAllowlistEntryResponse> = /*@__PURE__*/
-  messageDesc(file_openpicket_api_v1_allowlist, 4);
+  messageDesc(file_openpicket_api_v1_allowlist, 5);
 
 /**
  * @generated from message openpicket.api.v1.DeleteAllowlistEntryRequest
@@ -169,7 +234,7 @@ export type DeleteAllowlistEntryRequest = Message<"openpicket.api.v1.DeleteAllow
  * Use `create(DeleteAllowlistEntryRequestSchema)` to create a new message.
  */
 export const DeleteAllowlistEntryRequestSchema: GenMessage<DeleteAllowlistEntryRequest> = /*@__PURE__*/
-  messageDesc(file_openpicket_api_v1_allowlist, 5);
+  messageDesc(file_openpicket_api_v1_allowlist, 6);
 
 /**
  * @generated from message openpicket.api.v1.DeleteAllowlistEntryResponse
@@ -182,7 +247,7 @@ export type DeleteAllowlistEntryResponse = Message<"openpicket.api.v1.DeleteAllo
  * Use `create(DeleteAllowlistEntryResponseSchema)` to create a new message.
  */
 export const DeleteAllowlistEntryResponseSchema: GenMessage<DeleteAllowlistEntryResponse> = /*@__PURE__*/
-  messageDesc(file_openpicket_api_v1_allowlist, 6);
+  messageDesc(file_openpicket_api_v1_allowlist, 7);
 
 /**
  * Central allowlist: networks CrowdSec decisions never block at the edge,

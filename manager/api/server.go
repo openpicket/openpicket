@@ -58,6 +58,9 @@ type Config struct {
 	// Allowlist is the central allowlist: decisions it covers are refused
 	// and kept off the edge.
 	Allowlist *allowlist.Store
+	// AllowlistLAPIs are the LAPI instances and whether their openpicket
+	// allowlist follows the entries.
+	AllowlistLAPIs []AllowlistLAPI
 	// Hub is the CrowdSec content store; HubRemote the CrowdSec hub.
 	Hub       *hub.Store
 	HubRemote *hub.Hub

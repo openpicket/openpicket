@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActionIcon, Alert, Badge, Button, Checkbox, Group, Modal, Select, Stack, Table, Text, TextInput } from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Checkbox, Group, Modal, Paper, Select, Stack, Table, Text, TextInput, Tooltip } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
@@ -7,10 +7,10 @@ import { IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { api } from "../api/client";
-import { useAccess } from "../api/hooks";
+import { POLL_MS, useAccess } from "../api/hooks";
 import { queryClient } from "../api/queryClient";
 import { EmptyState, ErrorAlert, LoadingBlock, PageHeader, TimeAgo, TimeLeft } from "../components/common";
-import type { AllowlistEntry } from "../gen/openpicket/api/v1/allowlist_pb";
+import type { AllowlistEntry, AllowlistLAPIStatus } from "../gen/openpicket/api/v1/allowlist_pb";
 import { formatDateTime, formatNumber, toNumber, tsDate } from "../lib/format";
 import { t } from "../lib/i18n";
 
@@ -144,9 +144,62 @@ function Expiry(props: { entry: AllowlistEntry }) {
   );
 }
 
+/** How the openpicket allowlist of each LAPI follows the entries. */
+function LAPISync(props: { lapis: AllowlistLAPIStatus[] }) {
+  if (props.lapis.length === 0) return null;
+  return (
+    <Paper withBorder p="sm" mb="md">
+      <Stack gap="xs">
+        <Text size="sm" c="dimmed">
+          {t(
+            "Each LAPI below keeps an \"openpicket\" allowlist equal to these entries: it drops alerts from these networks and deletes their decisions, for every bouncer. Removing an entry does not bring deleted decisions back.",
+          )}
+        </Text>
+        {props.lapis.map((l) => (
+          <Group key={l.instance} gap="sm">
+            <Text size="sm" fw={600} ff="monospace">
+              {l.instance}
+            </Text>
+            {!l.enabled ? (
+              <Tooltip label={t("No allowlist sync URL for this LAPI: only the edge honours the allowlist.")} withArrow multiline w={300}>
+                <Badge color="gray" variant="light">
+                  {t("not synced")}
+                </Badge>
+              </Tooltip>
+            ) : l.error ? (
+              <>
+                <Badge color="red" variant="light">
+                  {t("sync failed")}
+                </Badge>
+                <TimeAgo ts={l.attemptAt} size="xs" />
+                <Text size="xs" c="red">
+                  {l.error}
+                </Text>
+              </>
+            ) : l.syncedAt ? (
+              <>
+                <Badge color="teal" variant="light">
+                  {t("in sync")}
+                </Badge>
+                <Text size="xs" c="dimmed">
+                  {t("{n} items", { n: l.items })} · <TimeAgo ts={l.syncedAt} size="xs" />
+                </Text>
+              </>
+            ) : (
+              <Badge color="gray" variant="light">
+                {t("pending")}
+              </Badge>
+            )}
+          </Group>
+        ))}
+      </Stack>
+    </Paper>
+  );
+}
+
 export default function AllowlistPage() {
   const access = useAccess();
-  const list = useQuery({ queryKey: ["allowlist"], queryFn: async () => (await api.allowlist.listAllowlist({})).entries });
+  const q = useQuery({ queryKey: ["allowlist"], queryFn: () => api.allowlist.listAllowlist({}), refetchInterval: POLL_MS });
   const [editing, setEditing] = useState<AllowlistEntry | null>(null);
   const [creating, setCreating] = useState(false);
   const remove = useMutation({
@@ -172,11 +225,12 @@ export default function AllowlistPage() {
           )
         }
       />
-      {list.isPending ? (
+      {q.data && <LAPISync lapis={q.data.lapis} />}
+      {q.isPending ? (
         <LoadingBlock />
-      ) : list.isError ? (
-        <ErrorAlert error={list.error} onRetry={() => list.refetch()} />
-      ) : list.data.length === 0 ? (
+      ) : q.isError ? (
+        <ErrorAlert error={q.error} onRetry={() => q.refetch()} />
+      ) : q.data.entries.length === 0 ? (
         <EmptyState title={t("The allowlist is empty")} description={t("Add the management networks and the addresses of partners you never want blocked.")} />
       ) : (
         <Table.ScrollContainer minWidth={800}>
@@ -192,7 +246,7 @@ export default function AllowlistPage() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {list.data.map((e) => (
+              {q.data.entries.map((e) => (
                 <Table.Tr key={e.network} opacity={e.active ? 1 : 0.6}>
                   <Table.Td>
                     <Text size="sm" fw={600} ff="monospace">

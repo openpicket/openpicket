@@ -86,6 +86,10 @@ type Options struct {
 	LAPI lapi.Config
 	// LAPIName names the primary LAPI in the UI (default "default").
 	LAPIName string
+	// LAPIAllowlistSync is the openpicket-crowdsec-sync URL of the
+	// primary LAPI (http://lapi:8082): its openpicket allowlist follows
+	// the central allowlist. Empty: not synced.
+	LAPIAllowlistSync string
 	// ExtraLAPIs are more LAPI instances shown in the UI (alerts and
 	// decisions); only the primary feeds the edge.
 	ExtraLAPIs []NamedLAPI
@@ -190,6 +194,9 @@ type MISPOptions struct {
 type NamedLAPI struct {
 	Name   string
 	Config lapi.Config
+	// AllowlistSync is the instance's openpicket-crowdsec-sync URL
+	// (Options.LAPIAllowlistSync).
+	AllowlistSync string
 }
 
 // Manager is a running openpicket-manager replica.
@@ -215,6 +222,7 @@ type Manager struct {
 	rollout    *hub.Rollout
 	policies   *policy.Service
 	allow      *allowlist.Store
+	allowSync  *allowlist.LAPISync
 	alerts     *alerts.Syncer
 	lokiQuery  *loki.Querier
 	notify     *notify.Engine
@@ -365,6 +373,13 @@ func New(opts Options) (*Manager, error) {
 		return m, nil
 	}
 	m.allow = allowlist.New(opts.DB, nil)
+	if targets := m.allowlistTargets(); len(targets) > 0 {
+		header, token := m.cs.Auth()
+		m.allowSync = &allowlist.LAPISync{Store: m.allow, Targets: targets, Header: header, Token: token, Logger: opts.Logger}
+		m.allowSync.Init()
+		m.listener.Handle(db.ChannelAllowlist, m.allowSync.Notified)
+		m.listener.OnResync(func() { m.allowSync.Notified("") })
+	}
 	if opts.LAPI.URL != "" {
 		lc, err := lapi.New(opts.LAPI)
 		if err != nil {
@@ -460,18 +475,35 @@ func (m *Manager) setupSyslog() error {
 	return nil
 }
 
-// setupAlerts creates the watcher clients and the alert syncer for every
-// LAPI with watcher credentials.
-func (m *Manager) setupAlerts() error {
+// allLAPIs returns the primary LAPI (when configured) and the extra ones.
+func (m *Manager) allLAPIs() []NamedLAPI {
 	all := []NamedLAPI{}
 	if m.opts.LAPI.URL != "" {
 		name := m.opts.LAPIName
 		if name == "" {
 			name = "default"
 		}
-		all = append(all, NamedLAPI{Name: name, Config: m.opts.LAPI})
+		all = append(all, NamedLAPI{Name: name, Config: m.opts.LAPI, AllowlistSync: m.opts.LAPIAllowlistSync})
 	}
-	all = append(all, m.opts.ExtraLAPIs...)
+	return append(all, m.opts.ExtraLAPIs...)
+}
+
+// allowlistTargets returns the LAPIs whose allowlist follows the central
+// one.
+func (m *Manager) allowlistTargets() []allowlist.Target {
+	var out []allowlist.Target
+	for _, l := range m.allLAPIs() {
+		if l.AllowlistSync != "" {
+			out = append(out, allowlist.Target{Instance: l.Name, URL: l.AllowlistSync})
+		}
+	}
+	return out
+}
+
+// setupAlerts creates the watcher clients and the alert syncer for every
+// LAPI with watcher credentials.
+func (m *Manager) setupAlerts() error {
+	all := m.allLAPIs()
 	var instances []alerts.Instance
 	seen := map[string]bool{}
 	for _, l := range all {
@@ -593,6 +625,9 @@ func (m *Manager) Run(ctx context.Context) error {
 		}
 		el.Add("geo-update", func(ctx context.Context, _ *db.Leadership) { m.geoUpdater.Run(ctx) })
 		el.Add("notify", func(ctx context.Context, l *db.Leadership) { m.notify.Run(ctx, l) })
+		if m.allowSync != nil {
+			el.Add("allowlist-sync", func(ctx context.Context, l *db.Leadership) { m.allowSync.Run(ctx, l) })
+		}
 		el.Add("hub", func(ctx context.Context, l *db.Leadership) {
 			go m.hubRemote.RunRefresh(ctx)
 			m.rollout.Run(ctx, l)

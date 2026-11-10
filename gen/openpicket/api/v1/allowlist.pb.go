@@ -135,6 +135,106 @@ func (x *AllowlistEntry) GetActive() bool {
 	return false
 }
 
+// How the openpicket allowlist of a CrowdSec LAPI follows the entries
+// (openpicket-crowdsec-sync applies them with cscli). The LAPI then drops
+// alerts from these networks and deletes their decisions; removing an
+// entry does not bring deleted decisions back.
+type AllowlistLAPIStatus struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Instance string                 `protobuf:"bytes,1,opt,name=instance,proto3" json:"instance,omitempty"`
+	// A sync URL is configured for the instance.
+	Enabled bool `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Last push, last successful one, last one that changed something.
+	AttemptAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=attempt_at,json=attemptAt,proto3" json:"attempt_at,omitempty"`
+	SyncedAt  *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=synced_at,json=syncedAt,proto3" json:"synced_at,omitempty"`
+	ChangedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=changed_at,json=changedAt,proto3" json:"changed_at,omitempty"`
+	// Items in the LAPI allowlist after the last successful push.
+	Items int32 `protobuf:"varint,6,opt,name=items,proto3" json:"items,omitempty"`
+	// Error of the last push ("" when it succeeded).
+	Error         string `protobuf:"bytes,7,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AllowlistLAPIStatus) Reset() {
+	*x = AllowlistLAPIStatus{}
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AllowlistLAPIStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AllowlistLAPIStatus) ProtoMessage() {}
+
+func (x *AllowlistLAPIStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AllowlistLAPIStatus.ProtoReflect.Descriptor instead.
+func (*AllowlistLAPIStatus) Descriptor() ([]byte, []int) {
+	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AllowlistLAPIStatus) GetInstance() string {
+	if x != nil {
+		return x.Instance
+	}
+	return ""
+}
+
+func (x *AllowlistLAPIStatus) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *AllowlistLAPIStatus) GetAttemptAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AttemptAt
+	}
+	return nil
+}
+
+func (x *AllowlistLAPIStatus) GetSyncedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SyncedAt
+	}
+	return nil
+}
+
+func (x *AllowlistLAPIStatus) GetChangedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ChangedAt
+	}
+	return nil
+}
+
+func (x *AllowlistLAPIStatus) GetItems() int32 {
+	if x != nil {
+		return x.Items
+	}
+	return 0
+}
+
+func (x *AllowlistLAPIStatus) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 type ListAllowlistRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -143,7 +243,7 @@ type ListAllowlistRequest struct {
 
 func (x *ListAllowlistRequest) Reset() {
 	*x = ListAllowlistRequest{}
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[1]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -155,7 +255,7 @@ func (x *ListAllowlistRequest) String() string {
 func (*ListAllowlistRequest) ProtoMessage() {}
 
 func (x *ListAllowlistRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[1]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -168,19 +268,20 @@ func (x *ListAllowlistRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAllowlistRequest.ProtoReflect.Descriptor instead.
 func (*ListAllowlistRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{1}
+	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{2}
 }
 
 type ListAllowlistResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Entries       []*AllowlistEntry      `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	Lapis         []*AllowlistLAPIStatus `protobuf:"bytes,2,rep,name=lapis,proto3" json:"lapis,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListAllowlistResponse) Reset() {
 	*x = ListAllowlistResponse{}
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[2]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -192,7 +293,7 @@ func (x *ListAllowlistResponse) String() string {
 func (*ListAllowlistResponse) ProtoMessage() {}
 
 func (x *ListAllowlistResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[2]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -205,12 +306,19 @@ func (x *ListAllowlistResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAllowlistResponse.ProtoReflect.Descriptor instead.
 func (*ListAllowlistResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{2}
+	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ListAllowlistResponse) GetEntries() []*AllowlistEntry {
 	if x != nil {
 		return x.Entries
+	}
+	return nil
+}
+
+func (x *ListAllowlistResponse) GetLapis() []*AllowlistLAPIStatus {
+	if x != nil {
+		return x.Lapis
 	}
 	return nil
 }
@@ -226,7 +334,7 @@ type PutAllowlistEntryRequest struct {
 
 func (x *PutAllowlistEntryRequest) Reset() {
 	*x = PutAllowlistEntryRequest{}
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[3]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -238,7 +346,7 @@ func (x *PutAllowlistEntryRequest) String() string {
 func (*PutAllowlistEntryRequest) ProtoMessage() {}
 
 func (x *PutAllowlistEntryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[3]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -251,7 +359,7 @@ func (x *PutAllowlistEntryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutAllowlistEntryRequest.ProtoReflect.Descriptor instead.
 func (*PutAllowlistEntryRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{3}
+	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PutAllowlistEntryRequest) GetEntry() *AllowlistEntry {
@@ -278,7 +386,7 @@ type PutAllowlistEntryResponse struct {
 
 func (x *PutAllowlistEntryResponse) Reset() {
 	*x = PutAllowlistEntryResponse{}
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[4]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -290,7 +398,7 @@ func (x *PutAllowlistEntryResponse) String() string {
 func (*PutAllowlistEntryResponse) ProtoMessage() {}
 
 func (x *PutAllowlistEntryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[4]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -303,7 +411,7 @@ func (x *PutAllowlistEntryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutAllowlistEntryResponse.ProtoReflect.Descriptor instead.
 func (*PutAllowlistEntryResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{4}
+	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PutAllowlistEntryResponse) GetNetwork() string {
@@ -322,7 +430,7 @@ type DeleteAllowlistEntryRequest struct {
 
 func (x *DeleteAllowlistEntryRequest) Reset() {
 	*x = DeleteAllowlistEntryRequest{}
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[5]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -334,7 +442,7 @@ func (x *DeleteAllowlistEntryRequest) String() string {
 func (*DeleteAllowlistEntryRequest) ProtoMessage() {}
 
 func (x *DeleteAllowlistEntryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[5]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -347,7 +455,7 @@ func (x *DeleteAllowlistEntryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAllowlistEntryRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAllowlistEntryRequest) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{5}
+	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DeleteAllowlistEntryRequest) GetNetwork() string {
@@ -365,7 +473,7 @@ type DeleteAllowlistEntryResponse struct {
 
 func (x *DeleteAllowlistEntryResponse) Reset() {
 	*x = DeleteAllowlistEntryResponse{}
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[6]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -377,7 +485,7 @@ func (x *DeleteAllowlistEntryResponse) String() string {
 func (*DeleteAllowlistEntryResponse) ProtoMessage() {}
 
 func (x *DeleteAllowlistEntryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[6]
+	mi := &file_openpicket_api_v1_allowlist_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -390,7 +498,7 @@ func (x *DeleteAllowlistEntryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAllowlistEntryResponse.ProtoReflect.Descriptor instead.
 func (*DeleteAllowlistEntryResponse) Descriptor() ([]byte, []int) {
-	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{6}
+	return file_openpicket_api_v1_allowlist_proto_rawDescGZIP(), []int{7}
 }
 
 var File_openpicket_api_v1_allowlist_proto protoreflect.FileDescriptor
@@ -412,10 +520,21 @@ const file_openpicket_api_v1_allowlist_proto_rawDesc = "" +
 	"\n" +
 	"updated_by\x18\a \x01(\tR\tupdatedBy\x12\x1a\n" +
 	"\bexcluded\x18\b \x01(\x03R\bexcluded\x12\x16\n" +
-	"\x06active\x18\t \x01(\bR\x06active\"\x16\n" +
-	"\x14ListAllowlistRequest\"T\n" +
+	"\x06active\x18\t \x01(\bR\x06active\"\xa6\x02\n" +
+	"\x13AllowlistLAPIStatus\x12\x1a\n" +
+	"\binstance\x18\x01 \x01(\tR\binstance\x12\x18\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\x129\n" +
+	"\n" +
+	"attempt_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tattemptAt\x127\n" +
+	"\tsynced_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\bsyncedAt\x129\n" +
+	"\n" +
+	"changed_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tchangedAt\x12\x14\n" +
+	"\x05items\x18\x06 \x01(\x05R\x05items\x12\x14\n" +
+	"\x05error\x18\a \x01(\tR\x05error\"\x16\n" +
+	"\x14ListAllowlistRequest\"\x92\x01\n" +
 	"\x15ListAllowlistResponse\x12;\n" +
-	"\aentries\x18\x01 \x03(\v2!.openpicket.api.v1.AllowlistEntryR\aentries\"g\n" +
+	"\aentries\x18\x01 \x03(\v2!.openpicket.api.v1.AllowlistEntryR\aentries\x12<\n" +
+	"\x05lapis\x18\x02 \x03(\v2&.openpicket.api.v1.AllowlistLAPIStatusR\x05lapis\"g\n" +
 	"\x18PutAllowlistEntryRequest\x127\n" +
 	"\x05entry\x18\x01 \x01(\v2!.openpicket.api.v1.AllowlistEntryR\x05entry\x12\x12\n" +
 	"\x04wide\x18\x02 \x01(\bR\x04wide\"5\n" +
@@ -441,34 +560,39 @@ func file_openpicket_api_v1_allowlist_proto_rawDescGZIP() []byte {
 	return file_openpicket_api_v1_allowlist_proto_rawDescData
 }
 
-var file_openpicket_api_v1_allowlist_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_openpicket_api_v1_allowlist_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_openpicket_api_v1_allowlist_proto_goTypes = []any{
 	(*AllowlistEntry)(nil),               // 0: openpicket.api.v1.AllowlistEntry
-	(*ListAllowlistRequest)(nil),         // 1: openpicket.api.v1.ListAllowlistRequest
-	(*ListAllowlistResponse)(nil),        // 2: openpicket.api.v1.ListAllowlistResponse
-	(*PutAllowlistEntryRequest)(nil),     // 3: openpicket.api.v1.PutAllowlistEntryRequest
-	(*PutAllowlistEntryResponse)(nil),    // 4: openpicket.api.v1.PutAllowlistEntryResponse
-	(*DeleteAllowlistEntryRequest)(nil),  // 5: openpicket.api.v1.DeleteAllowlistEntryRequest
-	(*DeleteAllowlistEntryResponse)(nil), // 6: openpicket.api.v1.DeleteAllowlistEntryResponse
-	(*timestamppb.Timestamp)(nil),        // 7: google.protobuf.Timestamp
+	(*AllowlistLAPIStatus)(nil),          // 1: openpicket.api.v1.AllowlistLAPIStatus
+	(*ListAllowlistRequest)(nil),         // 2: openpicket.api.v1.ListAllowlistRequest
+	(*ListAllowlistResponse)(nil),        // 3: openpicket.api.v1.ListAllowlistResponse
+	(*PutAllowlistEntryRequest)(nil),     // 4: openpicket.api.v1.PutAllowlistEntryRequest
+	(*PutAllowlistEntryResponse)(nil),    // 5: openpicket.api.v1.PutAllowlistEntryResponse
+	(*DeleteAllowlistEntryRequest)(nil),  // 6: openpicket.api.v1.DeleteAllowlistEntryRequest
+	(*DeleteAllowlistEntryResponse)(nil), // 7: openpicket.api.v1.DeleteAllowlistEntryResponse
+	(*timestamppb.Timestamp)(nil),        // 8: google.protobuf.Timestamp
 }
 var file_openpicket_api_v1_allowlist_proto_depIdxs = []int32{
-	7, // 0: openpicket.api.v1.AllowlistEntry.expires_at:type_name -> google.protobuf.Timestamp
-	7, // 1: openpicket.api.v1.AllowlistEntry.created_at:type_name -> google.protobuf.Timestamp
-	7, // 2: openpicket.api.v1.AllowlistEntry.updated_at:type_name -> google.protobuf.Timestamp
-	0, // 3: openpicket.api.v1.ListAllowlistResponse.entries:type_name -> openpicket.api.v1.AllowlistEntry
-	0, // 4: openpicket.api.v1.PutAllowlistEntryRequest.entry:type_name -> openpicket.api.v1.AllowlistEntry
-	1, // 5: openpicket.api.v1.AllowlistService.ListAllowlist:input_type -> openpicket.api.v1.ListAllowlistRequest
-	3, // 6: openpicket.api.v1.AllowlistService.PutAllowlistEntry:input_type -> openpicket.api.v1.PutAllowlistEntryRequest
-	5, // 7: openpicket.api.v1.AllowlistService.DeleteAllowlistEntry:input_type -> openpicket.api.v1.DeleteAllowlistEntryRequest
-	2, // 8: openpicket.api.v1.AllowlistService.ListAllowlist:output_type -> openpicket.api.v1.ListAllowlistResponse
-	4, // 9: openpicket.api.v1.AllowlistService.PutAllowlistEntry:output_type -> openpicket.api.v1.PutAllowlistEntryResponse
-	6, // 10: openpicket.api.v1.AllowlistService.DeleteAllowlistEntry:output_type -> openpicket.api.v1.DeleteAllowlistEntryResponse
-	8, // [8:11] is the sub-list for method output_type
-	5, // [5:8] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	8,  // 0: openpicket.api.v1.AllowlistEntry.expires_at:type_name -> google.protobuf.Timestamp
+	8,  // 1: openpicket.api.v1.AllowlistEntry.created_at:type_name -> google.protobuf.Timestamp
+	8,  // 2: openpicket.api.v1.AllowlistEntry.updated_at:type_name -> google.protobuf.Timestamp
+	8,  // 3: openpicket.api.v1.AllowlistLAPIStatus.attempt_at:type_name -> google.protobuf.Timestamp
+	8,  // 4: openpicket.api.v1.AllowlistLAPIStatus.synced_at:type_name -> google.protobuf.Timestamp
+	8,  // 5: openpicket.api.v1.AllowlistLAPIStatus.changed_at:type_name -> google.protobuf.Timestamp
+	0,  // 6: openpicket.api.v1.ListAllowlistResponse.entries:type_name -> openpicket.api.v1.AllowlistEntry
+	1,  // 7: openpicket.api.v1.ListAllowlistResponse.lapis:type_name -> openpicket.api.v1.AllowlistLAPIStatus
+	0,  // 8: openpicket.api.v1.PutAllowlistEntryRequest.entry:type_name -> openpicket.api.v1.AllowlistEntry
+	2,  // 9: openpicket.api.v1.AllowlistService.ListAllowlist:input_type -> openpicket.api.v1.ListAllowlistRequest
+	4,  // 10: openpicket.api.v1.AllowlistService.PutAllowlistEntry:input_type -> openpicket.api.v1.PutAllowlistEntryRequest
+	6,  // 11: openpicket.api.v1.AllowlistService.DeleteAllowlistEntry:input_type -> openpicket.api.v1.DeleteAllowlistEntryRequest
+	3,  // 12: openpicket.api.v1.AllowlistService.ListAllowlist:output_type -> openpicket.api.v1.ListAllowlistResponse
+	5,  // 13: openpicket.api.v1.AllowlistService.PutAllowlistEntry:output_type -> openpicket.api.v1.PutAllowlistEntryResponse
+	7,  // 14: openpicket.api.v1.AllowlistService.DeleteAllowlistEntry:output_type -> openpicket.api.v1.DeleteAllowlistEntryResponse
+	12, // [12:15] is the sub-list for method output_type
+	9,  // [9:12] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_openpicket_api_v1_allowlist_proto_init() }
@@ -482,7 +606,7 @@ func file_openpicket_api_v1_allowlist_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_openpicket_api_v1_allowlist_proto_rawDesc), len(file_openpicket_api_v1_allowlist_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/openpicket/openpicket/pkg/allowsync"
 	"github.com/openpicket/openpicket/pkg/hubitem"
 )
 
@@ -15,8 +16,10 @@ import (
 const MaxBundle = 256 << 20
 
 // Handler serves the sync protocol, authenticated by a shared header (the
-// datasource token: only the manager may push records or content).
-func Handler(s *Syncer, header, token string) http.Handler {
+// datasource token: only the manager may push records or content). s
+// serves content (log processors), a the allowlist (LAPI containers);
+// either may be nil.
+func Handler(s *Syncer, a *Allowlister, header, token string) http.Handler {
 	auth := func(r *http.Request) bool {
 		got := r.Header.Get(header)
 		return token != "" && subtle.ConstantTimeCompare([]byte(got), []byte(token)) == 1
@@ -27,6 +30,32 @@ func Handler(s *Syncer, header, token string) http.Handler {
 		_ = json.NewEncoder(w).Encode(s.Status())
 	}
 	mux := http.NewServeMux()
+	if a != nil {
+		mux.HandleFunc("PUT "+allowsync.Path, func(w http.ResponseWriter, r *http.Request) {
+			if !auth(r) {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			var st allowsync.State
+			if err := json.NewDecoder(io.LimitReader(r.Body, 16<<20)).Decode(&st); err != nil {
+				http.Error(w, "bad allowlist: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+			res, err := a.Apply(r.Context(), st)
+			switch {
+			case errors.Is(err, ErrNoLAPI):
+				http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			case err != nil:
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			default:
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(res)
+			}
+		})
+	}
+	if s == nil {
+		return mux
+	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		if !s.cfg.Engine.Running() {
 			http.Error(w, "waiting for content", http.StatusServiceUnavailable)

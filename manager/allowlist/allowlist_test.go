@@ -2,13 +2,18 @@ package allowlist
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"net/netip"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/openpicket/openpicket/internal/pgtest"
 	"github.com/openpicket/openpicket/internal/schema"
+	"github.com/openpicket/openpicket/pkg/allowsync"
 )
 
 func TestParseNetwork(t *testing.T) {
@@ -141,5 +146,79 @@ func TestStore(t *testing.T) {
 	}
 	if err := s.Delete(ctx, net); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("second delete: %v", err)
+	}
+}
+
+func TestLAPISync(t *testing.T) {
+	pool := pgtest.Pool(t)
+	ctx := context.Background()
+	if err := schema.Migrate(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
+	s := New(pool, func() time.Time { return now })
+	exp := now.Add(time.Hour)
+	for _, e := range []Entry{
+		{Network: netip.MustParsePrefix("192.0.2.0/24"), Description: "office"},
+		{Network: netip.MustParsePrefix("198.51.100.7/32"), ExpiresAt: exp},
+	} {
+		if err := s.Put(ctx, e, false, "alice"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var (
+		got  []allowsync.State
+		fail bool
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != allowsync.Path || r.Header.Get("X-OpenPicket-Token") != "tok" {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if fail {
+			http.Error(w, "cscli: boom", http.StatusInternalServerError)
+			return
+		}
+		var st allowsync.State
+		_ = json.NewDecoder(r.Body).Decode(&st)
+		got = append(got, st)
+		_ = json.NewEncoder(w).Encode(allowsync.Result{Added: len(st.Items), Items: len(st.Items)})
+	}))
+	defer srv.Close()
+	ls := &LAPISync{Store: s, Targets: []Target{{Instance: "default", URL: srv.URL + "/"}}, Header: "X-OpenPicket-Token", Token: "tok"}
+	ls.Init()
+	if err := ls.Pass(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || len(got[0].Items) != 2 {
+		t.Fatalf("pushed = %+v", got)
+	}
+	if it := got[0].Items[1]; it.Value != "198.51.100.7" || it.ExpiresAt == nil || !it.ExpiresAt.Equal(exp) || got[0].Items[0].Description != "office" {
+		t.Fatalf("items = %+v", got[0].Items)
+	}
+	st, err := s.SyncStatuses(ctx)
+	if err != nil || st["default"].Error != "" || !st["default"].SyncedAt.Equal(now) || !st["default"].ChangedAt.Equal(now) || st["default"].Items != 2 {
+		t.Fatalf("status = %+v %v", st, err)
+	}
+
+	// A failed push keeps the last success; expired entries are not sent.
+	fail = true
+	now = exp
+	if err := ls.Pass(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	st, _ = s.SyncStatuses(ctx)
+	if d := st["default"]; !strings.Contains(d.Error, "boom") || !d.AttemptAt.Equal(exp) || !d.SyncedAt.Equal(exp.Add(-time.Hour)) {
+		t.Fatalf("after failure = %+v", d)
+	}
+	fail = false
+	if err := ls.Pass(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || len(got[1].Items) != 1 {
+		t.Fatalf("after expiry = %+v", got)
+	}
+	if st, _ := s.SyncStatuses(ctx); st["default"].Error != "" {
+		t.Fatalf("error not cleared: %+v", st)
 	}
 }

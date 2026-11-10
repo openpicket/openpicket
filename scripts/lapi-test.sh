@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Runs the LAPI integration tests (test/lapi_test.go) against the OpenPicket
 # CrowdSec image and a throwaway PostgreSQL: the watcher client, the alert
-# copy and the bouncer stream with a real LAPI.
+# copy, the bouncer stream and the allowlist sync with a real LAPI.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 IMAGE="${IMAGE:-openpicket-crowdsec:dev}"
 name="openpicket-lapi-test-$$"
-docker run -d --rm --name "$name" -e OPENPICKET_ACQUIS_TOKEN=test-token -p 127.0.0.1::8080 -p 127.0.0.1::8081 "$IMAGE" >/dev/null
+docker run -d --rm --name "$name" -e OPENPICKET_ACQUIS_TOKEN=test-token -p 127.0.0.1::8080 -p 127.0.0.1::8081 -p 127.0.0.1::8082 "$IMAGE" >/dev/null
 bundle="$(mktemp)"
 trap 'docker rm -f "$name" >/dev/null 2>&1; rm -f "$bundle"' EXIT
 ex() { docker exec "$name" "$@"; }
@@ -40,4 +40,5 @@ export OPENPICKET_TEST_LAPI_PASSWORD=lapi-test-password
 export OPENPICKET_TEST_LAPI_BOUNCER_KEY=lapi-test-bouncer-key
 export OPENPICKET_TEST_ACQUIS_URL="http://127.0.0.1:$(port 8081)/openpicket"
 export OPENPICKET_TEST_ACQUIS_TOKEN=test-token
+export OPENPICKET_TEST_SYNC_URL="http://127.0.0.1:$(port 8082)"
 COUNT=1 ./scripts/test-pg.sh ./test/ -run LAPI -v

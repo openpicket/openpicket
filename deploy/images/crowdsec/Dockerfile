@@ -77,6 +77,8 @@ ENV DISABLE_ONLINE_API=true \
 COPY deploy/images/crowdsec/start.sh /usr/local/bin/openpicket-crowdsec-start
 COPY --from=binary /openpicket-crowdsec-sync /usr/local/bin/openpicket-crowdsec-sync
 # Log processors: the sync process (port 8082) starts CrowdSec once it has
-# content. LAPI-only containers (DISABLE_AGENT=true) run the start script.
+# content. LAPI-only containers (DISABLE_AGENT=true) start CrowdSec at once;
+# with OPENPICKET_ACQUIS_TOKEN the sync process keeps serving the allowlist
+# the manager pushes, without it the start script replaces it.
 EXPOSE 8082
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/openpicket-crowdsec-sync"]

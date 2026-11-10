@@ -25,6 +25,9 @@ func (m *Manager) API(cfg api.Config) (*api.Server, error) {
 	cfg.GeoUpdater = m.geoUpdater
 	cfg.Policies = m.policies
 	cfg.Allowlist = m.allow
+	for _, l := range m.allLAPIs() {
+		cfg.AllowlistLAPIs = append(cfg.AllowlistLAPIs, api.AllowlistLAPI{Name: l.Name, Synced: l.AllowlistSync != ""})
+	}
 	cfg.Hub = m.hub
 	cfg.HubRemote = m.hubRemote
 	cfg.LogPrograms = m.programs

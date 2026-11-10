@@ -844,6 +844,19 @@ func TestAllowlist(t *testing.T) {
 	if len(audit.Msg.Entries) != 3 || audit.Msg.Entries[0].Target != "192.0.2.0/24" {
 		t.Fatalf("audit: %v", audit.Msg.Entries)
 	}
+
+	// The LAPI allowlists: one synced (failing), one without a sync URL.
+	e.server.cfg.AllowlistLAPIs = []AllowlistLAPI{{Name: "default", Synced: true}, {Name: "edge-eu", Synced: false}}
+	if _, err := e.server.cfg.DB.Exec(ctx, `INSERT INTO openpicket.allowlist_lapi_sync (instance, attempt_at, error) VALUES ('default', now(), 'status 503: starting')`); err != nil {
+		t.Fatal(err)
+	}
+	list, err = viewer.allow.ListAllowlist(ctx, connect.NewRequest(&apiv1.ListAllowlistRequest{}))
+	if err != nil || len(list.Msg.Lapis) != 2 {
+		t.Fatalf("lapis: %v %v", list, err)
+	}
+	if d, o := list.Msg.Lapis[0], list.Msg.Lapis[1]; !d.Enabled || d.Error != "status 503: starting" || d.SyncedAt != nil || d.AttemptAt == nil || o.Enabled || o.AttemptAt != nil {
+		t.Fatalf("lapis: %+v", list.Msg.Lapis)
+	}
 }
 
 // Every procedure of every API service must be in the access table: a

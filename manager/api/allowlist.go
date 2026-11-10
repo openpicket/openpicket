@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -39,7 +40,35 @@ func (a *allowlistService) ListAllowlist(ctx context.Context, _ *connect.Request
 		}
 		res.Entries = append(res.Entries, m)
 	}
+	if len(a.s.cfg.AllowlistLAPIs) > 0 {
+		sts, err := st.SyncStatuses(ctx)
+		if err != nil {
+			return nil, toConnectError(err)
+		}
+		for _, l := range a.s.cfg.AllowlistLAPIs {
+			m := &apiv1.AllowlistLAPIStatus{Instance: l.Name, Enabled: l.Synced}
+			if s, ok := sts[l.Name]; ok && l.Synced {
+				m.AttemptAt, m.SyncedAt, m.ChangedAt = timestamppb.New(s.AttemptAt), optTime(s.SyncedAt), optTime(s.ChangedAt)
+				m.Items, m.Error = int32(s.Items), s.Error
+			}
+			res.Lapis = append(res.Lapis, m)
+		}
+	}
 	return connect.NewResponse(res), nil
+}
+
+// AllowlistLAPI is a LAPI instance and whether its openpicket allowlist
+// follows the entries.
+type AllowlistLAPI struct {
+	Name   string
+	Synced bool
+}
+
+func optTime(t time.Time) *timestamppb.Timestamp {
+	if t.IsZero() {
+		return nil
+	}
+	return timestamppb.New(t)
 }
 
 func (a *allowlistService) PutAllowlistEntry(ctx context.Context, req *connect.Request[apiv1.PutAllowlistEntryRequest]) (*connect.Response[apiv1.PutAllowlistEntryResponse], error) {

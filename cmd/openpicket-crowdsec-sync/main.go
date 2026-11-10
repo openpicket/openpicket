@@ -1,7 +1,10 @@
 // Command openpicket-crowdsec-sync runs a CrowdSec log processor with the
-// content openpicket-manager pushes (internal/crowdsecsync). With
-// DISABLE_AGENT=true (a LAPI-only container) it runs the start script
-// directly: content only matters to log processors.
+// content openpicket-manager pushes (internal/crowdsecsync). Where the
+// local API runs, it also keeps the openpicket allowlist equal to the
+// central allowlist the manager pushes (pkg/allowsync). With
+// DISABLE_AGENT=true (a LAPI-only container) it starts CrowdSec at once and
+// serves the allowlist only; without OPENPICKET_ACQUIS_TOKEN there it runs
+// the start script directly.
 //
 //	openpicket-crowdsec-sync put [URL]   push a bundle (JSON on stdin) to a
 //	                                      running sync (default local), as the
@@ -51,27 +54,51 @@ func main() {
 		os.Exit(put(os.Args[2:]))
 	}
 	start := append([]string{env("OPENPICKET_SYNC_START", "/usr/local/bin/openpicket-crowdsec-start")}, os.Args[1:]...)
-	if strings.EqualFold(os.Getenv("DISABLE_AGENT"), "true") {
+	lapiOnly := strings.EqualFold(os.Getenv("DISABLE_AGENT"), "true")
+	token := secret("OPENPICKET_ACQUIS_TOKEN")
+	if lapiOnly && token == "" {
 		err := syscall.Exec(start[0], start, os.Environ())
 		fmt.Fprintln(os.Stderr, "exec", start[0], err)
 		os.Exit(1)
 	}
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil)).With("component", "openpicket-crowdsec-sync")
-	token := secret("OPENPICKET_ACQUIS_TOKEN")
 	if token == "" {
 		log.Error("OPENPICKET_ACQUIS_TOKEN is required")
 		os.Exit(1)
 	}
-	proc := &crowdsecsync.Process{Command: start, ReadyAddr: env("OPENPICKET_SYNC_READY_ADDR", "127.0.0.1:8081")}
-	s := crowdsecsync.New(crowdsecsync.Config{
-		ConfigFile: env("OPENPICKET_SYNC_CONFIG", "/etc/crowdsec/config.yaml"), DataDir: env("OPENPICKET_SYNC_DATA", "/var/lib/crowdsec/data"),
-		Engine: proc, Logger: log,
-	})
-	srv := &http.Server{Addr: env("OPENPICKET_SYNC_LISTEN", ":8082"), Handler: crowdsecsync.Handler(s, env("OPENPICKET_SYNC_HEADER", "X-OpenPicket-Token"), token),
-		ReadHeaderTimeout: 15 * time.Second}
+	var allow *crowdsecsync.Allowlister
+	if !strings.EqualFold(os.Getenv("DISABLE_LOCAL_API"), "true") {
+		allow = &crowdsecsync.Allowlister{}
+	}
+	header := env("OPENPICKET_SYNC_HEADER", "X-OpenPicket-Token")
+	var (
+		proc *crowdsecsync.Process
+		h    http.Handler
+	)
+	if lapiOnly {
+		proc = &crowdsecsync.Process{Command: start, ReadyAddr: env("OPENPICKET_SYNC_READY_ADDR", "127.0.0.1:8080")}
+		h = crowdsecsync.Handler(nil, allow, header, token)
+		go func() {
+			if err := proc.Start(context.Background()); err != nil {
+				log.Error("start crowdsec", "err", err)
+			}
+		}()
+	} else {
+		proc = &crowdsecsync.Process{Command: start, ReadyAddr: env("OPENPICKET_SYNC_READY_ADDR", "127.0.0.1:8081")}
+		s := crowdsecsync.New(crowdsecsync.Config{
+			ConfigFile: env("OPENPICKET_SYNC_CONFIG", "/etc/crowdsec/config.yaml"), DataDir: env("OPENPICKET_SYNC_DATA", "/var/lib/crowdsec/data"),
+			Engine: proc, Logger: log,
+		})
+		h = crowdsecsync.Handler(s, allow, header, token)
+	}
+	srv := &http.Server{Addr: env("OPENPICKET_SYNC_LISTEN", ":8082"), Handler: h, ReadHeaderTimeout: 15 * time.Second}
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
-	log.Info("waiting for content from openpicket-manager", "listen", srv.Addr)
+	if lapiOnly {
+		log.Info("serving the allowlist for openpicket-manager", "listen", srv.Addr)
+	} else {
+		log.Info("waiting for content from openpicket-manager", "listen", srv.Addr, "allowlist", allow != nil)
+	}
 	sigs := make(chan os.Signal, 2)
 	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
 	tick := time.NewTicker(time.Second)

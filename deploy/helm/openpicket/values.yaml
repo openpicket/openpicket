@@ -116,7 +116,9 @@ manager:
   # Behind an ingress the client address comes from X-Forwarded-For.
   trustProxyHeaders: true
   alertRetention: 720h
-  # Extra LAPI instances shown in the UI (JSON list, see docs).
+  # Extra LAPI instances shown in the UI (JSON list, see docs); an
+  # "allowlist_sync_url" (http://lapi:8082) makes its allowlist follow the
+  # central one.
   extraLAPIs: ""
   # Controller URL handed to agents whose agent.yaml has no controller
   # section. Empty: /agent/v1/connect on the host agents reach the manager
@@ -235,6 +237,11 @@ crowdsec:
     replicas: 2
     # Watchers from these addresses may delete alerts (the manager).
     trustedIPs: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7]
+    # Keep the LAPI allowlist "openpicket" equal to the central allowlist
+    # (UI "Allowlist"): the LAPI then drops alerts from those networks and
+    # deletes their decisions, for every bouncer. Removing an entry does
+    # not bring deleted decisions back. Off: only the edge honours it.
+    allowlistSync: true
     resources:
       requests: { cpu: 100m, memory: 128Mi }
       limits: { memory: 1Gi }
