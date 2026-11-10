@@ -121,7 +121,7 @@ openpicket:
 ```
 
 - **WAN**: NFLOG, bans and port policies apply to the WAN only. To treat devices outside the `fw4_zones` zones (WireGuard, for example) as WAN, add them to `wan_interfaces` (a trailing `*` matches a prefix, e.g. `wg*`).
-- **allowlist**: adding the management networks is strongly recommended (e.g. `192.168.0.0/16`). It takes precedence over ban decisions and port policies.
+- **allowlist**: adding the management networks is strongly recommended (e.g. `192.168.0.0/16`). It takes precedence over ban decisions and port policies. Networks that no node should ban go in the central allowlist instead (UI, *Allowlist*): it keeps CrowdSec decisions off every node but leaves port policies alone.
 - See `deploy/images/agent/agent.yaml.example` for every setting.
 
 ### System log (dropbear, LuCI, dnsmasq)

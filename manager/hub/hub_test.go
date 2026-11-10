@@ -179,7 +179,7 @@ func newLP(t *testing.T) *lp {
 	_ = os.WriteFile(filepath.Join(dir, "etc", "config.yaml"), []byte("config_paths: {}\n"), 0o644)
 	eng := &fakeEngine{}
 	sy := crowdsecsync.New(crowdsecsync.Config{ConfigFile: filepath.Join(dir, "etc", "config.yaml"), DataDir: filepath.Join(dir, "data"), Engine: eng, WorkDir: t.TempDir()})
-	srv := httptest.NewServer(crowdsecsync.Handler(sy, "X-OpenPicket-Token", "tok"))
+	srv := httptest.NewServer(crowdsecsync.Handler(sy, nil, "X-OpenPicket-Token", "tok"))
 	t.Cleanup(srv.Close)
 	return &lp{srv: srv, sy: sy, eng: eng}
 }

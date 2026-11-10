@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package openpicket.api.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/openpicket/openpicket/gen/openpicket/api/v1;apiv1";
+
+// Central allowlist: networks CrowdSec decisions never block at the edge,
+// whatever their origin. Port policies still apply to them.
+service AllowlistService {
+  rpc ListAllowlist(ListAllowlistRequest) returns (ListAllowlistResponse);
+  // Creates or replaces the entry of a network.
+  rpc PutAllowlistEntry(PutAllowlistEntryRequest) returns (PutAllowlistEntryResponse);
+  rpc DeleteAllowlistEntry(DeleteAllowlistEntryRequest) returns (DeleteAllowlistEntryResponse);
+}
+
+message AllowlistEntry {
+  // CIDR, or an address (stored as /32 or /128).
+  string network = 1;
+  string description = 2;
+  // Unset: never expires.
+  google.protobuf.Timestamp expires_at = 3;
+  // Read only.
+  google.protobuf.Timestamp created_at = 4;
+  string created_by = 5;
+  google.protobuf.Timestamp updated_at = 6;
+  string updated_by = 7;
+  // Active edge-eligible decisions the entry keeps off the edge (read only).
+  int64 excluded = 8;
+  // Not expired (read only).
+  bool active = 9;
+}
+
+// How the openpicket allowlist of a CrowdSec LAPI follows the entries
+// (openpicket-crowdsec-sync applies them with cscli). The LAPI then drops
+// alerts from these networks and deletes their decisions; removing an
+// entry does not bring deleted decisions back.
+message AllowlistLAPIStatus {
+  string instance = 1;
+  // A sync URL is configured for the instance.
+  bool enabled = 2;
+  // Last push, last successful one, last one that changed something.
+  google.protobuf.Timestamp attempt_at = 3;
+  google.protobuf.Timestamp synced_at = 4;
+  google.protobuf.Timestamp changed_at = 5;
+  // Items in the LAPI allowlist after the last successful push.
+  int32 items = 6;
+  // Error of the last push ("" when it succeeded).
+  string error = 7;
+}
+
+message ListAllowlistRequest {}
+message ListAllowlistResponse {
+  repeated AllowlistEntry entries = 1;
+  repeated AllowlistLAPIStatus lapis = 2;
+}
+
+message PutAllowlistEntryRequest {
+  AllowlistEntry entry = 1;
+  // Confirms a network wider than /8 (IPv4) or /32 (IPv6).
+  bool wide = 2;
+}
+message PutAllowlistEntryResponse {
+  // The stored network (canonical form).
+  string network = 1;
+}
+
+message DeleteAllowlistEntryRequest {
+  string network = 1;
+}
+message DeleteAllowlistEntryResponse {}

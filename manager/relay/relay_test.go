@@ -256,3 +256,93 @@ func (f txFencer) Fenced(ctx context.Context, fn func(pgx.Tx) error) error {
 }
 
 func leadership(_ *testing.T, pool *pgxpool.Pool) Fencer { return txFencer{pool} }
+
+func allow(t *testing.T, pool *pgxpool.Pool, network string, expires *time.Time) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(), `INSERT INTO openpicket.allowlist (network, expires_at) VALUES ($1, $2)`, network, expires); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAllowlistKeepsDecisionsOffTheEdge(t *testing.T) {
+	pool, r, now := setup(t)
+	r.cfg.FullResyncInterval = 2 * time.Hour
+	ctx := context.Background()
+	l := leadership(t, pool)
+	allow(t, pool, "192.0.2.0/24", nil)
+	apply(t, pool, r, &lapi.Stream{ReceivedAt: *now, New: []*lapi.Decision{
+		dec(1, "ban", "Ip", "192.0.2.7", "openpicket/suricata-inbound-major", "4h"),    // inside
+		dec(2, "ban", "Range", "192.0.0.0/16", "manual/web-ui", "4h"),                  // covers the entry
+		dec(3, "ban", "Ip", "198.51.100.4", "openpicket/suricata-inbound-major", "4h"), // outside
+		dec(4, "ban", "Ip", "2001:db8::1", "openpicket/suricata-inbound-major", "4h"),  // outside (v6)
+		dec(5, "ban", "Ip", "fe80::1%eth0", "openpicket/suricata-inbound-major", "4h"), // zoned: not an edge value
+		dec(6, "ban", "Country", "CN", "manual/web-ui", "4h"),                          // not an edge scope
+	}}, true)
+	e := edges(t, pool)
+	if _, ok := e["192.0.2.7"]; ok {
+		t.Fatal("allowlisted address reached the edge")
+	}
+	if _, ok := e["192.0.0.0/16"]; ok {
+		t.Fatal("a range overlapping the allowlist reached the edge")
+	}
+	if len(e) != 2 {
+		t.Fatalf("edge rows = %v", e)
+	}
+
+	// A new entry tombstones what it covers.
+	allow(t, pool, "198.51.100.0/24", nil)
+	exp := now.Add(time.Hour)
+	allow(t, pool, "2001:db8::/32", &exp)
+	next, err := r.Reconcile(ctx, l)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !next.Equal(exp) {
+		t.Fatalf("next reconcile = %v, want the expiry %v", next, exp)
+	}
+	e = edges(t, pool)
+	if !e["198.51.100.4"].deleted || !e["2001:db8::1"].deleted {
+		t.Fatalf("covered values not tombstoned: %v", e)
+	}
+	// Nothing left to change.
+	before := edges(t, pool)
+	if _, err := r.Reconcile(ctx, l); err != nil {
+		t.Fatal(err)
+	}
+	if after := edges(t, pool); after["198.51.100.4"].version != before["198.51.100.4"].version {
+		t.Fatal("a second reconcile changed versions")
+	}
+
+	// Removing an entry and an entry running out bring their values back.
+	if _, err := pool.Exec(ctx, `DELETE FROM openpicket.allowlist WHERE network = '192.0.2.0/24'`); err != nil {
+		t.Fatal(err)
+	}
+	*now = exp
+	next, err = r.Reconcile(ctx, l)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !next.Equal(now.Add(r.cfg.FullResyncInterval)) {
+		t.Fatalf("next reconcile without expiries = %v", next)
+	}
+	e = edges(t, pool)
+	for _, v := range []string{"192.0.2.7", "192.0.0.0/16", "2001:db8::1"} {
+		if got, ok := e[v]; !ok || got.deleted {
+			t.Fatalf("%s not blocked again: %v", v, e)
+		}
+	}
+	if !e["198.51.100.4"].deleted {
+		t.Fatal("198.51.100.4 is still allowlisted")
+	}
+}
+
+func TestNotifiedWakesRun(t *testing.T) {
+	r := New(Config{})
+	r.Notified("")
+	r.Notified("") // never blocks
+	select {
+	case <-r.poke:
+	default:
+		t.Fatal("no wake-up queued")
+	}
+}

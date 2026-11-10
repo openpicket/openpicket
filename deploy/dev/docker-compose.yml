@@ -45,7 +45,7 @@ services:
       - "127.0.0.1:18080:8080" # LAPI
       - "127.0.0.1:18081:8081" # OpenPicket datasource
       - "127.0.0.1:16060:6060" # metrics
-      - "127.0.0.1:18083:8082" # content sync (openpicket-crowdsec-sync)
+      - "127.0.0.1:18083:8082" # content and allowlist sync (openpicket-crowdsec-sync)
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null --header \"X-OpenPicket-Token: $$OPENPICKET_ACQUIS_TOKEN\" http://127.0.0.1:8082/hub/status"]
       interval: 3s

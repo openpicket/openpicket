@@ -3,6 +3,7 @@ package misp_test
 import (
 	"context"
 	"log/slog"
+	"net/netip"
 	"strings"
 	"sync"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/openpicket/openpicket/internal/misptest"
 	"github.com/openpicket/openpicket/internal/pgtest"
 	"github.com/openpicket/openpicket/internal/schema"
+	"github.com/openpicket/openpicket/manager/allowlist"
 	"github.com/openpicket/openpicket/manager/lapi"
 	"github.com/openpicket/openpicket/manager/misp"
 )
@@ -164,6 +166,57 @@ func TestApproveBlockRevoke(t *testing.T) {
 	sync()
 	if err := pool.QueryRow(ctx, `SELECT state FROM openpicket.misp_iocs WHERE value = '203.0.113.66'`).Scan(&state); err != nil || state != "revoked" {
 		t.Fatalf("deleted attribute: %s %v", state, err)
+	}
+}
+
+func TestAllowlistedAttributes(t *testing.T) {
+	pool := pgtest.Pool(t)
+	ctx := context.Background()
+	if err := schema.Migrate(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	clk := &clock{t: time.Now().UTC().Truncate(time.Second)}
+	fakeLAPI := lapitest.New()
+	defer fakeLAPI.Close()
+	fakeLAPI.Now = clk.Now
+	fakeMISP := misptest.New()
+	defer fakeMISP.Close()
+	lc, _ := lapi.New(lapi.Config{URL: fakeLAPI.URL, Login: fakeLAPI.Login, Password: fakeLAPI.Password})
+	w, _ := lc.Watcher()
+	mc, err := misp.NewClient(misp.ClientConfig{URL: fakeMISP.URL, APIKey: fakeMISP.Key})
+	if err != nil {
+		t.Fatal(err)
+	}
+	al := allowlist.New(pool, clk.Now)
+	svc := misp.New(misp.Config{DB: pool, Client: mc, LAPI: w, Allowlist: al, Logger: slog.New(slog.DiscardHandler), Now: clk.Now})
+	sync := func() {
+		t.Helper()
+		if err := svc.Sync(ctx, fence{pool}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fakeMISP.Add("ip-src", "203.0.113.70", true, misp.StateTag(misp.StateApproved))
+	fakeMISP.Add("ip-dst", "198.51.100.8", true, misp.StateTag(misp.StateApproved))
+	sync()
+	if got := activeMISPDecisions(fakeLAPI, clk.Now()); len(got) != 2 {
+		t.Fatalf("decisions: %v", got)
+	}
+	// An entry covering an approved attribute removes its decision.
+	if err := al.Put(ctx, allowlist.Entry{Network: netip.MustParsePrefix("203.0.113.0/24")}, false, "alice"); err != nil {
+		t.Fatal(err)
+	}
+	sync()
+	got := activeMISPDecisions(fakeLAPI, clk.Now())
+	if _, ok := got["203.0.113.70"]; ok || len(got) != 1 {
+		t.Fatalf("after allowlisting: %v", got)
+	}
+	// Removing the entry brings it back.
+	if err := al.Delete(ctx, netip.MustParsePrefix("203.0.113.0/24")); err != nil {
+		t.Fatal(err)
+	}
+	sync()
+	if got := activeMISPDecisions(fakeLAPI, clk.Now()); len(got) != 2 {
+		t.Fatalf("after removing the entry: %v", got)
 	}
 }
 

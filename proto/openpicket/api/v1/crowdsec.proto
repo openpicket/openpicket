@@ -290,6 +290,9 @@ message GetPropagationResponse {
   repeated Decision decisions = 6;
   reserved 7;
   repeated EdgeBlock edge = 8;
+  // Central allowlist entries covering the value: its decisions stay off
+  // the edge.
+  repeated string allowlisted = 9;
 }
 
 message GetSummaryRequest {

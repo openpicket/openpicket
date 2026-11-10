@@ -3,9 +3,11 @@ package test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"slices"
@@ -18,7 +20,9 @@ import (
 	"github.com/openpicket/openpicket/internal/pgtest"
 	"github.com/openpicket/openpicket/internal/schema"
 	"github.com/openpicket/openpicket/manager/alerts"
+	"github.com/openpicket/openpicket/manager/allowlist"
 	"github.com/openpicket/openpicket/manager/lapi"
+	"github.com/openpicket/openpicket/pkg/allowsync"
 )
 
 type txFence struct{ db *pgxpool.Pool }
@@ -172,5 +176,146 @@ func TestLAPIWatcher(t *testing.T) {
 	}
 	if left, total, _ := q.Search(ctx, alerts.Filter{IncludeSimulated: true}, 10, 0, "", false); total != int64(len(all)-1) {
 		t.Fatalf("copy after full pass: %d (%v), LAPI had %d", total, left, len(all)-1)
+	}
+}
+
+// lapiAllowlist reads the openpicket allowlist through the LAPI API, as a
+// watcher.
+func lapiAllowlist(t *testing.T, base string) map[string]allowsync.Item {
+	t.Helper()
+	ctx := context.Background()
+	body, _ := json.Marshal(map[string]string{"machine_id": os.Getenv("OPENPICKET_TEST_LAPI_LOGIN"), "password": os.Getenv("OPENPICKET_TEST_LAPI_PASSWORD")})
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/watchers/login", bytes.NewReader(body))
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var login struct {
+		Token string `json:"token"`
+	}
+	_ = json.NewDecoder(res.Body).Decode(&login)
+	res.Body.Close()
+	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, base+"/v1/allowlists/"+allowsync.Name+"?with_content=true", nil)
+	req.Header.Set("Authorization", "Bearer "+login.Token)
+	res, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var list struct {
+		Items []struct {
+			Value       string    `json:"value"`
+			Description string    `json:"description"`
+			Expiration  time.Time `json:"expiration"`
+		} `json:"items"`
+	}
+	if res.StatusCode != http.StatusOK || json.NewDecoder(res.Body).Decode(&list) != nil {
+		t.Fatalf("read the allowlist: %d", res.StatusCode)
+	}
+	out := map[string]allowsync.Item{}
+	for _, it := range list.Items {
+		item := allowsync.Item{Value: it.Value, Description: it.Description}
+		if it.Expiration.Year() > 1 {
+			exp := it.Expiration
+			item.ExpiresAt = &exp
+		}
+		out[it.Value] = item
+	}
+	return out
+}
+
+// TestLAPIAllowlist pushes the central allowlist to a real LAPI through
+// openpicket-crowdsec-sync (scripts/lapi-test.sh).
+func TestLAPIAllowlist(t *testing.T) {
+	base, syncURL := os.Getenv("OPENPICKET_TEST_LAPI_URL"), os.Getenv("OPENPICKET_TEST_SYNC_URL")
+	if base == "" || syncURL == "" {
+		t.Skip("OPENPICKET_TEST_LAPI_URL / OPENPICKET_TEST_SYNC_URL not set (scripts/lapi-test.sh)")
+	}
+	pool := pgtest.Pool(t)
+	ctx := context.Background()
+	if err := schema.Migrate(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	c, err := lapi.New(lapi.Config{URL: base, Login: os.Getenv("OPENPICKET_TEST_LAPI_LOGIN"), Password: os.Getenv("OPENPICKET_TEST_LAPI_PASSWORD")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, err := c.Watcher()
+	if err != nil {
+		t.Fatal(err)
+	}
+	active := func(ip string) int {
+		t.Helper()
+		alerts, err := w.Alerts(ctx, url.Values{"ip": {ip}, "has_active_decision": {"true"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(alerts)
+	}
+	// A manual ban the allowlist will cover.
+	if _, err := w.PushAlerts(ctx, []*lapi.Alert{lapi.ManualDecision("Ip", "192.0.2.50", "ban", "4h", "openpicket/manual", "test", "olga", time.Now())}); err != nil {
+		t.Fatal(err)
+	}
+	if active("192.0.2.50") != 1 {
+		t.Fatal("manual decision not active")
+	}
+
+	store := allowlist.New(pool, nil)
+	exp := time.Now().Add(2 * time.Hour).Truncate(time.Second)
+	if err := store.Put(ctx, allowlist.Entry{Network: netip.MustParsePrefix("192.0.2.0/24"), Description: "office"}, false, "alice"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Put(ctx, allowlist.Entry{Network: netip.MustParsePrefix("198.51.100.210/32"), ExpiresAt: exp}, false, "alice"); err != nil {
+		t.Fatal(err)
+	}
+	ls := &allowlist.LAPISync{Store: store, Targets: []allowlist.Target{{Instance: "default", URL: syncURL}},
+		Header: "X-OpenPicket-Token", Token: os.Getenv("OPENPICKET_TEST_ACQUIS_TOKEN")}
+	ls.Init()
+	pass := func() allowlist.SyncStatus {
+		t.Helper()
+		if err := ls.Pass(ctx, nil); err != nil {
+			t.Fatal(err)
+		}
+		st, err := store.SyncStatuses(ctx)
+		if err != nil || st["default"].Error != "" {
+			t.Fatalf("sync status: %+v %v", st, err)
+		}
+		return st["default"]
+	}
+	first := pass()
+	got := lapiAllowlist(t, base)
+	if len(got) != 2 || got["192.0.2.0/24"].Description != "office" || got["192.0.2.0/24"].ExpiresAt != nil {
+		t.Fatalf("LAPI allowlist = %+v", got)
+	}
+	if e := got["198.51.100.210"].ExpiresAt; e == nil || e.Sub(exp).Abs() > allowsync.Tolerance {
+		t.Fatalf("expiry = %v, want %v", e, exp)
+	}
+	// cscli applies the allowlist to existing decisions.
+	if n := active("192.0.2.50"); n != 0 {
+		t.Fatalf("covered decision still active (%d)", n)
+	}
+
+	// In sync: nothing changes.
+	time.Sleep(10 * time.Millisecond)
+	if again := pass(); !again.ChangedAt.Equal(first.ChangedAt) || again.Items != 2 {
+		t.Fatalf("second push changed the allowlist: %+v", again)
+	}
+
+	// A new description, then a removed entry.
+	if err := store.Put(ctx, allowlist.Entry{Network: netip.MustParsePrefix("192.0.2.0/24"), Description: "office LAN"}, false, "bob"); err != nil {
+		t.Fatal(err)
+	}
+	pass()
+	if got := lapiAllowlist(t, base); got["192.0.2.0/24"].Description != "office LAN" {
+		t.Fatalf("description not updated: %+v", got)
+	}
+	if err := store.Delete(ctx, netip.MustParsePrefix("192.0.2.0/24")); err != nil {
+		t.Fatal(err)
+	}
+	if st := pass(); st.Items != 1 {
+		t.Fatalf("after delete: %+v", st)
+	}
+	if got := lapiAllowlist(t, base); len(got) != 1 {
+		t.Fatalf("after delete: %+v", got)
 	}
 }

@@ -71,6 +71,7 @@ type config struct {
 	Hub               hub.Source
 	LAPI              lapi.Config
 	LAPIName          string
+	LAPIAllowlistSync string
 	LAPIExtra         string
 	AlertRetention    time.Duration
 	Rules             relay.Rules
@@ -153,6 +154,7 @@ func loadConfig() (*config, error) {
 	e.Secret("LAPI_PASSWORD", &c.LAPI.Password)
 	e.String("LAPI_CA_FILE", &c.LAPI.CAFile)
 	e.String("LAPI_NAME", &c.LAPIName)
+	e.String("LAPI_ALLOWLIST_SYNC_URL", &c.LAPIAllowlistSync)
 	e.List("CROWDSEC_METRICS_URLS", &c.Metrics.URLs)
 	e.List("CROWDSEC_METRICS_DISCOVERY_HOSTS", &c.Metrics.DiscoveryHosts)
 	e.Int("CROWDSEC_METRICS_DISCOVERY_PORT", &c.Metrics.DiscoveryPort)
@@ -347,6 +349,8 @@ func parseExtraLAPIs(raw string) ([]manager.NamedLAPI, error) {
 		Login    string `json:"login"`
 		Password string `json:"password"`
 		CAFile   string `json:"ca_file"`
+		// openpicket-crowdsec-sync of the instance (central allowlist).
+		AllowlistSyncURL string `json:"allowlist_sync_url"`
 	}
 	dec := json.NewDecoder(strings.NewReader(raw))
 	dec.DisallowUnknownFields()
@@ -358,7 +362,8 @@ func parseExtraLAPIs(raw string) ([]manager.NamedLAPI, error) {
 		if l.Name == "" || l.URL == "" || l.Login == "" {
 			return nil, errors.New("OPENPICKET_LAPI_EXTRA: name, url and login are required")
 		}
-		out = append(out, manager.NamedLAPI{Name: l.Name, Config: lapi.Config{URL: l.URL, Login: l.Login, Password: l.Password, CAFile: l.CAFile}})
+		out = append(out, manager.NamedLAPI{Name: l.Name, Config: lapi.Config{URL: l.URL, Login: l.Login, Password: l.Password, CAFile: l.CAFile},
+			AllowlistSync: l.AllowlistSyncURL})
 	}
 	return out, nil
 }
@@ -445,7 +450,7 @@ func serve() error {
 	}
 	m, err := manager.New(manager.Options{
 		DB: pool, HostKey: hostKey, ReplicaID: cfg.ReplicaID, Loki: cfg.Loki, CrowdSec: cfg.CrowdSec, CrowdSecSync: cfg.CrowdSecSync, Hub: cfg.Hub, LAPI: cfg.LAPI, EdgeRules: &cfg.Rules,
-		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, OpenSearch: &cfg.OpenSearch, MISP: &cfg.MISP, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
+		LokiQueryURL: cfg.LokiQueryURL, PublicURL: cfg.PublicURL, OpenSearch: &cfg.OpenSearch, MISP: &cfg.MISP, CrowdSecMetrics: cfg.Metrics, LAPIName: cfg.LAPIName, LAPIAllowlistSync: cfg.LAPIAllowlistSync, ExtraLAPIs: extra, AlertRetention: cfg.AlertRetention,
 		Suricontroller: suri, AgentControllerURL: cfg.AgentControllerURL, TrustProxyHeaders: cfg.TrustProxyHeaders, Logger: log,
 		Role: role, Keys: keys, Syslog: cfg.Syslog,
 	})

@@ -135,6 +135,10 @@ spec:
               value: {{ printf "%s-crowdsec-agents,%s-crowdsec-lapi-pods" $full $full | quote }}
             - name: OPENPICKET_LAPI_URL
               value: {{ include "openpicket.lapiURL" . | quote }}
+            {{- if .Values.crowdsec.lapi.allowlistSync }}
+            - name: OPENPICKET_LAPI_ALLOWLIST_SYNC_URL
+              value: {{ printf "http://%s-crowdsec-lapi:8082" $full | quote }}
+            {{- end }}
             - name: OPENPICKET_LAPI_BOUNCER_KEY
               valueFrom:
                 secretKeyRef:

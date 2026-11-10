@@ -581,6 +581,9 @@
                 "type": "string"
               }
             },
+            "allowlistSync": {
+              "type": "boolean"
+            },
             "resources": {
               "type": "object"
             }

@@ -39,6 +39,12 @@ spec:
     - name: metrics
       port: 6060
       targetPort: metrics
+    {{- if .Values.crowdsec.lapi.allowlistSync }}
+    # openpicket-crowdsec-sync: the manager pushes the central allowlist.
+    - name: sync
+      port: 8082
+      targetPort: sync
+    {{- end }}
 ---
 # Pod addresses of the LAPIs (metrics of every replica).
 apiVersion: v1
@@ -119,11 +125,24 @@ spec:
                   name: {{ $secret }}
                   key: bouncer-{{ $name }}
             {{- end }}
+            {{- if .Values.crowdsec.lapi.allowlistSync }}
+            # Authenticates the manager pushing the central allowlist
+            # (openpicket-crowdsec-sync applies it with cscli).
+            - name: OPENPICKET_ACQUIS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: acquis-token
+            {{- end }}
           ports:
             - name: lapi
               containerPort: 8080
             - name: metrics
               containerPort: 6060
+            {{- if .Values.crowdsec.lapi.allowlistSync }}
+            - name: sync
+              containerPort: 8082
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /health

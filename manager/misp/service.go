@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/openpicket/openpicket/manager/allowlist"
 	"github.com/openpicket/openpicket/manager/lapi"
 )
 
@@ -34,6 +35,8 @@ type Config struct {
 	Client *Client
 	// LAPI receives the decisions (the primary LAPI).
 	LAPI *lapi.Watcher
+	// Allowlist: approved attributes it covers get no decision.
+	Allowlist *allowlist.Store
 	// Interval between syncs (default 5m).
 	Interval time.Duration
 	// Renew: decisions last twice this and are renewed when less than this
@@ -271,6 +274,19 @@ func (s *Service) reconcile(ctx context.Context) (int, error) {
 	rows.Close()
 	if err := rows.Err(); err != nil {
 		return 0, err
+	}
+	// Allowlisted values get no decision, and lose the ones they have.
+	if s.cfg.Allowlist != nil {
+		set, err := s.cfg.Allowlist.Active(ctx)
+		if err != nil {
+			return 0, err
+		}
+		for key, d := range want {
+			if cov := set.Covering(d.value); len(cov) > 0 {
+				s.log.Debug("approved attribute is allowlisted; no decision", "value", d.value, "allowlist", cov[0])
+				delete(want, key)
+			}
+		}
 	}
 	type have struct {
 		ids   []int64
